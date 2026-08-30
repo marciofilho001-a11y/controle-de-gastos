@@ -6,6 +6,7 @@
 <title>FinFlow Pro</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 :root{
@@ -17,6 +18,9 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+
+/* ICONS (lucide) */
+.lic{display:inline-block;vertical-align:-3px;flex-shrink:0;stroke-width:2;}
 
 /* TOPBAR */
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px;}
@@ -177,13 +181,15 @@ td{padding:10px 14px;font-size:13px;}
 
 /* EMPTY */
 .empty{text-align:center;padding:50px 20px;color:var(--muted);}
-.empty-icon{font-size:36px;margin-bottom:10px;}
+.empty-icon{display:flex;align-items:center;justify-content:center;margin-bottom:10px;opacity:.7;}
 
 /* TOAST */
 .toast{position:fixed;bottom:22px;right:22px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 18px;font-size:13px;z-index:999;display:none;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);}
 .toast.show{display:flex;}
 .toast.ok{border-left:3px solid var(--accent);}
+.toast.ok .lic{color:var(--accent);}
 .toast.err{border-left:3px solid var(--danger);}
+.toast.err .lic{color:var(--danger);}
 
 /* SECTION HEADER */
 .section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;}
@@ -207,21 +213,21 @@ td{padding:10px 14px;font-size:13px;}
 <body>
 
 <div class="topbar">
-  <div class="brand"><div class="brand-logo">💰</div><span class="brand-name">FinFlow Pro</span></div>
+  <div class="brand"><div class="brand-logo"><i data-lucide="wallet" class="lic" style="width:18px;height:18px"></i></div><span class="brand-name">FinFlow Pro</span></div>
   <div class="month-nav">
-    <button class="btn btn-secondary btn-icon btn-sm" onclick="mudarMes(-1)" aria-label="Mês anterior">‹</button>
+    <button class="btn btn-secondary btn-icon btn-sm" onclick="mudarMes(-1)" aria-label="Mês anterior"><i data-lucide="chevron-left" class="lic" style="width:15px;height:15px;vertical-align:-2px"></i></button>
     <span class="month-label" id="month-label">—</span>
-    <button class="btn btn-secondary btn-icon btn-sm" onclick="mudarMes(1)" aria-label="Próximo mês">›</button>
+    <button class="btn btn-secondary btn-icon btn-sm" onclick="mudarMes(1)" aria-label="Próximo mês"><i data-lucide="chevron-right" class="lic" style="width:15px;height:15px;vertical-align:-2px"></i></button>
   </div>
 </div>
 
 <div class="nav">
-  <div class="nav-tab active" onclick="goTab('dashboard',this)">📊 Dashboard</div>
-  <div class="nav-tab" onclick="goTab('obrigacoes',this)">📌 Obrigações</div>
-  <div class="nav-tab" onclick="goTab('transacoes',this)">💸 Transações</div>
-  <div class="nav-tab" onclick="goTab('projecao',this)">🔮 Projeção</div>
-  <div class="nav-tab" onclick="goTab('graficos',this)">📈 Gráficos</div>
-  <div class="nav-tab" onclick="goTab('investimentos',this)">🏦 Investimentos</div>
+  <div class="nav-tab active" onclick="goTab('dashboard',this)"><i data-lucide="layout-dashboard" class="lic" style="width:14px;height:14px"></i> Dashboard</div>
+  <div class="nav-tab" onclick="goTab('obrigacoes',this)"><i data-lucide="receipt" class="lic" style="width:14px;height:14px"></i> Obrigações</div>
+  <div class="nav-tab" onclick="goTab('transacoes',this)"><i data-lucide="arrow-left-right" class="lic" style="width:14px;height:14px"></i> Transações</div>
+  <div class="nav-tab" onclick="goTab('projecao',this)"><i data-lucide="telescope" class="lic" style="width:14px;height:14px"></i> Projeção</div>
+  <div class="nav-tab" onclick="goTab('graficos',this)"><i data-lucide="bar-chart-3" class="lic" style="width:14px;height:14px"></i> Gráficos</div>
+  <div class="nav-tab" onclick="goTab('investimentos',this)"><i data-lucide="landmark" class="lic" style="width:14px;height:14px"></i> Investimentos</div>
 </div>
 
 <div class="main">
@@ -229,20 +235,20 @@ td{padding:10px 14px;font-size:13px;}
 <!-- ═══════════════ DASHBOARD ═══════════════ -->
 <div class="page active" id="page-dashboard">
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-label">Saldo do Mês 💼</div><div class="stat-value" id="st-saldo">—</div></div>
-    <div class="stat-card"><div class="stat-label">Receitas 📈</div><div class="stat-value pos" id="st-receitas">—</div></div>
-    <div class="stat-card"><div class="stat-label">Despesas 📉</div><div class="stat-value neg" id="st-despesas">—</div></div>
-    <div class="stat-card"><div class="stat-label">Pendentes ⚠️</div><div class="stat-value warn" id="st-pendentes">—</div></div>
+    <div class="stat-card"><div class="stat-label">Saldo do Mês <i data-lucide="scale" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value" id="st-saldo">—</div></div>
+    <div class="stat-card"><div class="stat-label">Receitas <i data-lucide="trending-up" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value pos" id="st-receitas">—</div></div>
+    <div class="stat-card"><div class="stat-label">Despesas <i data-lucide="trending-down" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value neg" id="st-despesas">—</div></div>
+    <div class="stat-card"><div class="stat-label">Pendentes <i data-lucide="alert-triangle" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value warn" id="st-pendentes">—</div></div>
   </div>
 
   <div class="chart-grid" style="align-items:start">
     <div class="chart-box">
-      <div class="card-title">🍩 Gastos por Categoria</div>
+      <div class="card-title"><i data-lucide="chart-pie" class="lic" style="width:14px;height:14px"></i> Gastos por Categoria</div>
       <div class="chart-canvas-wrap"><canvas id="chart-dash-donut"></canvas></div>
     </div>
     <div class="card">
       <div class="card-title">
-        <span>📌 Obrigações do Mês</span>
+        <span><i data-lucide="receipt" class="lic" style="width:14px;height:14px"></i> Obrigações do Mês</span>
         <button class="btn btn-secondary btn-sm" onclick="goTab('obrigacoes',document.querySelectorAll('.nav-tab')[1])">Gerenciar</button>
       </div>
       <div class="progress-wrap">
@@ -269,7 +275,7 @@ td{padding:10px 14px;font-size:13px;}
 <div class="page" id="page-obrigacoes">
   <div class="section-hdr">
     <h2>Obrigações Mensais</h2>
-    <button class="btn btn-primary" onclick="abrirModalObrigacao()">＋ Nova Obrigação</button>
+    <button class="btn btn-primary" onclick="abrirModalObrigacao()"><i data-lucide="plus" class="lic" style="width:14px;height:14px"></i> Nova Obrigação</button>
   </div>
   <div class="obr-grid" id="obr-grid"></div>
 </div>
@@ -278,7 +284,7 @@ td{padding:10px 14px;font-size:13px;}
 <div class="page" id="page-transacoes">
   <div class="section-hdr">
     <h2>Transações</h2>
-    <button class="btn btn-primary" onclick="abrirModalTransacao()">＋ Nova Transação</button>
+    <button class="btn btn-primary" onclick="abrirModalTransacao()"><i data-lucide="plus" class="lic" style="width:14px;height:14px"></i> Nova Transação</button>
   </div>
   <div class="toolbar">
     <select class="form-select" id="tx-filter-tipo" onchange="renderTransacoesTab()" style="width:160px"><option value="">Todos os tipos</option><option value="receita">Receitas</option><option value="despesa">Despesas</option></select>
@@ -294,7 +300,7 @@ td{padding:10px 14px;font-size:13px;}
 <div class="page" id="page-projecao">
   <div class="section-hdr"><h2>Projeção Financeira — Próximos 12 Meses</h2></div>
   <div class="card" style="margin-bottom:16px">
-    <div class="card-title">⚙️ Parâmetros da Projeção</div>
+    <div class="card-title"><i data-lucide="settings" class="lic" style="width:14px;height:14px"></i> Parâmetros da Projeção</div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Renda mensal projetada (R$)</label>
@@ -309,11 +315,11 @@ td{padding:10px 14px;font-size:13px;}
     </div>
   </div>
   <div class="chart-box" style="margin-bottom:16px">
-    <div class="card-title">📈 Evolução Projetada</div>
+    <div class="card-title"><i data-lucide="trending-up" class="lic" style="width:14px;height:14px"></i> Evolução Projetada</div>
     <div class="chart-canvas-wrap tall"><canvas id="chart-projecao"></canvas></div>
   </div>
   <div class="card">
-    <div class="card-title">🗓️ Detalhe Mês a Mês</div>
+    <div class="card-title"><i data-lucide="calendar-days" class="lic" style="width:14px;height:14px"></i> Detalhe Mês a Mês</div>
     <div class="table-wrap">
       <table><thead><tr><th>Mês</th><th>Obrigações Ativas</th><th>Total Obrigações</th><th>Receita</th><th>Sobra</th><th>Sugestão Investir</th></tr></thead>
       <tbody id="proj-body"></tbody></table>
@@ -326,19 +332,19 @@ td{padding:10px 14px;font-size:13px;}
   <div class="section-hdr"><h2>Análise Gráfica — <span id="graf-mes-label" style="color:var(--accent)"></span></h2></div>
   <div class="chart-grid">
     <div class="chart-box">
-      <div class="card-title">🍩 Despesas por Categoria</div>
+      <div class="card-title"><i data-lucide="chart-pie" class="lic" style="width:14px;height:14px"></i> Despesas por Categoria</div>
       <div class="chart-canvas-wrap"><canvas id="chart-g1"></canvas></div>
     </div>
     <div class="chart-box">
-      <div class="card-title">🥧 Composição da Renda</div>
+      <div class="card-title"><i data-lucide="chart-pie" class="lic" style="width:14px;height:14px"></i> Composição da Renda</div>
       <div class="chart-canvas-wrap"><canvas id="chart-g2"></canvas></div>
     </div>
     <div class="chart-box">
-      <div class="card-title">📊 Histórico: Receitas x Despesas</div>
+      <div class="card-title"><i data-lucide="bar-chart-3" class="lic" style="width:14px;height:14px"></i> Histórico: Receitas x Despesas</div>
       <div class="chart-canvas-wrap"><canvas id="chart-g3"></canvas></div>
     </div>
     <div class="chart-box">
-      <div class="card-title">📌 Obrigações por Categoria</div>
+      <div class="card-title"><i data-lucide="receipt" class="lic" style="width:14px;height:14px"></i> Obrigações por Categoria</div>
       <div class="chart-canvas-wrap"><canvas id="chart-g4"></canvas></div>
     </div>
   </div>
@@ -348,7 +354,7 @@ td{padding:10px 14px;font-size:13px;}
 <div class="page" id="page-investimentos">
   <div class="section-hdr">
     <h2>Investimentos</h2>
-    <button class="btn btn-primary" onclick="abrirModalInvestimento()">＋ Registrar Investimento</button>
+    <button class="btn btn-primary" onclick="abrirModalInvestimento()"><i data-lucide="plus" class="lic" style="width:14px;height:14px"></i> Registrar Investimento</button>
   </div>
   <div class="invest-summary">
     <div class="invest-sum-card"><div class="stat-label">Total Investido (acumulado)</div><div class="stat-value pos" id="inv-total">—</div></div>
@@ -356,7 +362,7 @@ td{padding:10px 14px;font-size:13px;}
     <div class="invest-sum-card"><div class="stat-label">Investido este mês</div><div class="stat-value" id="inv-mes">—</div></div>
   </div>
   <div class="chart-box" style="margin-bottom:16px">
-    <div class="card-title">📈 Acumulado ao Longo do Tempo</div>
+    <div class="card-title"><i data-lucide="trending-up" class="lic" style="width:14px;height:14px"></i> Acumulado ao Longo do Tempo</div>
     <div class="chart-canvas-wrap"><canvas id="chart-invest"></canvas></div>
   </div>
   <div class="card">
@@ -373,7 +379,7 @@ td{padding:10px 14px;font-size:13px;}
 <!-- MODAL OBRIGAÇÃO -->
 <div class="modal-overlay" id="modal-obr">
   <div class="modal">
-    <div class="modal-header"><span class="modal-title" id="modal-obr-title">Nova Obrigação</span><button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-obr')" aria-label="Fechar">✕</button></div>
+    <div class="modal-header"><span class="modal-title" id="modal-obr-title">Nova Obrigação</span><button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-obr')" aria-label="Fechar"><i data-lucide="x" class="lic" style="width:14px;height:14px"></i></button></div>
     <input type="hidden" id="obr-edit-id">
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="obr-nome" placeholder="Consórcio, Cartão Nubank..."></div>
@@ -384,17 +390,17 @@ td{padding:10px 14px;font-size:13px;}
       <div class="form-group">
         <label class="form-label">Categoria</label>
         <select class="form-select" id="obr-categoria">
-          <option value="moradia">🏠 Moradia</option>
-          <option value="cartao">💳 Cartão</option>
-          <option value="consorcio">🔗 Consórcio</option>
-          <option value="financiamento">🚗 Financiamento</option>
-          <option value="assinatura">📱 Assinatura</option>
-          <option value="alimentacao">🍽️ Alimentação</option>
-          <option value="transporte">⛽ Transporte</option>
-          <option value="saude">💊 Saúde</option>
-          <option value="lazer">🎮 Lazer</option>
-          <option value="educacao">📚 Educação</option>
-          <option value="outro">📌 Outro</option>
+          <option value="moradia">Moradia</option>
+          <option value="cartao">Cartão</option>
+          <option value="consorcio">Consórcio</option>
+          <option value="financiamento">Financiamento</option>
+          <option value="assinatura">Assinatura</option>
+          <option value="alimentacao">Alimentação</option>
+          <option value="transporte">Transporte</option>
+          <option value="saude">Saúde</option>
+          <option value="lazer">Lazer</option>
+          <option value="educacao">Educação</option>
+          <option value="outro">Outro</option>
         </select>
       </div>
       <div class="form-row">
@@ -405,7 +411,7 @@ td{padding:10px 14px;font-size:13px;}
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
       <button class="btn btn-secondary" onclick="closeModal('modal-obr')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarObrigacao()">💾 Salvar</button>
+      <button class="btn btn-primary" onclick="salvarObrigacao()"><i data-lucide="save" class="lic" style="width:14px;height:14px"></i> Salvar</button>
     </div>
   </div>
 </div>
@@ -413,13 +419,13 @@ td{padding:10px 14px;font-size:13px;}
 <!-- MODAL TRANSAÇÃO -->
 <div class="modal-overlay" id="modal-tx">
   <div class="modal">
-    <div class="modal-header"><span class="modal-title">Nova Transação</span><button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-tx')" aria-label="Fechar">✕</button></div>
+    <div class="modal-header"><span class="modal-title">Nova Transação</span><button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-tx')" aria-label="Fechar"><i data-lucide="x" class="lic" style="width:14px;height:14px"></i></button></div>
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label">Tipo *</label>
         <select class="form-select" id="tx-tipo" onchange="atualizarCategoriasTx()">
-          <option value="despesa">📉 Despesa</option>
-          <option value="receita">📈 Receita</option>
+          <option value="despesa">Despesa</option>
+          <option value="receita">Receita</option>
         </select>
       </div>
       <div class="form-group"><label class="form-label">Descrição *</label><input class="form-input" id="tx-descricao" placeholder="Mercado, salário..."></div>
@@ -431,7 +437,7 @@ td{padding:10px 14px;font-size:13px;}
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
       <button class="btn btn-secondary" onclick="closeModal('modal-tx')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarTransacao()">💾 Salvar</button>
+      <button class="btn btn-primary" onclick="salvarTransacao()"><i data-lucide="save" class="lic" style="width:14px;height:14px"></i> Salvar</button>
     </div>
   </div>
 </div>
@@ -439,7 +445,7 @@ td{padding:10px 14px;font-size:13px;}
 <!-- MODAL INVESTIMENTO -->
 <div class="modal-overlay" id="modal-inv">
   <div class="modal">
-    <div class="modal-header"><span class="modal-title">Registrar Investimento</span><button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-inv')" aria-label="Fechar">✕</button></div>
+    <div class="modal-header"><span class="modal-title">Registrar Investimento</span><button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-inv')" aria-label="Fechar"><i data-lucide="x" class="lic" style="width:14px;height:14px"></i></button></div>
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Descrição</label><input class="form-input" id="inv-descricao" placeholder="Tesouro, CDB, ações..."></div>
       <div class="form-row">
@@ -449,7 +455,7 @@ td{padding:10px 14px;font-size:13px;}
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
       <button class="btn btn-secondary" onclick="closeModal('modal-inv')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarInvestimento()">💾 Salvar</button>
+      <button class="btn btn-primary" onclick="salvarInvestimento()"><i data-lucide="save" class="lic" style="width:14px;height:14px"></i> Salvar</button>
     </div>
   </div>
 </div>
@@ -468,16 +474,22 @@ const sb = supabase.createClient(SB_URL, SB_KEY);
 //  CATEGORIAS
 // ══════════════════════════════════════════════
 const DESPESA_CATS = [
-  {v:'moradia',l:'Moradia',i:'🏠'},{v:'cartao',l:'Cartão',i:'💳'},{v:'consorcio',l:'Consórcio',i:'🔗'},
-  {v:'financiamento',l:'Financiamento',i:'🚗'},{v:'assinatura',l:'Assinatura',i:'📱'},
-  {v:'alimentacao',l:'Alimentação',i:'🍽️'},{v:'transporte',l:'Transporte',i:'⛽'},
-  {v:'saude',l:'Saúde',i:'💊'},{v:'lazer',l:'Lazer',i:'🎮'},{v:'educacao',l:'Educação',i:'📚'},{v:'outro',l:'Outro',i:'📌'},
+  {v:'moradia',l:'Moradia',i:'home'},{v:'cartao',l:'Cartão',i:'credit-card'},{v:'consorcio',l:'Consórcio',i:'link'},
+  {v:'financiamento',l:'Financiamento',i:'car'},{v:'assinatura',l:'Assinatura',i:'smartphone'},
+  {v:'alimentacao',l:'Alimentação',i:'utensils'},{v:'transporte',l:'Transporte',i:'fuel'},
+  {v:'saude',l:'Saúde',i:'pill'},{v:'lazer',l:'Lazer',i:'gamepad-2'},{v:'educacao',l:'Educação',i:'book-open'},{v:'outro',l:'Outro',i:'more-horizontal'},
 ];
 const RECEITA_CATS = [
-  {v:'salario',l:'Salário',i:'💼'},{v:'freelance',l:'Freelance',i:'🛠️'},{v:'investimento',l:'Rendimento',i:'📈'},{v:'outro',l:'Outro',i:'📌'},
+  {v:'salario',l:'Salário',i:'briefcase'},{v:'freelance',l:'Freelance',i:'wrench'},{v:'investimento',l:'Rendimento',i:'trending-up'},{v:'outro',l:'Outro',i:'more-horizontal'},
 ];
 const CAT_COLORS = {moradia:'#3d8ef0',cartao:'#f472b6',consorcio:'#a78bfa',financiamento:'#fb923c',assinatura:'#60a5fa',alimentacao:'#f0a832',transporte:'#22d3a5',saude:'#f05252',lazer:'#34d399',educacao:'#94a3b8',outro:'#6b7280',salario:'#22d3a5',freelance:'#3d8ef0',investimento:'#a78bfa'};
-function catInfo(v){ return DESPESA_CATS.find(c=>c.v===v) || RECEITA_CATS.find(c=>c.v===v) || {v,l:v||'Outro',i:'📌'}; }
+function catInfo(v){ return DESPESA_CATS.find(c=>c.v===v) || RECEITA_CATS.find(c=>c.v===v) || {v,l:v||'Outro',i:'more-horizontal'}; }
+
+// ══════════════════════════════════════════════
+//  ÍCONES (lucide) — helpers
+// ══════════════════════════════════════════════
+function ic(name, size=14, cls=''){ return `<i data-lucide="${name}" class="lic ${cls}" style="width:${size}px;height:${size}px"></i>`; }
+function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
 
 // ══════════════════════════════════════════════
 //  STATE
@@ -499,6 +511,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
   atualizarCategoriasTx();
   atualizarLabelMes();
   renderAll();
+  refreshIcons();
 })();
 
 async function loadObrigacoes(){ const {data} = await sb.from('fin_obrigacoes').select('*').order('criado_em'); obrigacoes = data||[]; }
@@ -600,7 +613,7 @@ function renderDashboard(){
   document.getElementById('pw-vals').textContent = `${fmtR(totalObr)} de ${fmtR(receitas)}`;
 
   const oblist = document.getElementById('dash-oblist');
-  if(!ativas.length){ oblist.innerHTML = '<div class="empty" style="padding:20px"><div class="empty-icon">📭</div><p>Nenhuma obrigação ativa neste mês</p></div>'; }
+  if(!ativas.length){ oblist.innerHTML = `<div class="empty" style="padding:20px"><div class="empty-icon">${ic('inbox',30)}</div><p>Nenhuma obrigação ativa neste mês</p></div>`; }
   else {
     oblist.innerHTML = ativas.map(o=>{
       const paga = obrigacaoPagaNoMes(o.id, mesAtual);
@@ -608,8 +621,8 @@ function renderDashboard(){
       const parc = parcelaNoMes(o, mesAtual);
       const parcTxt = o.parcela_total ? `Parcela ${parc}/${o.parcela_total}` : 'Recorrente';
       return `<div class="obrow ${paga?'paid':''}">
-        <div class="obcheck ${paga?'checked':''}" onclick="toggleObrigacaoPaga(${o.id})">${paga?'✓':''}</div>
-        <div class="obicon">${ci.i}</div>
+        <div class="obcheck ${paga?'checked':''}" onclick="toggleObrigacaoPaga(${o.id})">${paga?ic('check',14):''}</div>
+        <div class="obicon">${ic(ci.i,16)}</div>
         <div class="obinfo">
           <div class="obname ${paga?'strike':''}">${o.nome}</div>
           <div class="obmeta">Dia ${o.dia_vencimento||'—'} · ${parcTxt}</div>
@@ -629,15 +642,16 @@ function renderDashboard(){
       return `<tr>
         <td style="color:var(--muted)">${fmtData(t.data)}</td>
         <td>${t.descricao||'—'}</td>
-        <td>${ci.i} ${ci.l}</td>
+        <td>${ic(ci.i)} ${ci.l}</td>
         <td><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
         <td style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
-        <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">🗑</button></td>
+        <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
       </tr>`;
     }).join('');
   }
 
   renderDonutChart('chart-dash-donut', hist.filter(t=>t.tipo==='despesa'));
+  refreshIcons();
 }
 
 async function toggleObrigacaoPaga(obrId){
@@ -660,7 +674,7 @@ async function toggleObrigacaoPaga(obrId){
 // ══════════════════════════════════════════════
 function renderObrigacoesTab(){
   const grid = document.getElementById('obr-grid');
-  if(!obrigacoes.length){ grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📌</div><p>Nenhuma obrigação cadastrada</p></div>'; return; }
+  if(!obrigacoes.length){ grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">${ic('inbox',30)}</div><p>Nenhuma obrigação cadastrada</p></div>`; refreshIcons(); return; }
   grid.innerHTML = obrigacoes.map(o=>{
     const ci = catInfo(o.categoria);
     const parc = parcelaNoMes(o, mesAtual);
@@ -676,7 +690,7 @@ function renderObrigacoesTab(){
     }
     return `<div class="obr-card">
       <div class="obr-card-hdr">
-        <div class="obr-card-icon">${ci.i}</div>
+        <div class="obr-card-icon">${ic(ci.i,18)}</div>
         <div><div class="obr-card-nome">${o.nome}</div><div class="obr-card-cat">${ci.l}</div></div>
       </div>
       <div class="obr-card-valor">${fmtR(o.valor)}</div>
@@ -685,11 +699,12 @@ function renderObrigacoesTab(){
         ${statusBadge}
       </div>
       <div class="obr-card-actions">
-        <button class="btn btn-secondary btn-sm" onclick="editarObrigacao(${o.id})">✏️ Editar</button>
-        <button class="btn btn-danger btn-sm" onclick="deletarObrigacao(${o.id})">🗑</button>
+        <button class="btn btn-secondary btn-sm" onclick="editarObrigacao(${o.id})">${ic('pencil')} Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deletarObrigacao(${o.id})">${ic('trash-2')}</button>
       </div>
     </div>`;
   }).join('');
+  refreshIcons();
 }
 
 function abrirModalObrigacao(){
@@ -752,7 +767,7 @@ function atualizarCategoriasTx(){
   const tipo = document.getElementById('tx-tipo').value;
   const sel = document.getElementById('tx-categoria');
   const cats = tipo==='receita' ? RECEITA_CATS : DESPESA_CATS;
-  sel.innerHTML = cats.map(c=>`<option value="${c.v}">${c.i} ${c.l}</option>`).join('');
+  sel.innerHTML = cats.map(c=>`<option value="${c.v}">${c.l}</option>`).join('');
 }
 function abrirModalTransacao(){
   document.getElementById('tx-tipo').value = 'despesa';
@@ -792,7 +807,7 @@ function renderTransacoesTab(){
   if(catSel.options.length<=1){
     [...DESPESA_CATS, ...RECEITA_CATS].forEach(c=>{
       if(![...catSel.options].some(o=>o.value===c.v)){
-        const opt = document.createElement('option'); opt.value=c.v; opt.text=c.i+' '+c.l; catSel.appendChild(opt);
+        const opt = document.createElement('option'); opt.value=c.v; opt.text=c.l; catSel.appendChild(opt);
       }
     });
   }
@@ -802,18 +817,19 @@ function renderTransacoesTab(){
   if(filtTipo) list = list.filter(t=>t.tipo===filtTipo);
   if(filtCat) list = list.filter(t=>t.categoria===filtCat);
   const body = document.getElementById('tx-body');
-  if(!list.length){ body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Sem transações neste mês</td></tr>'; return; }
+  if(!list.length){ body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Sem transações neste mês</td></tr>'; refreshIcons(); return; }
   body.innerHTML = list.map(t=>{
     const ci = catInfo(t.categoria);
     return `<tr>
       <td style="color:var(--muted)">${fmtData(t.data)}</td>
       <td>${t.descricao||'—'}</td>
-      <td>${ci.i} ${ci.l}</td>
+      <td>${ic(ci.i)} ${ci.l}</td>
       <td><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
       <td style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
-      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">🗑</button></td>
+      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
     </tr>`;
   }).join('');
+  refreshIcons();
 }
 
 // ══════════════════════════════════════════════
@@ -860,7 +876,7 @@ function renderProjecaoTab(){
     const anteriorQtd = i>0 ? dados[i-1].qtdObr : d.qtdObr;
     const terminou = i>0 && anteriorQtd > d.qtdObr;
     return `<tr class="${terminou?'proj-end-row':''}">
-      <td style="font-weight:600">${label} ${terminou?'🎉':''}</td>
+      <td style="font-weight:600">${label} ${terminou?ic('party-popper',13):''}</td>
       <td>${d.qtdObr}</td>
       <td style="font-family:var(--mono);color:var(--danger)">${fmtR(d.totalObr)}</td>
       <td style="font-family:var(--mono);color:var(--accent)">${fmtR(d.receita)}</td>
@@ -868,6 +884,7 @@ function renderProjecaoTab(){
       <td style="font-family:var(--mono);color:var(--accent2)">${fmtR(d.sugestao)}</td>
     </tr>`;
   }).join('');
+  refreshIcons();
 }
 
 // ══════════════════════════════════════════════
@@ -917,10 +934,11 @@ function renderInvestimentosTab(){
       <td>${i.mes_ref}</td>
       <td>${i.descricao||'—'}</td>
       <td style="font-family:var(--mono);font-weight:600;color:var(--accent)">${fmtR(i.valor)}</td>
-      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletarInvestimento(${i.id})">🗑</button></td>
+      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletarInvestimento(${i.id})">${ic('trash-2')}</button></td>
     </tr>`).join('');
   }
   renderInvestChart();
+  refreshIcons();
 }
 function abrirModalInvestimento(){
   document.getElementById('inv-descricao').value='';
@@ -960,12 +978,12 @@ function renderDonutChart(canvasId, txList){
   const porCat = {};
   txList.forEach(t=>{ porCat[t.categoria] = (porCat[t.categoria]||0) + Number(t.valor); });
   const labels = Object.keys(porCat);
-  if(!labels.length){ ctx.parentElement.innerHTML = '<div class="empty" style="padding:30px"><div class="empty-icon">📭</div><p>Sem despesas para exibir</p></div>'; return; }
+  if(!labels.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px"><div class="empty-icon">${ic('inbox',28)}</div><p>Sem despesas para exibir</p></div>`; refreshIcons(); return; }
   const data = labels.map(l=>porCat[l]);
   const colors = labels.map(l=>CAT_COLORS[l]||'#6b7280');
   charts[canvasId] = new Chart(ctx, {
     type:'doughnut',
-    data:{ labels: labels.map(l=>catInfo(l).i+' '+catInfo(l).l), datasets:[{data, backgroundColor:colors, borderColor:'#1c2333', borderWidth:2}] },
+    data:{ labels: labels.map(l=>catInfo(l).l), datasets:[{data, backgroundColor:colors, borderColor:'#1c2333', borderWidth:2}] },
     options:{ ...CHART_DEFAULTS, cutout:'65%', maintainAspectRatio:false,
       plugins:{ legend:{position:'bottom', labels:{color:'#e8eaf0',font:{size:11},padding:10}},
         tooltip:{callbacks:{label:c=>c.label+': '+fmtR(c.raw)}} } }
@@ -1012,12 +1030,12 @@ function renderObrCategoriaChart(canvasId){
   const porCat = {};
   ativas.forEach(o=>{ porCat[o.categoria]=(porCat[o.categoria]||0)+Number(o.valor); });
   const labels = Object.keys(porCat);
-  if(!labels.length){ ctx.parentElement.innerHTML = '<div class="empty" style="padding:30px"><div class="empty-icon">📭</div><p>Sem obrigações ativas</p></div>'; return; }
+  if(!labels.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px"><div class="empty-icon">${ic('inbox',28)}</div><p>Sem obrigações ativas</p></div>`; refreshIcons(); return; }
   const data = labels.map(l=>porCat[l]);
   const colors = labels.map(l=>CAT_COLORS[l]||'#6b7280');
   charts[canvasId] = new Chart(ctx, {
     type:'bar',
-    data:{ labels: labels.map(l=>catInfo(l).i+' '+catInfo(l).l), datasets:[{ data, backgroundColor:colors, borderRadius:6 }] },
+    data:{ labels: labels.map(l=>catInfo(l).l), datasets:[{ data, backgroundColor:colors, borderRadius:6 }] },
     options:{ ...CHART_DEFAULTS, indexAxis:'y', maintainAspectRatio:false,
       scales:{ x:{ticks:{color:'#6b7280',callback:v=>'R$'+v},grid:{color:'#263045'}}, y:{ticks:{color:'#e8eaf0'},grid:{display:false}} },
       plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>fmtR(c.raw)}} } }
@@ -1044,7 +1062,7 @@ function renderProjecaoChart(dados){
 function renderInvestChart(){
   destroyChart('chart-invest');
   const ctx = document.getElementById('chart-invest');
-  if(!investimentos.length){ ctx.parentElement.innerHTML = '<div class="empty" style="padding:30px"><div class="empty-icon">📭</div><p>Sem investimentos ainda</p></div>'; return; }
+  if(!investimentos.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px"><div class="empty-icon">${ic('inbox',28)}</div><p>Sem investimentos ainda</p></div>`; refreshIcons(); return; }
   const ordenado = [...investimentos].sort((a,b)=>new Date(a.data)-new Date(b.data));
   let acc = 0;
   const labels = ordenado.map(i=>fmtData(i.data));
@@ -1065,8 +1083,9 @@ function fmtR(v){ return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFract
 function fmtData(d){ if(!d) return '—'; const dt = new Date(d+'T00:00:00'); return dt.toLocaleDateString('pt-BR'); }
 function toast(msg, tipo='ok'){
   const el = document.getElementById('toast');
-  el.textContent = (tipo==='ok'?'✅ ':'❌ ')+msg;
+  el.innerHTML = ic(tipo==='ok'?'check-circle':'x-circle', 15) + ' ' + msg;
   el.className = 'toast show '+tipo;
+  refreshIcons();
   setTimeout(()=>{ el.className='toast'; }, 3000);
 }
 </script>
