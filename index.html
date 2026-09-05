@@ -203,6 +203,19 @@ td{padding:10px 14px;font-size:13px;}
 .invest-summary{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;}
 .invest-sum-card{flex:1;min-width:160px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;}
 
+/* CARTÕES */
+.cartao-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:22px;}
+.cartao-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;}
+.cartao-card-hdr{display:flex;align-items:center;gap:10px;}
+.cartao-card-icon{width:36px;height:36px;border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--accent2);}
+.cartao-card-nome{font-size:14px;font-weight:700;}
+.cartao-card-venc{font-size:11px;color:var(--muted);}
+.cartao-card-fatura{font-family:var(--mono);font-size:20px;font-weight:700;margin-top:12px;color:var(--danger);}
+.cartao-card-fatura-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:12px;}
+.cartao-card-actions{display:flex;gap:6px;margin-top:12px;}
+.cartao-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;background:rgba(244,114,182,.12);color:#f472b6;white-space:nowrap;}
+.parcela-tag{font-size:10px;color:var(--muted);font-family:var(--mono);}
+
 @media(max-width:800px){
   .chart-grid{grid-template-columns:1fr;}
   .form-row,.form-row-3{grid-template-columns:1fr;}
@@ -224,6 +237,7 @@ td{padding:10px 14px;font-size:13px;}
 <div class="nav">
   <div class="nav-tab active" onclick="goTab('dashboard',this)"><i data-lucide="layout-dashboard" class="lic" style="width:14px;height:14px"></i> Dashboard</div>
   <div class="nav-tab" onclick="goTab('obrigacoes',this)"><i data-lucide="receipt" class="lic" style="width:14px;height:14px"></i> Obrigações</div>
+  <div class="nav-tab" onclick="goTab('cartoes',this)"><i data-lucide="credit-card" class="lic" style="width:14px;height:14px"></i> Cartões</div>
   <div class="nav-tab" onclick="goTab('transacoes',this)"><i data-lucide="arrow-left-right" class="lic" style="width:14px;height:14px"></i> Transações</div>
   <div class="nav-tab" onclick="goTab('projecao',this)"><i data-lucide="telescope" class="lic" style="width:14px;height:14px"></i> Projeção</div>
   <div class="nav-tab" onclick="goTab('graficos',this)"><i data-lucide="bar-chart-3" class="lic" style="width:14px;height:14px"></i> Gráficos</div>
@@ -235,6 +249,7 @@ td{padding:10px 14px;font-size:13px;}
 <!-- ═══════════════ DASHBOARD ═══════════════ -->
 <div class="page active" id="page-dashboard">
   <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">Saldo Bancário Acumulado <i data-lucide="landmark" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value" id="st-saldo-banc">—</div><div class="form-hint" id="st-saldo-banc-sub" style="margin-top:6px">—</div></div>
     <div class="stat-card"><div class="stat-label">Saldo do Mês <i data-lucide="scale" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value" id="st-saldo">—</div></div>
     <div class="stat-card"><div class="stat-label">Receitas <i data-lucide="trending-up" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value pos" id="st-receitas">—</div></div>
     <div class="stat-card"><div class="stat-label">Despesas <i data-lucide="trending-down" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value neg" id="st-despesas">—</div></div>
@@ -280,6 +295,27 @@ td{padding:10px 14px;font-size:13px;}
   <div class="obr-grid" id="obr-grid"></div>
 </div>
 
+<!-- ═══════════════ CARTÕES ═══════════════ -->
+<div class="page" id="page-cartoes">
+  <div class="section-hdr">
+    <h2>Cartões de Crédito</h2>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" onclick="abrirModalCartao()"><i data-lucide="plus" class="lic" style="width:14px;height:14px"></i> Novo Cartão</button>
+      <button class="btn btn-primary" onclick="abrirModalCompra()"><i data-lucide="plus" class="lic" style="width:14px;height:14px"></i> Nova Compra / Parcelamento</button>
+    </div>
+  </div>
+  <div class="cartao-grid" id="cartao-grid"></div>
+
+  <div class="card">
+    <div class="card-title">Compras e Parcelamentos Lançados</div>
+    <div class="form-hint" style="margin-bottom:12px">Cada compra gera automaticamente uma transação por parcela, já no mês certo — excluir aqui remove todas as parcelas dela de uma vez, em qualquer mês.</div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Cartão</th><th>Descrição</th><th>Categoria</th><th>Parcela</th><th>Valor Parcela</th><th>Valor Total</th><th>Início</th><th></th></tr></thead>
+      <tbody id="compras-body"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Nenhuma compra lançada</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ TRANSAÇÕES ═══════════════ -->
 <div class="page" id="page-transacoes">
   <div class="section-hdr">
@@ -311,6 +347,18 @@ td{padding:10px 14px;font-size:13px;}
         <label class="form-label">% da sobra sugerido p/ investir</label>
         <input class="form-input mono" id="cfg-pct" type="number" min="0" max="100" oninput="onConfigChange()">
         <div class="form-hint">Ex: 20 = investir 20% do que sobrar todo mês</div>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:14px">
+      <div class="form-group">
+        <label class="form-label">Saldo inicial da conta (R$)</label>
+        <input class="form-input mono" id="cfg-saldo-inicial" type="number" step="0.01" oninput="onConfigChange()">
+        <div class="form-hint">Saldo real da conta no mês de referência abaixo — base do Saldo Bancário Acumulado</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mês de referência do saldo inicial</label>
+        <input class="form-input" id="cfg-saldo-mes" type="month" oninput="onConfigChange()">
+        <div class="form-hint">A partir deste mês o saldo acumulado passa a somar receitas − despesas de cada mês</div>
       </div>
     </div>
   </div>
@@ -460,6 +508,53 @@ td{padding:10px 14px;font-size:13px;}
   </div>
 </div>
 
+<!-- MODAL CARTÃO -->
+<div class="modal-overlay" id="modal-cartao">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="modal-cartao-title">Novo Cartão</span><button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-cartao')" aria-label="Fechar"><i data-lucide="x" class="lic" style="width:14px;height:14px"></i></button></div>
+    <input type="hidden" id="cartao-edit-id">
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Nome do Cartão *</label><input class="form-input" id="cartao-nome" placeholder="Nubank, Inter, Mercado Pago..."></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Dia de Vencimento</label><input class="form-input mono" id="cartao-dia" type="number" min="1" max="31"></div>
+        <div class="form-group"><label class="form-label">Limite (R$)</label><input class="form-input mono" id="cartao-limite" type="number" step="0.01" placeholder="opcional"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-cartao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarCartao()"><i data-lucide="save" class="lic" style="width:14px;height:14px"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COMPRA / PARCELAMENTO -->
+<div class="modal-overlay" id="modal-compra">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Nova Compra / Parcelamento</span><button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-compra')" aria-label="Fechar"><i data-lucide="x" class="lic" style="width:14px;height:14px"></i></button></div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Cartão *</label>
+        <select class="form-select" id="compra-cartao"></select>
+      </div>
+      <div class="form-group"><label class="form-label">Descrição *</label><input class="form-input" id="compra-descricao" placeholder="Notebook, viagem, mercado..."></div>
+      <div class="form-group">
+        <label class="form-label">Categoria</label>
+        <select class="form-select" id="compra-categoria"></select>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Valor Total da Compra (R$) *</label><input class="form-input mono" id="compra-valor-total" type="number" step="0.01" oninput="atualizarPreviewParcela()"></div>
+        <div class="form-group"><label class="form-label">Número de Parcelas *</label><input class="form-input mono" id="compra-parcelas" type="number" min="1" value="1" oninput="atualizarPreviewParcela()"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Mês da 1ª Parcela *</label><input class="form-input" id="compra-mes-inicio" type="month"></div>
+      <div class="form-hint" id="compra-preview">Preencha valor e parcelas para ver a simulação.</div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-compra')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarCompra()"><i data-lucide="save" class="lic" style="width:14px;height:14px"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -494,7 +589,7 @@ function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
 // ══════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════
-let obrigacoes=[], transacoes=[], investimentos=[], config={};
+let obrigacoes=[], transacoes=[], investimentos=[], config={}, cartoes=[], compras=[];
 let mesAtual = new Date().toISOString().slice(0,7); // 'YYYY-MM'
 let charts = {};
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -503,11 +598,14 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 //  INIT
 // ══════════════════════════════════════════════
 (async function init(){
-  await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig()]);
+  await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras()]);
   document.getElementById('cfg-renda').value = config.renda_projetada || '';
   document.getElementById('cfg-pct').value = config.pct_investimento || 20;
+  document.getElementById('cfg-saldo-inicial').value = config.saldo_inicial || 0;
+  document.getElementById('cfg-saldo-mes').value = config.saldo_inicial_mes || mesAtual;
   document.getElementById('tx-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('inv-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('compra-categoria').innerHTML = DESPESA_CATS.map(c=>`<option value="${c.v}">${c.l}</option>`).join('');
   atualizarCategoriasTx();
   atualizarLabelMes();
   renderAll();
@@ -517,6 +615,8 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 async function loadObrigacoes(){ const {data} = await sb.from('fin_obrigacoes').select('*').order('criado_em'); obrigacoes = data||[]; }
 async function loadTransacoes(){ const {data} = await sb.from('fin_transacoes').select('*').order('data',{ascending:false}); transacoes = data||[]; }
 async function loadInvestimentos(){ const {data} = await sb.from('fin_investimentos').select('*').order('data',{ascending:false}); investimentos = data||[]; }
+async function loadCartoes(){ const {data} = await sb.from('fin_cartoes').select('*').order('criado_em'); cartoes = data||[]; }
+async function loadCompras(){ const {data} = await sb.from('fin_cartao_compras').select('*').order('criado_em'); compras = data||[]; }
 async function loadConfig(){
   const {data} = await sb.from('fin_config').select('*');
   config = {};
@@ -536,6 +636,7 @@ function goTab(id, el){
   document.getElementById('page-'+id).classList.add('active');
   if(el) el.classList.add('active');
   if(id==='obrigacoes') renderObrigacoesTab();
+  if(id==='cartoes') renderCartoesTab();
   if(id==='transacoes') renderTransacoesTab();
   if(id==='projecao') renderProjecaoTab();
   if(id==='graficos') renderGraficosTab();
@@ -561,6 +662,7 @@ function atualizarLabelMes(){
 function renderAll(){
   renderDashboard();
   if(document.getElementById('page-obrigacoes').classList.contains('active')) renderObrigacoesTab();
+  if(document.getElementById('page-cartoes').classList.contains('active')) renderCartoesTab();
   if(document.getElementById('page-transacoes').classList.contains('active')) renderTransacoesTab();
   if(document.getElementById('page-projecao').classList.contains('active')) renderProjecaoTab();
   if(document.getElementById('page-graficos').classList.contains('active')) renderGraficosTab();
@@ -591,6 +693,31 @@ function despesasDoMes(mesRef){ return txDoMes(mesRef).filter(t=>t.tipo==='despe
 function obrigacaoPagaNoMes(obrId, mesRef){ return transacoes.find(t=>t.obrigacao_id===obrId && t.mes_ref===mesRef); }
 
 // ══════════════════════════════════════════════
+//  SALDO BANCÁRIO ACUMULADO
+//  Sempre recalculado do zero a cada chamada, nunca guardado em variável —
+//  e sempre limitado a meses <= mesRef, pra um mês futuro/outro mês nunca
+//  vazar pro saldo de um mês anterior.
+// ══════════════════════════════════════════════
+function addMonths(mesRef, n){
+  const [a,m] = mesRef.split('-').map(Number);
+  const d = new Date(a, m-1+n, 1);
+  return d.toISOString().slice(0,7);
+}
+function mesesEntre(inicio, fim){
+  const arr = []; let cur = inicio; let guard = 0;
+  while(cur <= fim && guard < 2000){ arr.push(cur); cur = addMonths(cur,1); guard++; }
+  return arr;
+}
+function saldoBancarioAcumulado(mesRef){
+  const inicioMes = config.saldo_inicial_mes || mesRef;
+  const saldoInicial = parseFloat(config.saldo_inicial) || 0;
+  if(mesRef < inicioMes) return null; // fora do intervalo configurado — não dá pra calcular pra trás
+  const meses = mesesEntre(inicioMes, mesRef);
+  const somaMeses = meses.reduce((s,m)=> s + (receitasDoMes(m) - despesasDoMes(m)), 0);
+  return saldoInicial + somaMeses;
+}
+
+// ══════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════
 function renderDashboard(){
@@ -599,6 +726,20 @@ function renderDashboard(){
   const saldo = receitas - despesas;
   const ativas = obrigacoesAtivasNoMes(mesAtual);
   const pendentes = ativas.filter(o=>!obrigacaoPagaNoMes(o.id, mesAtual)).reduce((s,o)=>s+Number(o.valor),0);
+
+  const saldoBanc = saldoBancarioAcumulado(mesAtual);
+  const stSaldoBanc = document.getElementById('st-saldo-banc');
+  const stSaldoBancSub = document.getElementById('st-saldo-banc-sub');
+  if(saldoBanc===null){
+    stSaldoBanc.textContent = '—';
+    stSaldoBanc.className = 'stat-value neutral';
+    stSaldoBancSub.textContent = 'Configure o saldo inicial na aba Projeção';
+  } else {
+    stSaldoBanc.textContent = fmtR(saldoBanc);
+    stSaldoBanc.className = 'stat-value '+(saldoBanc>=0?'pos':'neg');
+    const [ai,mi] = (config.saldo_inicial_mes||mesAtual).split('-').map(Number);
+    stSaldoBancSub.textContent = `Desde ${MESES[mi-1].slice(0,3)}/${ai} · isolado por mês, sem cache`;
+  }
 
   document.getElementById('st-saldo').textContent = fmtR(saldo);
   document.getElementById('st-saldo').className = 'stat-value '+(saldo>=0?'pos':'neg');
@@ -641,7 +782,7 @@ function renderDashboard(){
       const ci = catInfo(t.categoria);
       return `<tr>
         <td style="color:var(--muted)">${fmtData(t.data)}</td>
-        <td>${t.descricao||'—'}</td>
+        <td>${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
         <td>${ic(ci.i)} ${ci.l}</td>
         <td><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
         <td style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
@@ -761,6 +902,184 @@ async function deletarObrigacao(id){
 }
 
 // ══════════════════════════════════════════════
+//  CARTÕES TAB
+// ══════════════════════════════════════════════
+function cartaoNome(id){ const c = cartoes.find(x=>x.id===id); return c ? c.nome : '—'; }
+function faturaDoMes(cartaoId, mesRef){
+  return transacoes.filter(t=>t.cartao_id===cartaoId && t.mes_ref===mesRef && t.tipo==='despesa')
+    .reduce((s,t)=>s+Number(t.valor),0);
+}
+function renderCartoesTab(){
+  const grid = document.getElementById('cartao-grid');
+  if(!cartoes.length){
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">${ic('credit-card',30)}</div><p>Nenhum cartão cadastrado</p></div>`;
+  } else {
+    grid.innerHTML = cartoes.map(c=>{
+      const fatura = faturaDoMes(c.id, mesAtual);
+      const usoLimite = c.limite ? Math.min(100,(fatura/Number(c.limite))*100) : null;
+      return `<div class="cartao-card">
+        <div class="cartao-card-hdr">
+          <div class="cartao-card-icon">${ic('credit-card',18)}</div>
+          <div><div class="cartao-card-nome">${c.nome}</div><div class="cartao-card-venc">Vencimento dia ${c.dia_vencimento||'—'}</div></div>
+        </div>
+        <div class="cartao-card-fatura-label">Fatura deste mês</div>
+        <div class="cartao-card-fatura">${fmtR(fatura)}</div>
+        ${usoLimite!==null ? `
+          <div class="progress-wrap">
+            <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${usoLimite}%;${usoLimite>=90?'background:var(--danger)':''}"></div></div>
+            <div class="progress-label"><span>${fmtR(fatura)} de ${fmtR(c.limite)}</span><span>${usoLimite.toFixed(0)}%</span></div>
+          </div>` : ''}
+        <div class="cartao-card-actions">
+          <button class="btn btn-secondary btn-sm" onclick="editarCartao(${c.id})">${ic('pencil')} Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="deletarCartao(${c.id})">${ic('trash-2')}</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const sel = document.getElementById('compra-cartao');
+  sel.innerHTML = cartoes.filter(c=>c.ativo!==false).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('') || '<option value="">Cadastre um cartão primeiro</option>';
+
+  const body = document.getElementById('compras-body');
+  if(!compras.length){ body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Nenhuma compra lançada</td></tr>'; refreshIcons(); return; }
+  const ordenadas = [...compras].sort((a,b)=> b.data_inicio.localeCompare(a.data_inicio));
+  body.innerHTML = ordenadas.map(cp=>{
+    const ci = catInfo(cp.categoria);
+    const valorTotal = Number(cp.valor_parcela) * cp.parcela_total;
+    const parcelaAtual = Math.max(1, Math.min(cp.parcela_total, parcelaNoMes({data_inicio:cp.data_inicio}, mesAtual)));
+    return `<tr>
+      <td>${cartaoNome(cp.cartao_id)}</td>
+      <td>${cp.descricao||'—'}</td>
+      <td>${ic(ci.i)} ${ci.l}</td>
+      <td><span class="parcela-tag">${cp.parcela_total>1?`${parcelaAtual}/${cp.parcela_total}`:'à vista'}</span></td>
+      <td style="font-family:var(--mono)">${fmtR(cp.valor_parcela)}</td>
+      <td style="font-family:var(--mono);color:var(--muted)">${fmtR(valorTotal)}</td>
+      <td style="color:var(--muted)">${fmtMesRef(cp.data_inicio.slice(0,7))}</td>
+      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletarCompra(${cp.id})">${ic('trash-2')}</button></td>
+    </tr>`;
+  }).join('');
+  refreshIcons();
+}
+function fmtMesRef(mesRef){ const [a,m]=mesRef.split('-').map(Number); return MESES[m-1].slice(0,3)+'/'+a; }
+
+function abrirModalCartao(){
+  document.getElementById('modal-cartao-title').textContent = 'Novo Cartão';
+  document.getElementById('cartao-edit-id').value = '';
+  document.getElementById('cartao-nome').value = '';
+  document.getElementById('cartao-dia').value = '';
+  document.getElementById('cartao-limite').value = '';
+  openModal('modal-cartao');
+}
+function editarCartao(id){
+  const c = cartoes.find(x=>x.id===id);
+  if(!c) return;
+  document.getElementById('modal-cartao-title').textContent = 'Editar Cartão';
+  document.getElementById('cartao-edit-id').value = c.id;
+  document.getElementById('cartao-nome').value = c.nome;
+  document.getElementById('cartao-dia').value = c.dia_vencimento||'';
+  document.getElementById('cartao-limite').value = c.limite||'';
+  openModal('modal-cartao');
+}
+async function salvarCartao(){
+  const id = document.getElementById('cartao-edit-id').value;
+  const nome = document.getElementById('cartao-nome').value.trim();
+  if(!nome){ toast('Preencha o nome do cartão','err'); return; }
+  const payload = {
+    nome,
+    dia_vencimento: parseInt(document.getElementById('cartao-dia').value)||null,
+    limite: parseFloat(document.getElementById('cartao-limite').value)||null,
+  };
+  if(id){ await sb.from('fin_cartoes').update(payload).eq('id', id); }
+  else { await sb.from('fin_cartoes').insert([payload]); }
+  toast('Cartão salvo!');
+  closeModal('modal-cartao');
+  await loadCartoes();
+  renderCartoesTab();
+}
+async function deletarCartao(id){
+  const temCompras = compras.some(c=>c.cartao_id===id);
+  if(temCompras){ toast('Exclua as compras deste cartão antes de removê-lo','err'); return; }
+  if(!confirm('Remover este cartão?')) return;
+  const { error } = await sb.from('fin_cartoes').delete().eq('id', id);
+  if(error){ toast('Erro: '+error.message,'err'); return; }
+  toast('Cartão removido');
+  await loadCartoes();
+  renderCartoesTab();
+}
+
+function abrirModalCompra(){
+  if(!cartoes.length){ toast('Cadastre um cartão antes de lançar uma compra','err'); return; }
+  document.getElementById('compra-descricao').value = '';
+  document.getElementById('compra-valor-total').value = '';
+  document.getElementById('compra-parcelas').value = '1';
+  document.getElementById('compra-mes-inicio').value = mesAtual;
+  document.getElementById('compra-preview').textContent = 'Preencha valor e parcelas para ver a simulação.';
+  renderCartoesTab(); // garante que o select de cartões está atualizado
+  openModal('modal-compra');
+}
+function splitParcelas(valorTotal, n){
+  const parcela = Math.round((valorTotal/n)*100)/100;
+  const parcelas = Array(n).fill(parcela);
+  parcelas[n-1] = Math.round((valorTotal - parcela*(n-1))*100)/100; // absorve arredondamento na última
+  return parcelas;
+}
+function atualizarPreviewParcela(){
+  const total = parseFloat(document.getElementById('compra-valor-total').value);
+  const n = parseInt(document.getElementById('compra-parcelas').value) || 1;
+  const prev = document.getElementById('compra-preview');
+  if(!total || total<=0){ prev.textContent = 'Preencha valor e parcelas para ver a simulação.'; return; }
+  const parcelas = splitParcelas(total, n);
+  prev.textContent = n>1
+    ? `${n}x de ${fmtR(parcelas[0])} (última parcela ${fmtR(parcelas[n-1])})`
+    : `1x de ${fmtR(parcelas[0])}`;
+}
+async function salvarCompra(){
+  const cartaoId = parseInt(document.getElementById('compra-cartao').value);
+  const descricao = document.getElementById('compra-descricao').value.trim();
+  const categoria = document.getElementById('compra-categoria').value;
+  const valorTotal = parseFloat(document.getElementById('compra-valor-total').value);
+  const numParcelas = parseInt(document.getElementById('compra-parcelas').value) || 1;
+  const mesInicio = document.getElementById('compra-mes-inicio').value;
+  if(!cartaoId || !descricao || !valorTotal || valorTotal<=0 || !mesInicio){
+    toast('Preencha todos os campos obrigatórios','err'); return;
+  }
+  const parcelas = splitParcelas(valorTotal, numParcelas);
+
+  const { data: compraData, error: compraErr } = await sb.from('fin_cartao_compras').insert([{
+    cartao_id: cartaoId, descricao, categoria,
+    valor_parcela: parcelas[0], parcela_total: numParcelas,
+    data_inicio: mesInicio+'-01',
+  }]).select();
+  if(compraErr){ toast('Erro: '+compraErr.message,'err'); return; }
+  const compraId = compraData[0].id;
+
+  const linhas = parcelas.map((valor,i)=>({
+    tipo:'despesa',
+    descricao: numParcelas>1 ? `${descricao} (${i+1}/${numParcelas})` : descricao,
+    valor, categoria,
+    data: addMonths(mesInicio,i)+'-01',
+    mes_ref: addMonths(mesInicio,i),
+    cartao_id: cartaoId, compra_id: compraId,
+    parcela_atual: i+1, parcela_total: numParcelas,
+  }));
+  const { error: txErr } = await sb.from('fin_transacoes').insert(linhas);
+  if(txErr){ toast('Erro ao gerar parcelas: '+txErr.message,'err'); return; }
+
+  toast(`Compra lançada — ${numParcelas} parcela(s) geradas!`);
+  closeModal('modal-compra');
+  await Promise.all([loadCompras(), loadTransacoes()]);
+  renderAll();
+}
+async function deletarCompra(compraId){
+  if(!confirm('Remover esta compra e todas as suas parcelas (inclusive de meses futuros)?')) return;
+  await sb.from('fin_transacoes').delete().eq('compra_id', compraId);
+  await sb.from('fin_cartao_compras').delete().eq('id', compraId);
+  toast('Compra e parcelas removidas');
+  await Promise.all([loadCompras(), loadTransacoes()]);
+  renderAll();
+}
+
+// ══════════════════════════════════════════════
 //  TRANSAÇÕES TAB
 // ══════════════════════════════════════════════
 function atualizarCategoriasTx(){
@@ -822,7 +1141,7 @@ function renderTransacoesTab(){
     const ci = catInfo(t.categoria);
     return `<tr>
       <td style="color:var(--muted)">${fmtData(t.data)}</td>
-      <td>${t.descricao||'—'}</td>
+      <td>${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
       <td>${ic(ci.i)} ${ci.l}</td>
       <td><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
       <td style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
@@ -838,10 +1157,15 @@ function renderTransacoesTab(){
 function onConfigChange(){
   const renda = document.getElementById('cfg-renda').value;
   const pct = document.getElementById('cfg-pct').value;
+  const saldoInicial = document.getElementById('cfg-saldo-inicial').value;
+  const saldoMes = document.getElementById('cfg-saldo-mes').value;
   saveConfig('renda_projetada', renda);
   saveConfig('pct_investimento', pct);
+  saveConfig('saldo_inicial', saldoInicial);
+  saveConfig('saldo_inicial_mes', saldoMes);
   renderProjecaoTab();
   renderInvestimentosTab();
+  renderDashboard();
 }
 function proximosMeses(qtd, aPartirDe){
   const [ano,mes] = aPartirDe.split('-').map(Number);
