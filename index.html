@@ -249,7 +249,6 @@ td{padding:10px 14px;font-size:13px;}
 <!-- ═══════════════ DASHBOARD ═══════════════ -->
 <div class="page active" id="page-dashboard">
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-label">Saldo Bancário Acumulado <i data-lucide="landmark" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value" id="st-saldo-banc">—</div><div class="form-hint" id="st-saldo-banc-sub" style="margin-top:6px">—</div></div>
     <div class="stat-card"><div class="stat-label">Saldo do Mês <i data-lucide="scale" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value" id="st-saldo">—</div></div>
     <div class="stat-card"><div class="stat-label">Receitas <i data-lucide="trending-up" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value pos" id="st-receitas">—</div></div>
     <div class="stat-card"><div class="stat-label">Despesas <i data-lucide="trending-down" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value neg" id="st-despesas">—</div></div>
@@ -347,18 +346,6 @@ td{padding:10px 14px;font-size:13px;}
         <label class="form-label">% da sobra sugerido p/ investir</label>
         <input class="form-input mono" id="cfg-pct" type="number" min="0" max="100" oninput="onConfigChange()">
         <div class="form-hint">Ex: 20 = investir 20% do que sobrar todo mês</div>
-      </div>
-    </div>
-    <div class="form-row" style="margin-top:14px">
-      <div class="form-group">
-        <label class="form-label">Saldo inicial da conta (R$)</label>
-        <input class="form-input mono" id="cfg-saldo-inicial" type="number" step="0.01" oninput="onConfigChange()">
-        <div class="form-hint">Saldo real da conta no mês de referência abaixo — base do Saldo Bancário Acumulado</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Mês de referência do saldo inicial</label>
-        <input class="form-input" id="cfg-saldo-mes" type="month" oninput="onConfigChange()">
-        <div class="form-hint">A partir deste mês o saldo acumulado passa a somar receitas − despesas de cada mês</div>
       </div>
     </div>
   </div>
@@ -601,8 +588,6 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
   await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras()]);
   document.getElementById('cfg-renda').value = config.renda_projetada || '';
   document.getElementById('cfg-pct').value = config.pct_investimento || 20;
-  document.getElementById('cfg-saldo-inicial').value = config.saldo_inicial || 0;
-  document.getElementById('cfg-saldo-mes').value = config.saldo_inicial_mes || mesAtual;
   document.getElementById('tx-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('inv-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('compra-categoria').innerHTML = DESPESA_CATS.map(c=>`<option value="${c.v}">${c.l}</option>`).join('');
@@ -692,29 +677,11 @@ function receitasDoMes(mesRef){ return txDoMes(mesRef).filter(t=>t.tipo==='recei
 function despesasDoMes(mesRef){ return txDoMes(mesRef).filter(t=>t.tipo==='despesa').reduce((s,t)=>s+Number(t.valor),0); }
 function obrigacaoPagaNoMes(obrId, mesRef){ return transacoes.find(t=>t.obrigacao_id===obrId && t.mes_ref===mesRef); }
 
-// ══════════════════════════════════════════════
-//  SALDO BANCÁRIO ACUMULADO
-//  Sempre recalculado do zero a cada chamada, nunca guardado em variável —
-//  e sempre limitado a meses <= mesRef, pra um mês futuro/outro mês nunca
-//  vazar pro saldo de um mês anterior.
-// ══════════════════════════════════════════════
+// addMonths: usado para gerar as parcelas futuras de compras no cartão (ver salvarCompra)
 function addMonths(mesRef, n){
   const [a,m] = mesRef.split('-').map(Number);
   const d = new Date(a, m-1+n, 1);
   return d.toISOString().slice(0,7);
-}
-function mesesEntre(inicio, fim){
-  const arr = []; let cur = inicio; let guard = 0;
-  while(cur <= fim && guard < 2000){ arr.push(cur); cur = addMonths(cur,1); guard++; }
-  return arr;
-}
-function saldoBancarioAcumulado(mesRef){
-  const inicioMes = config.saldo_inicial_mes || mesRef;
-  const saldoInicial = parseFloat(config.saldo_inicial) || 0;
-  if(mesRef < inicioMes) return null; // fora do intervalo configurado — não dá pra calcular pra trás
-  const meses = mesesEntre(inicioMes, mesRef);
-  const somaMeses = meses.reduce((s,m)=> s + (receitasDoMes(m) - despesasDoMes(m)), 0);
-  return saldoInicial + somaMeses;
 }
 
 // ══════════════════════════════════════════════
@@ -726,20 +693,6 @@ function renderDashboard(){
   const saldo = receitas - despesas;
   const ativas = obrigacoesAtivasNoMes(mesAtual);
   const pendentes = ativas.filter(o=>!obrigacaoPagaNoMes(o.id, mesAtual)).reduce((s,o)=>s+Number(o.valor),0);
-
-  const saldoBanc = saldoBancarioAcumulado(mesAtual);
-  const stSaldoBanc = document.getElementById('st-saldo-banc');
-  const stSaldoBancSub = document.getElementById('st-saldo-banc-sub');
-  if(saldoBanc===null){
-    stSaldoBanc.textContent = '—';
-    stSaldoBanc.className = 'stat-value neutral';
-    stSaldoBancSub.textContent = 'Configure o saldo inicial na aba Projeção';
-  } else {
-    stSaldoBanc.textContent = fmtR(saldoBanc);
-    stSaldoBanc.className = 'stat-value '+(saldoBanc>=0?'pos':'neg');
-    const [ai,mi] = (config.saldo_inicial_mes||mesAtual).split('-').map(Number);
-    stSaldoBancSub.textContent = `Desde ${MESES[mi-1].slice(0,3)}/${ai} · isolado por mês, sem cache`;
-  }
 
   document.getElementById('st-saldo').textContent = fmtR(saldo);
   document.getElementById('st-saldo').className = 'stat-value '+(saldo>=0?'pos':'neg');
@@ -1157,15 +1110,10 @@ function renderTransacoesTab(){
 function onConfigChange(){
   const renda = document.getElementById('cfg-renda').value;
   const pct = document.getElementById('cfg-pct').value;
-  const saldoInicial = document.getElementById('cfg-saldo-inicial').value;
-  const saldoMes = document.getElementById('cfg-saldo-mes').value;
   saveConfig('renda_projetada', renda);
   saveConfig('pct_investimento', pct);
-  saveConfig('saldo_inicial', saldoInicial);
-  saveConfig('saldo_inicial_mes', saldoMes);
   renderProjecaoTab();
   renderInvestimentosTab();
-  renderDashboard();
 }
 function proximosMeses(qtd, aPartirDe){
   const [ano,mes] = aPartirDe.split('-').map(Number);
