@@ -777,7 +777,7 @@ async function toggleObrigacaoPaga(obrId){
     const obr = obrigacoes.find(o=>o.id===obrId);
     await sb.from('fin_transacoes').insert([{
       tipo:'despesa', descricao:obr.nome, valor:obr.valor, categoria:obr.categoria,
-      data: new Date().toISOString().slice(0,10), mes_ref: mesAtual, obrigacao_id: obrId
+      data: mesAtual+'-01', mes_ref: mesAtual, obrigacao_id: obrId
     }]);
   }
   await loadTransacoes();
