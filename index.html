@@ -55,6 +55,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .stat-value.neg{color:var(--danger);}
 .stat-value.warn{color:var(--warn);}
 .stat-value.neutral{color:var(--accent2);}
+.stat-trend{font-size:11px;margin-top:6px;display:flex;align-items:center;gap:4px;color:var(--muted);}
+.stat-trend.up{color:var(--accent);}
+.stat-trend.down{color:var(--danger);}
+.stat-trend .lic{flex-shrink:0;}
 
 /* BUTTONS */
 .btn{
@@ -283,9 +287,9 @@ td{padding:10px 14px;font-size:13px;}
 <!-- ═══════════════ DASHBOARD ═══════════════ -->
 <div class="page active" id="page-dashboard">
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-label">Saldo do Mês <i data-lucide="scale" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value" id="st-saldo">—</div></div>
-    <div class="stat-card"><div class="stat-label">Receitas <i data-lucide="trending-up" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value pos" id="st-receitas">—</div></div>
-    <div class="stat-card"><div class="stat-label">Despesas <i data-lucide="trending-down" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value neg" id="st-despesas">—</div></div>
+    <div class="stat-card"><div class="stat-label">Saldo do Mês <i data-lucide="scale" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value" id="st-saldo">—</div><div id="st-saldo-trend"></div></div>
+    <div class="stat-card"><div class="stat-label">Receitas <i data-lucide="trending-up" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value pos" id="st-receitas">—</div><div id="st-receitas-trend"></div></div>
+    <div class="stat-card"><div class="stat-label">Despesas <i data-lucide="trending-down" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value neg" id="st-despesas">—</div><div id="st-despesas-trend"></div></div>
     <div class="stat-card"><div class="stat-label">Pendentes <i data-lucide="alert-triangle" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value warn" id="st-pendentes">—</div></div>
   </div>
 
@@ -449,6 +453,20 @@ td{padding:10px 14px;font-size:13px;}
 </div>
 
 </div><!-- /main -->
+
+<!-- MODAL CONFIRMAÇÃO (substitui o confirm() nativo do navegador) -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <span class="modal-title" style="display:flex;align-items:center;gap:8px;color:var(--danger)"><i data-lucide="alert-triangle" class="lic" style="width:16px;height:16px"></i> <span id="confirm-titulo">Confirmar</span></span>
+    </div>
+    <p id="confirm-msg" style="font-size:13px;color:var(--muted);line-height:1.5">Tem certeza?</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-secondary" onclick="_confirmResponder(false)">Cancelar</button>
+      <button class="btn btn-danger" onclick="_confirmResponder(true)"><i data-lucide="trash-2" class="lic" style="width:14px;height:14px"></i> Remover</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL OBRIGAÇÃO -->
 <div class="modal-overlay" id="modal-obr">
@@ -681,6 +699,20 @@ function goTab(id, el){
 }
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+// Substitui window.confirm() por um modal no tema do app. Uso: if(!(await confirmarAcao('texto'))) return;
+let _confirmResolve = null;
+function confirmarAcao(msg, titulo='Confirmar remoção'){
+  document.getElementById('confirm-titulo').textContent = titulo;
+  document.getElementById('confirm-msg').textContent = msg;
+  openModal('modal-confirm');
+  return new Promise(resolve => { _confirmResolve = resolve; });
+}
+function _confirmResponder(valor){
+  closeModal('modal-confirm');
+  if(_confirmResolve) _confirmResolve(valor);
+  _confirmResolve = null;
+}
 document.querySelectorAll('.modal-overlay').forEach(m=>{
   m.addEventListener('click', e=>{ if(e.target===e.currentTarget) closeModal(m.id); });
 });
@@ -762,17 +794,34 @@ function addMonths(mesRef, n){
 // ══════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════
+function fmtVariacao(atual, anterior, invertido=false){
+  if(!anterior) return ''; // mês anterior sem dado de base — % não tem o que comparar
+  const pct = ((atual-anterior)/Math.abs(anterior))*100;
+  const subiu = pct >= 0;
+  const bom = invertido ? !subiu : subiu;
+  const seta = subiu ? 'trending-up' : 'trending-down';
+  const sinal = subiu ? '+' : '';
+  return `<span class="stat-trend ${bom?'up':'down'}">${ic(seta,11)} ${sinal}${pct.toFixed(0)}% vs ${fmtMesRef(addMonths(mesAtual,-1))}</span>`;
+}
+
 function renderDashboard(){
   const receitas = receitasDoMes(mesAtual);
   const despesas = despesasDoMes(mesAtual);
   const saldo = receitas - despesas;
+  const mesAnterior = addMonths(mesAtual,-1);
+  const receitasAnt = receitasDoMes(mesAnterior);
+  const despesasAnt = despesasDoMes(mesAnterior);
+  const saldoAnt = receitasAnt - despesasAnt;
   const itens = itensObrigacoesDoMes(mesAtual);
   const pendentes = itens.filter(i=>!i.paga).reduce((s,i)=>s+i.valor,0);
 
   document.getElementById('st-saldo').textContent = fmtR(saldo);
   document.getElementById('st-saldo').className = 'stat-value '+(saldo>=0?'pos':'neg');
+  document.getElementById('st-saldo-trend').innerHTML = fmtVariacao(saldo, saldoAnt);
   document.getElementById('st-receitas').textContent = fmtR(receitas);
+  document.getElementById('st-receitas-trend').innerHTML = fmtVariacao(receitas, receitasAnt);
   document.getElementById('st-despesas').textContent = fmtR(despesas);
+  document.getElementById('st-despesas-trend').innerHTML = fmtVariacao(despesas, despesasAnt, true);
   document.getElementById('st-pendentes').textContent = fmtR(pendentes);
 
   const totalObr = itens.reduce((s,i)=>s+i.valor,0);
@@ -1005,7 +1054,7 @@ async function salvarObrigacao(){
   renderDashboard();
 }
 async function deletarObrigacao(id){
-  if(!confirm('Remover esta obrigação? As transações já lançadas não serão apagadas.')) return;
+  if(!(await confirmarAcao('Remover esta obrigação? As transações já lançadas não serão apagadas.'))) return;
   await sb.from('fin_obrigacoes').delete().eq('id', id);
   toast('Obrigação removida');
   await loadObrigacoes();
@@ -1111,7 +1160,7 @@ async function salvarCartao(){
 async function deletarCartao(id){
   const temCompras = compras.some(c=>c.cartao_id===id);
   if(temCompras){ toast('Exclua as compras deste cartão antes de removê-lo','err'); return; }
-  if(!confirm('Remover este cartão?')) return;
+  if(!(await confirmarAcao('Remover este cartão?'))) return;
   const { error } = await sb.from('fin_cartoes').delete().eq('id', id);
   if(error){ toast('Erro: '+error.message,'err'); return; }
   toast('Cartão removido');
@@ -1175,7 +1224,7 @@ async function salvarCompra(){
   renderAll();
 }
 async function deletarCompra(compraId){
-  if(!confirm('Remover esta compra e todas as suas parcelas (inclusive de meses futuros)?')) return;
+  if(!(await confirmarAcao('Remover esta compra e todas as suas parcelas (inclusive de meses futuros)?'))) return;
   await sb.from('fin_transacoes').delete().eq('compra_id', compraId);
   await sb.from('fin_cartao_compras').delete().eq('id', compraId);
   toast('Compra e parcelas removidas');
@@ -1219,7 +1268,7 @@ async function salvarTransacao(){
   renderAll();
 }
 async function deletarTransacao(id){
-  if(!confirm('Remover esta transação?')) return;
+  if(!(await confirmarAcao('Remover esta transação?'))) return;
   await sb.from('fin_transacoes').delete().eq('id', id);
   toast('Removida');
   await loadTransacoes();
@@ -1381,7 +1430,7 @@ async function salvarInvestimento(){
   renderInvestimentosTab();
 }
 async function deletarInvestimento(id){
-  if(!confirm('Remover este investimento?')) return;
+  if(!(await confirmarAcao('Remover este investimento?'))) return;
   await sb.from('fin_investimentos').delete().eq('id', id);
   toast('Removido');
   await loadInvestimentos();
