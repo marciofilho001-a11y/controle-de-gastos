@@ -170,6 +170,40 @@ td{padding:10px 14px;font-size:13px;}
 .obr-card-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
 .obr-card-actions{display:flex;gap:6px;margin-top:12px;}
 
+/* OBRIGACOES: agrupamento ativas / histórico */
+.obr-section-hdr{display:flex;align-items:center;gap:8px;margin:22px 0 12px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);}
+.obr-section-hdr:first-of-type{margin-top:0;}
+.obr-section-count{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:1px 8px;font-size:10px;}
+.obr-section-toggle{margin-left:auto;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:4px;font-size:11px;text-transform:none;letter-spacing:0;font-weight:600;}
+.obr-section-toggle:hover{color:var(--text);}
+.obr-section-toggle .lic{transition:transform .15s;}
+.obr-section-toggle.collapsed .lic{transform:rotate(-90deg);}
+#obr-grid-historico.collapsed{display:none;}
+.obr-card{cursor:pointer;transition:border-color .15s;}
+.obr-card:hover{border-color:#33405c;}
+.obr-card.encerrada{opacity:.72;}
+.obr-card.encerrada .obr-card-valor{color:var(--muted);}
+
+/* MODAL DETALHE OBRIGAÇÃO */
+.modal-lg{max-width:600px;}
+.obr-detalhe-meta{font-size:12px;color:var(--muted);margin:4px 0 16px;}
+.obr-detalhe-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.obr-detalhe-stat{background:var(--surface);border-radius:10px;padding:10px 12px;}
+.obr-detalhe-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+.obr-detalhe-stat-value{font-family:var(--mono);font-size:16px;font-weight:700;margin-top:4px;}
+.obr-timeline{display:flex;flex-direction:column;max-height:340px;overflow-y:auto;padding-right:4px;}
+.obr-timeline-item{display:flex;align-items:flex-start;gap:10px;padding:7px 0;font-size:13px;border-bottom:1px solid var(--border);}
+.obr-timeline-item:last-of-type{border-bottom:none;}
+.obr-timeline-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;background:var(--muted);}
+.obr-timeline-item.pago .obr-timeline-dot{background:var(--accent);}
+.obr-timeline-item.atrasado .obr-timeline-dot{background:var(--danger);}
+.obr-timeline-item.atrasado .obr-timeline-status{color:var(--danger);}
+.obr-timeline-item.previsto{opacity:.5;}
+.obr-timeline-mes{flex-shrink:0;width:74px;font-weight:600;}
+.obr-timeline-status{flex:1;color:var(--muted);font-size:12px;}
+.obr-timeline-valor{font-family:var(--mono);font-weight:600;flex-shrink:0;}
+.obr-timeline-end{display:flex;align-items:center;gap:8px;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:12px;font-weight:600;color:var(--accent2);}
+
 /* TOOLBAR */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
 
@@ -291,7 +325,12 @@ td{padding:10px 14px;font-size:13px;}
     <h2>Obrigações Mensais</h2>
     <button class="btn btn-primary" onclick="abrirModalObrigacao()"><i data-lucide="plus" class="lic" style="width:14px;height:14px"></i> Nova Obrigação</button>
   </div>
-  <div class="obr-grid" id="obr-grid"></div>
+  <div class="obr-section-hdr"><i data-lucide="zap" class="lic" style="width:13px;height:13px"></i> Ativas <span class="obr-section-count" id="obr-count-ativas">0</span></div>
+  <div class="obr-grid" id="obr-grid-ativas"></div>
+  <div class="obr-section-hdr"><i data-lucide="archive" class="lic" style="width:13px;height:13px"></i> Histórico <span class="obr-section-count" id="obr-count-historico">0</span>
+    <span class="obr-section-toggle" id="obr-hist-toggle" onclick="toggleHistorico()"><i data-lucide="chevron-down" class="lic" style="width:13px;height:13px"></i> ocultar</span>
+  </div>
+  <div class="obr-grid" id="obr-grid-historico"></div>
 </div>
 
 <!-- ═══════════════ CARTÕES ═══════════════ -->
@@ -448,6 +487,19 @@ td{padding:10px 14px;font-size:13px;}
       <button class="btn btn-secondary" onclick="closeModal('modal-obr')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarObrigacao()"><i data-lucide="save" class="lic" style="width:14px;height:14px"></i> Salvar</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE / LINHA DO TEMPO DA OBRIGAÇÃO -->
+<div class="modal-overlay" id="modal-obr-detalhe">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="obrd-titulo">Obrigação</span>
+      <button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-obr-detalhe')" aria-label="Fechar"><i data-lucide="x" class="lic" style="width:14px;height:14px"></i></button>
+    </div>
+    <div class="obr-detalhe-meta" id="obrd-meta"></div>
+    <div class="obr-detalhe-stats" id="obrd-stats"></div>
+    <div class="obr-timeline" id="obrd-timeline"></div>
   </div>
 </div>
 
@@ -787,38 +839,124 @@ async function toggleObrigacaoPaga(obrId){
 // ══════════════════════════════════════════════
 //  OBRIGAÇÕES TAB
 // ══════════════════════════════════════════════
+// data (YYYY-MM) do mês corrente de verdade — usada pra classificar ativa/histórico
+// e montar a timeline, independente do mês que o usuário está navegando no Dashboard.
+function hojeRef(){ return new Date().toISOString().slice(0,7); }
+
+// mês (YYYY-MM) em que uma obrigação parcelada termina. Recorrente não tem fim definido.
+function mesFimObrigacao(o){
+  if(!o.parcela_total) return null;
+  return addMonths(o.data_inicio.slice(0,7), o.parcela_total-1);
+}
+
 function renderObrigacoesTab(){
-  const grid = document.getElementById('obr-grid');
-  if(!obrigacoes.length){ grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">${ic('inbox',30)}</div><p>Nenhuma obrigação cadastrada</p></div>`; refreshIcons(); return; }
-  grid.innerHTML = obrigacoes.map(o=>{
-    const ci = catInfo(o.categoria);
-    const parc = parcelaNoMes(o, mesAtual);
-    const ativa = obrigacaoAtivaNoMes(o, mesAtual);
-    let statusBadge;
-    if(o.parcela_total){
-      const restantes = o.parcela_total - Math.max(parc,1) + 1;
-      statusBadge = ativa
-        ? `<span class="badge badge-warn">Parcela ${Math.max(parc,1)}/${o.parcela_total} · faltam ${Math.max(restantes,0)}</span>`
-        : `<span class="badge badge-neutral">Encerrada</span>`;
-    } else {
-      statusBadge = `<span class="badge badge-pos">Recorrente</span>`;
-    }
-    return `<div class="obr-card">
-      <div class="obr-card-hdr">
-        <div class="obr-card-icon">${ic(ci.i,18)}</div>
-        <div><div class="obr-card-nome">${o.nome}</div><div class="obr-card-cat">${ci.l}</div></div>
-      </div>
-      <div class="obr-card-valor">${fmtR(o.valor)}</div>
-      <div class="obr-card-meta">
-        <span class="badge badge-neutral">Dia ${o.dia_vencimento||'—'}</span>
-        ${statusBadge}
-      </div>
-      <div class="obr-card-actions">
-        <button class="btn btn-secondary btn-sm" onclick="editarObrigacao(${o.id})">${ic('pencil')} Editar</button>
-        <button class="btn btn-danger btn-sm" onclick="deletarObrigacao(${o.id})">${ic('trash-2')}</button>
-      </div>
-    </div>`;
-  }).join('');
+  const hoje = hojeRef();
+  const ativas = obrigacoes.filter(o=>obrigacaoAtivaNoMes(o,hoje));
+  const historico = obrigacoes.filter(o=>!obrigacaoAtivaNoMes(o,hoje));
+
+  document.getElementById('obr-count-ativas').textContent = ativas.length;
+  document.getElementById('obr-count-historico').textContent = historico.length;
+
+  const gridA = document.getElementById('obr-grid-ativas');
+  gridA.innerHTML = ativas.length ? ativas.map(o=>obrCardHtml(o,hoje,false)).join('')
+    : `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">${ic('inbox',30)}</div><p>Nenhuma obrigação ativa</p></div>`;
+
+  const gridH = document.getElementById('obr-grid-historico');
+  gridH.innerHTML = historico.length ? historico.map(o=>obrCardHtml(o,hoje,true)).join('')
+    : `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">${ic('inbox',30)}</div><p>Nenhuma obrigação encerrada ainda</p></div>`;
+
+  refreshIcons();
+}
+
+function obrCardHtml(o, hoje, encerrada){
+  const ci = catInfo(o.categoria);
+  const parc = parcelaNoMes(o, hoje);
+  let statusBadge;
+  if(o.parcela_total){
+    const restantes = o.parcela_total - Math.max(parc,1) + 1;
+    statusBadge = encerrada
+      ? `<span class="badge badge-neutral">Encerrada em ${fmtMesRef(mesFimObrigacao(o))}</span>`
+      : `<span class="badge badge-warn">Parcela ${Math.max(parc,1)}/${o.parcela_total} · faltam ${Math.max(restantes,0)}</span>`;
+  } else {
+    statusBadge = encerrada ? `<span class="badge badge-neutral">Desativada</span>` : `<span class="badge badge-pos">Recorrente</span>`;
+  }
+  return `<div class="obr-card ${encerrada?'encerrada':''}" onclick="abrirDetalheObrigacao(${o.id})">
+    <div class="obr-card-hdr">
+      <div class="obr-card-icon">${ic(ci.i,18)}</div>
+      <div><div class="obr-card-nome">${o.nome}</div><div class="obr-card-cat">${ci.l}</div></div>
+    </div>
+    <div class="obr-card-valor">${fmtR(o.valor)}</div>
+    <div class="obr-card-meta">
+      <span class="badge badge-neutral">Dia ${o.dia_vencimento||'—'}</span>
+      ${statusBadge}
+    </div>
+    <div class="obr-card-actions">
+      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editarObrigacao(${o.id})">${ic('pencil')} Editar</button>
+      <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletarObrigacao(${o.id})">${ic('trash-2')}</button>
+    </div>
+  </div>`;
+}
+
+function toggleHistorico(){
+  const grid = document.getElementById('obr-grid-historico');
+  const t = document.getElementById('obr-hist-toggle');
+  grid.classList.toggle('collapsed');
+  t.classList.toggle('collapsed');
+  t.innerHTML = (t.classList.contains('collapsed') ? `${ic('chevron-down',13)} mostrar` : `${ic('chevron-down',13)} ocultar`);
+  refreshIcons();
+}
+
+// Linha do tempo mês a mês de UMA obrigação: de onde veio cada valor (lançamento
+// vinculado em fin_transacoes) e quando ela de fato encerrou.
+function abrirDetalheObrigacao(id){
+  const o = obrigacoes.find(x=>x.id===id);
+  if(!o) return;
+  const hoje = hojeRef();
+  const ci = catInfo(o.categoria);
+  const mesIni = o.data_inicio.slice(0,7);
+  const mesFim = o.parcela_total ? mesFimObrigacao(o) : hoje;
+  const encerrada = o.parcela_total ? (mesFim < hoje) : false;
+
+  // parcelada: vai só até o fim do parcelamento (passado ou futuro). recorrente: até hoje.
+  const meses = [];
+  for(let cursor=mesIni; cursor<=mesFim; cursor=addMonths(cursor,1)) meses.push(cursor);
+
+  const linhas = meses.map(mesRef=>{
+    const tx = transacoes.find(t=>t.obrigacao_id===id && t.mes_ref===mesRef);
+    let status, statusTxt;
+    if(tx){ status='pago'; statusTxt = 'lançado em '+fmtData(tx.data); }
+    else if(mesRef > hoje){ status='previsto'; statusTxt = 'previsto'; }
+    else if(mesRef === hoje){ status='previsto'; statusTxt = 'mês atual · pendente'; }
+    else { status='atrasado'; statusTxt = 'sem lançamento registrado'; }
+    return { mesRef, valor: tx?Number(tx.valor):Number(o.valor), status, statusTxt };
+  });
+
+  const pagos = linhas.filter(l=>l.status==='pago');
+  const totalPago = pagos.reduce((s,l)=>s+l.valor,0);
+  const valorMedio = pagos.length ? totalPago/pagos.length : Number(o.valor);
+
+  document.getElementById('obrd-titulo').innerHTML = `${ic(ci.i,16)} ${o.nome}`;
+  document.getElementById('obrd-meta').textContent = `Criada em ${fmtMesRef(mesIni)}`
+    + (encerrada ? ` · encerrada em ${fmtMesRef(mesFim)}` : o.parcela_total ? ` · prevista para encerrar em ${fmtMesRef(mesFim)}` : ' · recorrente, sem data de término');
+
+  document.getElementById('obrd-stats').innerHTML = `
+    <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Total lançado</div><div class="obr-detalhe-stat-value">${fmtR(totalPago)}</div></div>
+    <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Meses no plano</div><div class="obr-detalhe-stat-value">${meses.length}</div></div>
+    <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Valor médio</div><div class="obr-detalhe-stat-value">${fmtR(valorMedio)}</div></div>`;
+
+  const linhaFim = encerrada
+    ? `<div class="obr-timeline-end">${ic('flag',13)} Encerrada em ${fmtMesRef(mesFim)} — ${o.parcela_total} parcela(s) concluída(s)</div>`
+    : (o.parcela_total ? `<div class="obr-timeline-end">${ic('clock',13)} Em andamento — prevista para encerrar em ${fmtMesRef(mesFim)}</div>` : '');
+
+  document.getElementById('obrd-timeline').innerHTML = linhas.map(l=>`
+    <div class="obr-timeline-item ${l.status}">
+      <div class="obr-timeline-dot"></div>
+      <div class="obr-timeline-mes">${fmtMesRef(l.mesRef)}</div>
+      <div class="obr-timeline-status">${l.statusTxt}</div>
+      <div class="obr-timeline-valor">${fmtR(l.valor)}</div>
+    </div>`).join('') + linhaFim;
+
+  openModal('modal-obr-detalhe');
   refreshIcons();
 }
 
