@@ -216,6 +216,15 @@ td{padding:10px 14px;font-size:13px;}
 .obr-timeline-valor{font-family:var(--mono);font-weight:600;flex-shrink:0;}
 .obr-timeline-end{display:flex;align-items:center;gap:8px;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:12px;font-weight:600;color:var(--accent2);}
 
+/* SKELETON DE CARREGAMENTO */
+@keyframes skel-shimmer{0%{background-position:-200px 0;}100%{background-position:calc(200px + 100%) 0;}}
+.skel{display:inline-block;background:linear-gradient(90deg,var(--surface) 25%,var(--surface-2,#242c3f) 50%,var(--surface) 75%);background-size:200px 100%;animation:skel-shimmer 1.3s ease-in-out infinite;border-radius:6px;}
+.skel-value{width:90px;height:22px;}
+
+/* fade sutil quando conteúdo é atualizado — troca de mês, filtro, etc */
+@keyframes fade-in-soft{from{opacity:0;transform:translateY(2px);}to{opacity:1;transform:translateY(0);}}
+.stat-card,.chart-box,.card,.obr-card,.cartao-card{animation:fade-in-soft .25s ease;}
+
 /* ALERTA PROATIVO */
 .alert-banner{display:flex;align-items:flex-start;gap:10px;background:rgba(240,82,82,.1);border:1px solid rgba(240,82,82,.3);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#ff8a8a;line-height:1.5;}
 .alert-banner .lic{flex-shrink:0;color:var(--danger);margin-top:1px;}
@@ -323,10 +332,10 @@ td{padding:10px 14px;font-size:13px;}
 <div class="page active" id="page-dashboard">
   <div id="dash-alert"></div>
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-label">Saldo do Mês <i data-lucide="scale" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value" id="st-saldo">—</div><div id="st-saldo-trend"></div></div>
-    <div class="stat-card"><div class="stat-label">Receitas <i data-lucide="trending-up" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value pos" id="st-receitas">—</div><div id="st-receitas-trend"></div></div>
-    <div class="stat-card"><div class="stat-label">Despesas <i data-lucide="trending-down" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value neg" id="st-despesas">—</div><div id="st-despesas-trend"></div></div>
-    <div class="stat-card"><div class="stat-label">Pendentes <i data-lucide="alert-triangle" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value warn" id="st-pendentes">—</div></div>
+    <div class="stat-card"><div class="stat-label">Saldo do Mês <i data-lucide="scale" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value" id="st-saldo"><span class="skel skel-value"></span></div><div id="st-saldo-trend"></div></div>
+    <div class="stat-card"><div class="stat-label">Receitas <i data-lucide="trending-up" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value pos" id="st-receitas"><span class="skel skel-value"></span></div><div id="st-receitas-trend"></div></div>
+    <div class="stat-card"><div class="stat-label">Despesas <i data-lucide="trending-down" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value neg" id="st-despesas"><span class="skel skel-value"></span></div><div id="st-despesas-trend"></div></div>
+    <div class="stat-card"><div class="stat-label">Pendentes <i data-lucide="alert-triangle" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value warn" id="st-pendentes"><span class="skel skel-value"></span></div></div>
   </div>
 
   <div class="chart-grid" style="align-items:start">
@@ -503,10 +512,10 @@ td{padding:10px 14px;font-size:13px;}
   </div>
 
   <div class="invest-summary">
-    <div class="invest-sum-card"><div class="stat-label">Patrimônio Total</div><div class="stat-value pos" id="inv-patrimonio">—</div></div>
-    <div class="invest-sum-card"><div class="stat-label">Total Investido (acumulado)</div><div class="stat-value pos" id="inv-total">—</div></div>
-    <div class="invest-sum-card"><div class="stat-label">Sugerido este mês</div><div class="stat-value neutral" id="inv-sugerido">—</div></div>
-    <div class="invest-sum-card"><div class="stat-label">Investido este mês</div><div class="stat-value" id="inv-mes">—</div></div>
+    <div class="invest-sum-card"><div class="stat-label">Patrimônio Total</div><div class="stat-value pos" id="inv-patrimonio"><span class="skel skel-value"></span></div></div>
+    <div class="invest-sum-card"><div class="stat-label">Total Investido (acumulado)</div><div class="stat-value pos" id="inv-total"><span class="skel skel-value"></span></div></div>
+    <div class="invest-sum-card"><div class="stat-label">Sugerido este mês</div><div class="stat-value neutral" id="inv-sugerido"><span class="skel skel-value"></span></div></div>
+    <div class="invest-sum-card"><div class="stat-label">Investido este mês</div><div class="stat-value" id="inv-mes"><span class="skel skel-value"></span></div></div>
   </div>
   <div class="chart-box" style="margin-bottom:16px">
     <div class="card-title"><i data-lucide="landmark" class="lic" style="width:14px;height:14px"></i> Patrimônio ao Longo do Tempo</div>
