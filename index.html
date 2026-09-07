@@ -4,8 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FinFlow Pro</title>
+<meta name="description" content="Controle financeiro pessoal — obrigações, cartões, investimentos e projeção num só lugar." />
+<meta name="theme-color" content="#0d1117" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2322d3a5'/%3E%3Cstop offset='1' stop-color='%233d8ef0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='32' y='44' font-size='34' font-family='Arial,sans-serif' font-weight='700' text-anchor='middle' fill='%230d1117'%3E%24%3C/text%3E%3C/svg%3E" />
+<meta property="og:title" content="FinFlow Pro" />
+<meta property="og:description" content="Controle financeiro pessoal — obrigações, cartões, investimentos e projeção num só lugar." />
+<meta property="og:image" content="https://controle-de-gastos-lemon.vercel.app/og-image.png" />
+<meta property="og:type" content="website" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -208,8 +216,17 @@ td{padding:10px 14px;font-size:13px;}
 .obr-timeline-valor{font-family:var(--mono);font-weight:600;flex-shrink:0;}
 .obr-timeline-end{display:flex;align-items:center;gap:8px;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:12px;font-weight:600;color:var(--accent2);}
 
+/* ALERTA PROATIVO */
+.alert-banner{display:flex;align-items:center;gap:10px;background:rgba(240,82,82,.1);border:1px solid rgba(240,82,82,.3);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#ff8a8a;}
+.alert-banner .lic{flex-shrink:0;color:var(--danger);}
+.alert-banner b{color:var(--text);}
+
 /* TOOLBAR */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+.range-toggle{display:flex;gap:2px;background:var(--surface);border-radius:8px;padding:2px;}
+.range-btn{background:transparent;border:none;color:var(--muted);font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif;}
+.range-btn:hover{color:var(--text);}
+.range-btn.active{background:var(--card);color:var(--accent);}
 
 /* CHART CONTAINER */
 .chart-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;}
@@ -286,6 +303,7 @@ td{padding:10px 14px;font-size:13px;}
 
 <!-- ═══════════════ DASHBOARD ═══════════════ -->
 <div class="page active" id="page-dashboard">
+  <div id="dash-alert"></div>
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-label">Saldo do Mês <i data-lucide="scale" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value" id="st-saldo">—</div><div id="st-saldo-trend"></div></div>
     <div class="stat-card"><div class="stat-label">Receitas <i data-lucide="trending-up" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value pos" id="st-receitas">—</div><div id="st-receitas-trend"></div></div>
@@ -418,7 +436,15 @@ td{padding:10px 14px;font-size:13px;}
       <div class="chart-canvas-wrap"><canvas id="chart-g2"></canvas></div>
     </div>
     <div class="chart-box">
-      <div class="card-title"><i data-lucide="bar-chart-3" class="lic" style="width:14px;height:14px"></i> Histórico: Receitas x Despesas</div>
+      <div class="card-title">
+        <span><i data-lucide="bar-chart-3" class="lic" style="width:14px;height:14px"></i> Histórico: Receitas x Despesas</span>
+        <div class="range-toggle" id="hist-range-toggle">
+          <button class="range-btn" data-n="3" onclick="mudarHistRange(3)">3m</button>
+          <button class="range-btn active" data-n="6" onclick="mudarHistRange(6)">6m</button>
+          <button class="range-btn" data-n="12" onclick="mudarHistRange(12)">12m</button>
+          <button class="range-btn" data-n="0" onclick="mudarHistRange(0)">Tudo</button>
+        </div>
+      </div>
       <div class="chart-canvas-wrap"><canvas id="chart-g3"></canvas></div>
     </div>
     <div class="chart-box">
@@ -836,6 +862,15 @@ function renderDashboard(){
   const itens = itensObrigacoesDoMes(mesAtual);
   const pendentes = itens.filter(i=>!i.paga).reduce((s,i)=>s+i.valor,0);
 
+  // alerta proativo: olha os próximos 3 meses a partir de hoje e avisa se algum vai
+  // fechar no vermelho — não precisa abrir a Projeção pra descobrir isso na mão
+  const alertEl = document.getElementById('dash-alert');
+  const proximos = proximosMeses(3, hojeRef()).map(calcularProjecaoMes);
+  const primeiroNegativo = proximos.find(d=>d.sobra<0);
+  alertEl.innerHTML = primeiroNegativo
+    ? `<div class="alert-banner">${ic('alert-triangle',18)} Suas obrigações vão superar a receita em <b>${fmtMesRef(primeiroNegativo.mesRef)}</b> — sobra projetada de <b>${fmtR(primeiroNegativo.sobra)}</b>. <a href="#" onclick="event.preventDefault();goTab('projecao',document.querySelectorAll('.nav-tab')[4])" style="color:inherit;text-decoration:underline">ver projeção</a></div>`
+    : '';
+
   document.getElementById('st-saldo').textContent = fmtR(saldo);
   document.getElementById('st-saldo').className = 'stat-value '+(saldo>=0?'pos':'neg');
   document.getElementById('st-saldo-trend').innerHTML = fmtVariacao(saldo, saldoAnt);
@@ -919,6 +954,24 @@ function mesFimObrigacao(o){
   return addMonths(o.data_inicio.slice(0,7), o.parcela_total-1);
 }
 
+// Uma obrigação para de aparecer em "Ativas" por dois motivos bem diferentes:
+// (a) o parcelamento natural acabou (data_inicio + parcela_total já passou), ou
+// (b) foi marcada ativa=false manualmente (direto no banco, não tem UI pra isso ainda)
+// ANTES do parcelamento natural acabar sozinho. Nesse segundo caso não existe uma
+// data de encerramento real registrada — mostrar "encerrada em <mês futuro>" seria
+// inventar um dado que não temos. Esse helper decide qual dos dois casos é.
+function statusEncerramento(o, hoje){
+  const natural = mesFimObrigacao(o);
+  const naturalJaEncerrou = natural && natural < hoje;
+  if(!o.ativa && !naturalJaEncerrou){
+    return { desativadaManual:true, encerrada:true, mesFim: hoje, label:'Desativada' };
+  }
+  if(naturalJaEncerrou){
+    return { desativadaManual:false, encerrada:true, mesFim: natural, label:`Encerrada em ${fmtMesRef(natural)}` };
+  }
+  return { desativadaManual:false, encerrada:false, mesFim: natural || hoje, label:null };
+}
+
 function renderObrigacoesTab(){
   const hoje = hojeRef();
   const ativas = obrigacoes.filter(o=>obrigacaoAtivaNoMes(o,hoje));
@@ -929,7 +982,7 @@ function renderObrigacoesTab(){
 
   const gridA = document.getElementById('obr-grid-ativas');
   gridA.innerHTML = ativas.length ? ativas.map(o=>obrCardHtml(o,hoje,false)).join('')
-    : `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">${ic('inbox',30)}</div><p>Nenhuma obrigação ativa</p></div>`;
+    : `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">${ic('inbox',30)}</div><p>Nenhuma obrigação ativa</p><button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="abrirModalObrigacao()">${ic('plus',14)} Nova Obrigação</button></div>`;
 
   const gridH = document.getElementById('obr-grid-historico');
   gridH.innerHTML = historico.length ? historico.map(o=>obrCardHtml(o,hoje,true)).join('')
@@ -942,13 +995,14 @@ function obrCardHtml(o, hoje, encerrada){
   const ci = catInfo(o.categoria);
   const parc = parcelaNoMes(o, hoje);
   let statusBadge;
-  if(o.parcela_total){
+  if(encerrada){
+    const st = statusEncerramento(o, hoje);
+    statusBadge = `<span class="badge badge-neutral">${st.label}</span>`;
+  } else if(o.parcela_total){
     const restantes = o.parcela_total - Math.max(parc,1) + 1;
-    statusBadge = encerrada
-      ? `<span class="badge badge-neutral">Encerrada em ${fmtMesRef(mesFimObrigacao(o))}</span>`
-      : `<span class="badge badge-warn">Parcela ${Math.max(parc,1)}/${o.parcela_total} · faltam ${Math.max(restantes,0)}</span>`;
+    statusBadge = `<span class="badge badge-warn">Parcela ${Math.max(parc,1)}/${o.parcela_total} · faltam ${Math.max(restantes,0)}</span>`;
   } else {
-    statusBadge = encerrada ? `<span class="badge badge-neutral">Desativada</span>` : `<span class="badge badge-pos">Recorrente</span>`;
+    statusBadge = `<span class="badge badge-pos">Recorrente</span>`;
   }
   return `<div class="obr-card ${encerrada?'encerrada':''}" onclick="abrirDetalheObrigacao(${o.id})">
     <div class="obr-card-hdr">
@@ -984,10 +1038,10 @@ function abrirDetalheObrigacao(id){
   const hoje = hojeRef();
   const ci = catInfo(o.categoria);
   const mesIni = o.data_inicio.slice(0,7);
-  const mesFim = o.parcela_total ? mesFimObrigacao(o) : hoje;
-  const encerrada = o.parcela_total ? (mesFim < hoje) : false;
+  const st = statusEncerramento(o, hoje);
+  const mesFim = st.mesFim;
 
-  // parcelada: vai só até o fim do parcelamento (passado ou futuro). recorrente: até hoje.
+  // parcelada: vai só até o fim do parcelamento (passado ou futuro). recorrente/desativada: até hoje.
   const meses = [];
   for(let cursor=mesIni; cursor<=mesFim; cursor=addMonths(cursor,1)) meses.push(cursor);
 
@@ -1006,17 +1060,22 @@ function abrirDetalheObrigacao(id){
   const valorMedio = pagos.length ? totalPago/pagos.length : Number(o.valor);
 
   document.getElementById('obrd-titulo').innerHTML = `${ic(ci.i,16)} ${o.nome}`;
-  document.getElementById('obrd-meta').textContent = `Criada em ${fmtMesRef(mesIni)}`
-    + (encerrada ? ` · encerrada em ${fmtMesRef(mesFim)}` : o.parcela_total ? ` · prevista para encerrar em ${fmtMesRef(mesFim)}` : ' · recorrente, sem data de término');
+  let metaTxt = `Criada em ${fmtMesRef(mesIni)}`;
+  if(st.desativadaManual) metaTxt += ' · desativada manualmente (sem data exata registrada)';
+  else if(st.encerrada) metaTxt += ` · encerrada em ${fmtMesRef(mesFim)}`;
+  else if(o.parcela_total) metaTxt += ` · prevista para encerrar em ${fmtMesRef(mesFim)}`;
+  else metaTxt += ' · recorrente, sem data de término';
+  document.getElementById('obrd-meta').textContent = metaTxt;
 
   document.getElementById('obrd-stats').innerHTML = `
     <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Total lançado</div><div class="obr-detalhe-stat-value">${fmtR(totalPago)}</div></div>
     <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Meses no plano</div><div class="obr-detalhe-stat-value">${meses.length}</div></div>
     <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Valor médio</div><div class="obr-detalhe-stat-value">${fmtR(valorMedio)}</div></div>`;
 
-  const linhaFim = encerrada
-    ? `<div class="obr-timeline-end">${ic('flag',13)} Encerrada em ${fmtMesRef(mesFim)} — ${o.parcela_total} parcela(s) concluída(s)</div>`
-    : (o.parcela_total ? `<div class="obr-timeline-end">${ic('clock',13)} Em andamento — prevista para encerrar em ${fmtMesRef(mesFim)}</div>` : '');
+  let linhaFim = '';
+  if(st.desativadaManual) linhaFim = `<div class="obr-timeline-end">${ic('flag',13)} Desativada manualmente — data exata não fica registrada, só o status</div>`;
+  else if(st.encerrada) linhaFim = `<div class="obr-timeline-end">${ic('flag',13)} Encerrada em ${fmtMesRef(mesFim)} — ${o.parcela_total} parcela(s) concluída(s)</div>`;
+  else if(o.parcela_total) linhaFim = `<div class="obr-timeline-end">${ic('clock',13)} Em andamento — prevista para encerrar em ${fmtMesRef(mesFim)}</div>`;
 
   document.getElementById('obrd-timeline').innerHTML = linhas.map(l=>`
     <div class="obr-timeline-item ${l.status}">
@@ -1348,13 +1407,14 @@ function proximosMeses(qtd, aPartirDe){
 function calcularProjecaoMes(mesRef){
   const rendaReal = receitasDoMes(mesRef);
   const rendaProjetada = parseFloat(config.renda_projetada) || 0;
+  const estimado = rendaReal<=0;
   const receita = rendaReal>0 ? rendaReal : rendaProjetada;
   const ativas = obrigacoesAtivasNoMes(mesRef);
   const totalObr = ativas.reduce((s,o)=>s+Number(o.valor),0) + totalCartoesNoMes(mesRef);
   const sobra = receita - totalObr;
   const pct = parseFloat(config.pct_investimento) || 0;
   const sugestao = Math.max(0, sobra * (pct/100));
-  return { mesRef, receita, totalObr, sobra, sugestao, qtdObr: ativas.length, ativas };
+  return { mesRef, receita, totalObr, sobra, sugestao, qtdObr: ativas.length, ativas, estimado };
 }
 function renderProjecaoTab(){
   const meses = proximosMeses(12, mesAtual);
@@ -1399,12 +1459,19 @@ function renderGraficosTab(){
   const sobra = Math.max(0, receita - despesasTotal);
   renderPieComposicao('chart-g2', obrPagas, gastosLivres, sobra);
 
-  // histórico últimos 6 meses com dados
-  const mesesComDados = [...new Set(transacoes.map(t=>t.mes_ref))].sort().slice(-6);
+  // histórico — range selecionável (3/6/12/tudo), guardado em histRangeMeses
+  const todosMeses = [...new Set(transacoes.map(t=>t.mes_ref))].sort();
+  const mesesComDados = histRangeMeses>0 ? todosMeses.slice(-histRangeMeses) : todosMeses;
   renderHistBarChart('chart-g3', mesesComDados.length?mesesComDados:[mesAtual]);
 
   // obrigações por categoria
   renderObrCategoriaChart('chart-g4');
+}
+let histRangeMeses = 6;
+function mudarHistRange(n){
+  histRangeMeses = n;
+  document.querySelectorAll('#hist-range-toggle .range-btn').forEach(b=>b.classList.toggle('active', Number(b.dataset.n)===n));
+  renderGraficosTab();
 }
 
 // ══════════════════════════════════════════════
@@ -1491,7 +1558,8 @@ async function deletarInvestimento(id){
 //  CHARTS (Chart.js)
 // ══════════════════════════════════════════════
 function destroyChart(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
-const CHART_DEFAULTS = { plugins:{legend:{labels:{color:'#e8eaf0',font:{size:11}}}}, };
+if(window.Chart && window.ChartDataLabels) Chart.register(ChartDataLabels);
+const CHART_DEFAULTS = { plugins:{legend:{labels:{color:'#e8eaf0',font:{size:11}}}, datalabels:{display:false}}, };
 
 function renderDonutChart(canvasId, txList){
   destroyChart(canvasId);
@@ -1502,13 +1570,16 @@ function renderDonutChart(canvasId, txList){
   const labels = Object.keys(porCat);
   if(!labels.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px"><div class="empty-icon">${ic('inbox',28)}</div><p>Sem despesas para exibir</p></div>`; refreshIcons(); return; }
   const data = labels.map(l=>porCat[l]);
+  const total = data.reduce((s,v)=>s+v,0);
   const colors = labels.map(l=>CAT_COLORS[l]||'#6b7280');
   charts[canvasId] = new Chart(ctx, {
     type:'doughnut',
     data:{ labels: labels.map(l=>catInfo(l).l), datasets:[{data, backgroundColor:colors, borderColor:'#1c2333', borderWidth:2}] },
     options:{ ...CHART_DEFAULTS, cutout:'65%', maintainAspectRatio:false,
       plugins:{ legend:{position:'bottom', labels:{color:'#e8eaf0',font:{size:11},padding:10}},
-        tooltip:{callbacks:{label:c=>c.label+': '+fmtR(c.raw)}} } }
+        tooltip:{callbacks:{label:c=>c.label+': '+fmtR(c.raw)}},
+        datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#0d1117', font:{size:11,weight:'700'},
+          formatter:v=>Math.round(v/total*100)+'%' } } }
   });
 }
 
@@ -1523,7 +1594,9 @@ function renderPieComposicao(canvasId, obr, livre, sobra){
       datasets:[{ data:[obr,livre,sobra], backgroundColor:['#f05252','#f0a832','#22d3a5'], borderColor:'#1c2333', borderWidth:2 }] },
     options:{ ...CHART_DEFAULTS, cutout:'60%', maintainAspectRatio:false,
       plugins:{ legend:{position:'bottom', labels:{color:'#e8eaf0',font:{size:11},padding:10}},
-        tooltip:{callbacks:{label:c=>{ const pct=total>0?(c.raw/total*100).toFixed(0):0; return c.label+': '+fmtR(c.raw)+' ('+pct+'%)'; }}} } }
+        tooltip:{callbacks:{label:c=>{ const pct=total>0?(c.raw/total*100).toFixed(0):0; return c.label+': '+fmtR(c.raw)+' ('+pct+'%)'; }}},
+        datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#0d1117', font:{size:11,weight:'700'},
+          formatter:v=>Math.round(v/total*100)+'%' } } }
   });
 }
 
@@ -1541,7 +1614,7 @@ function renderHistBarChart(canvasId, meses){
     ]},
     options:{ ...CHART_DEFAULTS, maintainAspectRatio:false,
       scales:{ x:{ticks:{color:'#6b7280'},grid:{color:'#263045'}}, y:{ticks:{color:'#6b7280',callback:v=>'R$'+v},grid:{color:'#263045'}} },
-      plugins:{ legend:{labels:{color:'#e8eaf0'}}, tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtR(c.raw)}} } }
+      plugins:{ legend:{labels:{color:'#e8eaf0'}}, tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtR(c.raw)}}, datalabels:{display:false} } }
   });
 }
 
@@ -1560,7 +1633,7 @@ function renderObrCategoriaChart(canvasId){
     data:{ labels: labels.map(l=>catInfo(l).l), datasets:[{ data, backgroundColor:colors, borderRadius:6 }] },
     options:{ ...CHART_DEFAULTS, indexAxis:'y', maintainAspectRatio:false,
       scales:{ x:{ticks:{color:'#6b7280',callback:v=>'R$'+v},grid:{color:'#263045'}}, y:{ticks:{color:'#e8eaf0'},grid:{display:false}} },
-      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>fmtR(c.raw)}} } }
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>fmtR(c.raw)}}, datalabels:{display:false} } }
   });
 }
 
@@ -1568,16 +1641,21 @@ function renderProjecaoChart(dados){
   destroyChart('chart-projecao');
   const ctx = document.getElementById('chart-projecao');
   const labels = dados.map(d=>{ const [a,m]=d.mesRef.split('-').map(Number); return MESES[m-1].slice(0,3)+'/'+String(a).slice(2); });
+  // segmento tracejado a partir do primeiro mês sem receita real lançada (estimado a partir da renda projetada)
+  const dashSegment = ctx2 => dados[ctx2.p1DataIndex]?.estimado ? [6,4] : undefined;
+  const pointBg = cor => dados.map(d=>d.estimado?'#0d1117':cor);
   charts['chart-projecao'] = new Chart(ctx, {
     type:'line',
     data:{ labels, datasets:[
-      { label:'Receita', data:dados.map(d=>d.receita), borderColor:'#3d8ef0', backgroundColor:'rgba(61,142,240,.1)', tension:.3, fill:false },
+      { label:'Receita', data:dados.map(d=>d.receita), borderColor:'#3d8ef0', backgroundColor:'rgba(61,142,240,.1)', tension:.3, fill:false, segment:{borderDash:dashSegment}, pointRadius:3, pointBackgroundColor:pointBg('#3d8ef0'), pointBorderColor:'#3d8ef0' },
       { label:'Obrigações', data:dados.map(d=>d.totalObr), borderColor:'#f05252', backgroundColor:'rgba(240,82,82,.1)', tension:.3, fill:false },
-      { label:'Sobra', data:dados.map(d=>d.sobra), borderColor:'#22d3a5', backgroundColor:'rgba(34,211,165,.15)', tension:.3, fill:true },
+      { label:'Sobra', data:dados.map(d=>d.sobra), borderColor:'#22d3a5', backgroundColor:'rgba(34,211,165,.15)', tension:.3, fill:true, segment:{borderDash:dashSegment}, pointRadius:3, pointBackgroundColor:pointBg('#22d3a5'), pointBorderColor:'#22d3a5' },
     ]},
     options:{ ...CHART_DEFAULTS, maintainAspectRatio:false,
       scales:{ x:{ticks:{color:'#6b7280'},grid:{color:'#263045'}}, y:{ticks:{color:'#6b7280',callback:v=>'R$'+v},grid:{color:'#263045'}} },
-      plugins:{ legend:{labels:{color:'#e8eaf0'}}, tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtR(c.raw)}} } }
+      plugins:{ legend:{labels:{color:'#e8eaf0'}}, tooltip:{callbacks:{
+        label:c=>c.dataset.label+': '+fmtR(c.raw)+(dados[c.dataIndex]?.estimado && c.dataset.label!=='Obrigações' ? ' (estimado)' : '')
+      }}, datalabels:{display:false} } }
   });
 }
 
@@ -1594,7 +1672,7 @@ function renderInvestChart(){
     data:{ labels, datasets:[{ label:'Total Acumulado', data, borderColor:'#22d3a5', backgroundColor:'rgba(34,211,165,.15)', tension:.3, fill:true }] },
     options:{ ...CHART_DEFAULTS, maintainAspectRatio:false,
       scales:{ x:{ticks:{color:'#6b7280'},grid:{color:'#263045'}}, y:{ticks:{color:'#6b7280',callback:v=>'R$'+v},grid:{color:'#263045'}} },
-      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>fmtR(c.raw)}} } }
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>fmtR(c.raw)}}, datalabels:{display:false} } }
   });
 }
 
@@ -1626,7 +1704,7 @@ function renderPatrimonioChart(){
       plugins:{ legend:{labels:{color:'#e8eaf0',font:{size:11}}}, tooltip:{callbacks:{
         label:c=>`${c.dataset.label}: ${fmtR(c.raw)}`,
         footer:items=>`Total: ${fmtR(items.reduce((s,i)=>s+i.raw,0))}`
-      }} } }
+      }}, datalabels:{display:false} } }
   });
 }
 
