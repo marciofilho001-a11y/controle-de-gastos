@@ -260,7 +260,8 @@ td{padding:10px 14px;font-size:13px;}
 
 /* CARTÕES */
 .cartao-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:22px;}
-.cartao-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;}
+.cartao-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;transition:border-color .15s;}
+.cartao-card:hover{border-color:#33405c;}
 .cartao-card-hdr{display:flex;align-items:center;gap:10px;}
 .cartao-card-icon{width:36px;height:36px;border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--accent2);}
 .cartao-card-nome{font-size:14px;font-weight:700;}
@@ -563,6 +564,19 @@ td{padding:10px 14px;font-size:13px;}
     <div class="obr-detalhe-meta" id="obrd-meta"></div>
     <div class="obr-detalhe-stats" id="obrd-stats"></div>
     <div class="obr-timeline" id="obrd-timeline"></div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE / FATURAS DO CARTÃO -->
+<div class="modal-overlay" id="modal-cartao-detalhe">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="cartd-titulo">Cartão</span>
+      <button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-cartao-detalhe')" aria-label="Fechar"><i data-lucide="x" class="lic" style="width:14px;height:14px"></i></button>
+    </div>
+    <div class="obr-detalhe-meta" id="cartd-meta"></div>
+    <div class="obr-detalhe-stats" id="cartd-stats"></div>
+    <div class="obr-timeline" id="cartd-timeline"></div>
   </div>
 </div>
 
@@ -1145,6 +1159,35 @@ async function deletarObrigacao(id){
 // ══════════════════════════════════════════════
 //  CARTÕES TAB
 // ══════════════════════════════════════════════
+// Detecta a "marca" pelo nome do cartão (não tem campo de instituição no banco) pra
+// diferenciar visualmente cartões de bancos diferentes — sem usar logo de terceiro,
+// só cor + ícone consistentes por instituição reconhecida.
+const BANDEIRAS = [
+  { rx:/nubank|nu\s*bank/i, cor:'#820ad1', icone:'credit-card' },
+  { rx:/inter\b/i, cor:'#ff7a00', icone:'credit-card' },
+  { rx:/ita[uú]/i, cor:'#ec7000', icone:'credit-card' },
+  { rx:/bradesco/i, cor:'#cc092f', icone:'credit-card' },
+  { rx:/santander/i, cor:'#ec0000', icone:'credit-card' },
+  { rx:/caixa/i, cor:'#0070ad', icone:'credit-card' },
+  { rx:/banco do brasil|\bbb\b/i, cor:'#f9dd16', icone:'credit-card' },
+  { rx:/c6/i, cor:'#000000', icone:'credit-card' },
+  { rx:/mercado\s*pago/i, cor:'#00b1ea', icone:'shopping-bag' },
+  { rx:/picpay/i, cor:'#21c25e', icone:'wallet' },
+  { rx:/next\b/i, cor:'#00ff5f', icone:'credit-card' },
+  { rx:/neon/i, cor:'#00e7c1', icone:'credit-card' },
+  { rx:/xp\b/i, cor:'#000000', icone:'credit-card' },
+  { rx:/btg/i, cor:'#003087', icone:'credit-card' },
+  { rx:/will\s*bank/i, cor:'#ff4d6d', icone:'credit-card' },
+  { rx:/shop+e/i, cor:'#ee4d2d', icone:'shopping-bag' },
+];
+function bandeiraDoCartao(nome){
+  const achou = BANDEIRAS.find(b=>b.rx.test(nome||''));
+  if(achou) return achou;
+  // sem marca reconhecida: cor determinística a partir do nome, pra não ficar tudo igual
+  let hash = 0; for(const c of (nome||'')) hash = (hash*31 + c.charCodeAt(0)) % 360;
+  return { cor:`hsl(${hash} 55% 45%)`, icone:'credit-card' };
+}
+
 function cartaoNome(id){ const c = cartoes.find(x=>x.id===id); return c ? c.nome : '—'; }
 function faturaDoMes(cartaoId, mesRef){
   return transacoes.filter(t=>t.cartao_id===cartaoId && t.mes_ref===mesRef && t.tipo==='despesa')
@@ -1153,14 +1196,15 @@ function faturaDoMes(cartaoId, mesRef){
 function renderCartoesTab(){
   const grid = document.getElementById('cartao-grid');
   if(!cartoes.length){
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">${ic('credit-card',30)}</div><p>Nenhum cartão cadastrado</p></div>`;
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">${ic('credit-card',30)}</div><p>Nenhum cartão cadastrado</p><button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="abrirModalCartao()">${ic('plus',14)} Novo Cartão</button></div>`;
   } else {
     grid.innerHTML = cartoes.map(c=>{
       const fatura = faturaDoMes(c.id, mesAtual);
       const usoLimite = c.limite ? Math.min(100,(fatura/Number(c.limite))*100) : null;
-      return `<div class="cartao-card">
+      const band = bandeiraDoCartao(c.nome);
+      return `<div class="cartao-card" onclick="abrirDetalheCartao(${c.id})">
         <div class="cartao-card-hdr">
-          <div class="cartao-card-icon">${ic('credit-card',18)}</div>
+          <div class="cartao-card-icon" style="background:${band.cor}22;color:${band.cor}">${ic(band.icone,18)}</div>
           <div><div class="cartao-card-nome">${c.nome}</div><div class="cartao-card-venc">Vencimento dia ${c.dia_vencimento||'—'}</div></div>
         </div>
         <div class="cartao-card-fatura-label">Fatura deste mês</div>
@@ -1171,8 +1215,8 @@ function renderCartoesTab(){
             <div class="progress-label"><span>${fmtR(fatura)} de ${fmtR(c.limite)}</span><span>${usoLimite.toFixed(0)}%</span></div>
           </div>` : ''}
         <div class="cartao-card-actions">
-          <button class="btn btn-secondary btn-sm" onclick="editarCartao(${c.id})">${ic('pencil')} Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deletarCartao(${c.id})">${ic('trash-2')}</button>
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editarCartao(${c.id})">${ic('pencil')} Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletarCartao(${c.id})">${ic('trash-2')}</button>
         </div>
       </div>`;
     }).join('');
@@ -1189,16 +1233,63 @@ function renderCartoesTab(){
     const valorTotal = Number(cp.valor_parcela) * cp.parcela_total;
     const parcelaAtual = Math.max(1, Math.min(cp.parcela_total, parcelaNoMes({data_inicio:cp.data_inicio}, mesAtual)));
     return `<tr>
-      <td>${cartaoNome(cp.cartao_id)}</td>
-      <td>${cp.descricao||'—'}</td>
-      <td>${ic(ci.i)} ${ci.l}</td>
-      <td><span class="parcela-tag">${cp.parcela_total>1?`${parcelaAtual}/${cp.parcela_total}`:'à vista'}</span></td>
-      <td style="font-family:var(--mono)">${fmtR(cp.valor_parcela)}</td>
-      <td style="font-family:var(--mono);color:var(--muted)">${fmtR(valorTotal)}</td>
-      <td style="color:var(--muted)">${fmtMesRef(cp.data_inicio.slice(0,7))}</td>
-      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletarCompra(${cp.id})">${ic('trash-2')}</button></td>
+      <td data-label="Cartão">${cartaoNome(cp.cartao_id)}</td>
+      <td data-label="Descrição">${cp.descricao||'—'}</td>
+      <td data-label="Categoria">${ic(ci.i)} ${ci.l}</td>
+      <td data-label="Parcela"><span class="parcela-tag">${cp.parcela_total>1?`${parcelaAtual}/${cp.parcela_total}`:'à vista'}</span></td>
+      <td data-label="Valor Parcela" style="font-family:var(--mono)">${fmtR(cp.valor_parcela)}</td>
+      <td data-label="Valor Total" style="font-family:var(--mono);color:var(--muted)">${fmtR(valorTotal)}</td>
+      <td data-label="Início" style="color:var(--muted)">${fmtMesRef(cp.data_inicio.slice(0,7))}</td>
+      <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarCompra(${cp.id})">${ic('trash-2')}</button></td>
     </tr>`;
   }).join('');
+  refreshIcons();
+}
+
+// Linha do tempo mês a mês de UM cartão: fatura de cada mês (soma das transações
+// vinculadas a esse cartao_id) e quantos lançamentos a compõem.
+function abrirDetalheCartao(id){
+  const c = cartoes.find(x=>x.id===id);
+  if(!c) return;
+  const hoje = hojeRef();
+  const band = bandeiraDoCartao(c.nome);
+  const mesesComFatura = [...new Set(transacoes.filter(t=>t.cartao_id===id).map(t=>t.mes_ref))].sort();
+  const mesesComCompra = [...new Set(compras.filter(cp=>cp.cartao_id===id).map(cp=>cp.data_inicio.slice(0,7)))];
+  const todos = [...new Set([...mesesComFatura, ...mesesComCompra, hoje])].sort();
+  const mesIni = todos[0] || hoje;
+  const meses = [];
+  for(let cursor=mesIni; cursor<=hoje; cursor=addMonths(cursor,1)) meses.push(cursor);
+
+  const linhas = meses.map(mesRef=>{
+    const valor = faturaDoMes(id, mesRef);
+    let status, statusTxt;
+    if(valor>0){ status='pago'; statusTxt = `${transacoes.filter(t=>t.cartao_id===id&&t.mes_ref===mesRef).length} lançamento(s)`; }
+    else if(mesRef===hoje){ status='previsto'; statusTxt = 'mês atual · sem fatura ainda'; }
+    else { status='previsto'; statusTxt = 'sem fatura no mês'; }
+    return { mesRef, valor, status, statusTxt };
+  });
+
+  const comFatura = linhas.filter(l=>l.valor>0);
+  const totalPeriodo = comFatura.reduce((s,l)=>s+l.valor,0);
+  const mediaMensal = comFatura.length ? totalPeriodo/comFatura.length : 0;
+
+  document.getElementById('cartd-titulo').innerHTML = `<span style="color:${band.cor}">${ic(band.icone,16)}</span> ${c.nome}`;
+  document.getElementById('cartd-meta').textContent = `Vencimento dia ${c.dia_vencimento||'—'}` + (c.limite ? ` · limite ${fmtR(c.limite)}` : '');
+
+  document.getElementById('cartd-stats').innerHTML = `
+    <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Total no período</div><div class="obr-detalhe-stat-value">${fmtR(totalPeriodo)}</div></div>
+    <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Faturas registradas</div><div class="obr-detalhe-stat-value">${comFatura.length}</div></div>
+    <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Média mensal</div><div class="obr-detalhe-stat-value">${fmtR(mediaMensal)}</div></div>`;
+
+  document.getElementById('cartd-timeline').innerHTML = linhas.map(l=>`
+    <div class="obr-timeline-item ${l.status}">
+      <div class="obr-timeline-dot"></div>
+      <div class="obr-timeline-mes">${fmtMesRef(l.mesRef)}</div>
+      <div class="obr-timeline-status">${l.statusTxt}</div>
+      <div class="obr-timeline-valor">${fmtR(l.valor)}</div>
+    </div>`).join('');
+
+  openModal('modal-cartao-detalhe');
   refreshIcons();
 }
 function fmtMesRef(mesRef){ const [a,m]=mesRef.split('-').map(Number); return MESES[m-1].slice(0,3)+'/'+a; }
