@@ -816,12 +816,13 @@ function addMonths(mesRef, n){
 // ══════════════════════════════════════════════
 function fmtVariacao(atual, anterior, invertido=false){
   if(!anterior) return ''; // mês anterior sem dado de base — % não tem o que comparar
-  const pct = ((atual-anterior)/Math.abs(anterior))*100;
-  const subiu = pct >= 0;
+  const pct = Math.round(((atual-anterior)/Math.abs(anterior))*100);
+  if(pct === 0) return `<span class="stat-trend">${ic('minus',11)} estável vs ${fmtMesRef(addMonths(mesAtual,-1))}</span>`;
+  const subiu = pct > 0;
   const bom = invertido ? !subiu : subiu;
   const seta = subiu ? 'trending-up' : 'trending-down';
   const sinal = subiu ? '+' : '';
-  return `<span class="stat-trend ${bom?'up':'down'}">${ic(seta,11)} ${sinal}${pct.toFixed(0)}% vs ${fmtMesRef(addMonths(mesAtual,-1))}</span>`;
+  return `<span class="stat-trend ${bom?'up':'down'}">${ic(seta,11)} ${sinal}${pct}% vs ${fmtMesRef(addMonths(mesAtual,-1))}</span>`;
 }
 
 function renderDashboard(){
