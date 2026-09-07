@@ -223,6 +223,10 @@ td{padding:10px 14px;font-size:13px;}
 
 /* TOOLBAR */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+.search-input-wrap{position:relative;}
+.search-input-wrap .form-input{padding-left:32px;width:100%;}
+.search-input-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;}
+.bulk-bar{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;}
 .range-toggle{display:flex;gap:2px;background:var(--surface);border-radius:8px;padding:2px;}
 .range-btn{background:transparent;border:none;color:var(--muted);font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif;}
 .range-btn:hover{color:var(--text);}
@@ -384,12 +388,22 @@ td{padding:10px 14px;font-size:13px;}
     <button class="btn btn-primary" onclick="abrirModalTransacao()"><i data-lucide="plus" class="lic" style="width:14px;height:14px"></i> Nova Transação</button>
   </div>
   <div class="toolbar">
+    <div class="search-input-wrap" style="flex:1;min-width:200px;max-width:280px">
+      <i data-lucide="search" class="lic search-input-icon" style="width:14px;height:14px"></i>
+      <input class="form-input" id="tx-filter-busca" placeholder="Buscar por descrição... ( / )" oninput="renderTransacoesTab()">
+    </div>
     <select class="form-select" id="tx-filter-tipo" onchange="renderTransacoesTab()" style="width:160px"><option value="">Todos os tipos</option><option value="receita">Receitas</option><option value="despesa">Despesas</option></select>
     <select class="form-select" id="tx-filter-cat" onchange="renderTransacoesTab()" style="width:180px"><option value="">Todas categorias</option></select>
+    <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="exportarTransacoesCSV()"><i data-lucide="download" class="lic" style="width:13px;height:13px"></i> Exportar CSV</button>
+  </div>
+  <div class="bulk-bar" id="tx-bulk-bar" style="display:none">
+    <span id="tx-bulk-count">0 selecionadas</span>
+    <button class="btn btn-danger btn-sm" onclick="excluirSelecionadas()"><i data-lucide="trash-2" class="lic" style="width:13px;height:13px"></i> Excluir selecionadas</button>
+    <button class="btn btn-ghost btn-sm" onclick="limparSelecao()">Cancelar</button>
   </div>
   <div class="table-wrap">
-    <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead>
-    <tbody id="tx-body"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Sem transações neste mês</td></tr></tbody></table>
+    <table><thead><tr><th style="width:32px"><input type="checkbox" id="tx-select-all" onchange="toggleSelecionarTodas(this.checked)"></th><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead>
+    <tbody id="tx-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Sem transações neste mês</td></tr></tbody></table>
   </div>
 </div>
 
@@ -1445,6 +1459,7 @@ async function deletarTransacao(id){
   await loadTransacoes();
   renderAll();
 }
+let txSelecionadas = new Set();
 function renderTransacoesTab(){
   const catSel = document.getElementById('tx-filter-cat');
   if(catSel.options.length<=1){
@@ -1456,23 +1471,73 @@ function renderTransacoesTab(){
   }
   const filtTipo = document.getElementById('tx-filter-tipo').value;
   const filtCat = document.getElementById('tx-filter-cat').value;
+  const busca = document.getElementById('tx-filter-busca').value.trim().toLowerCase();
   let list = txDoMes(mesAtual);
   if(filtTipo) list = list.filter(t=>t.tipo===filtTipo);
   if(filtCat) list = list.filter(t=>t.categoria===filtCat);
+  if(busca) list = list.filter(t=>(t.descricao||'').toLowerCase().includes(busca));
+  txListaAtual = list; // usado pelo export CSV, exporta exatamente o que está filtrado na tela
   const body = document.getElementById('tx-body');
-  if(!list.length){ body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Sem transações neste mês</td></tr>'; refreshIcons(); return; }
+  if(!list.length){ body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Nenhuma transação encontrada</td></tr>'; refreshIcons(); atualizarBarraSelecao(); return; }
   body.innerHTML = list.map(t=>{
     const ci = catInfo(t.categoria);
     return `<tr>
-      <td style="color:var(--muted)">${fmtData(t.data)}</td>
-      <td>${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
-      <td>${ic(ci.i)} ${ci.l}</td>
-      <td><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
-      <td style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
-      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
+      <td><input type="checkbox" class="tx-check" data-id="${t.id}" ${txSelecionadas.has(t.id)?'checked':''} onchange="toggleSelecionada(${t.id},this.checked)"></td>
+      <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
+      <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
+      <td data-label="Categoria">${ic(ci.i)} ${ci.l}</td>
+      <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
+      <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
+      <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
     </tr>`;
   }).join('');
   refreshIcons();
+  atualizarBarraSelecao();
+}
+let txListaAtual = [];
+function toggleSelecionada(id, checked){
+  if(checked) txSelecionadas.add(id); else txSelecionadas.delete(id);
+  atualizarBarraSelecao();
+}
+function toggleSelecionarTodas(checked){
+  txSelecionadas = new Set(checked ? txListaAtual.map(t=>t.id) : []);
+  document.querySelectorAll('.tx-check').forEach(c=>c.checked=checked);
+  atualizarBarraSelecao();
+}
+function atualizarBarraSelecao(){
+  const n = txSelecionadas.size;
+  const bar = document.getElementById('tx-bulk-bar');
+  bar.style.display = n>0 ? 'flex' : 'none';
+  if(n>0) document.getElementById('tx-bulk-count').textContent = `${n} selecionada${n>1?'s':''}`;
+  const selectAll = document.getElementById('tx-select-all');
+  if(selectAll) selectAll.checked = txListaAtual.length>0 && txListaAtual.every(t=>txSelecionadas.has(t.id));
+}
+function limparSelecao(){ txSelecionadas = new Set(); renderTransacoesTab(); }
+async function excluirSelecionadas(){
+  const ids = [...txSelecionadas];
+  if(!ids.length) return;
+  if(!(await confirmarAcao(`Remover ${ids.length} transação(ões) selecionada(s)? Essa ação não pode ser desfeita.`))) return;
+  await sb.from('fin_transacoes').delete().in('id', ids);
+  toast(`${ids.length} transação(ões) removida(s)`);
+  txSelecionadas = new Set();
+  await loadTransacoes();
+  renderAll();
+}
+function exportarTransacoesCSV(){
+  if(!txListaAtual.length){ toast('Nada para exportar nesse filtro','err'); return; }
+  const header = ['Data','Descrição','Categoria','Tipo','Valor'];
+  const linhas = txListaAtual.map(t=>[
+    fmtData(t.data), (t.descricao||'').replace(/"/g,'""'), catInfo(t.categoria).l,
+    t.tipo==='receita'?'Receita':'Despesa', Number(t.valor).toFixed(2).replace('.',',')
+  ]);
+  const csv = [header, ...linhas].map(l=>l.map(c=>`"${c}"`).join(';')).join('\r\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `transacoes_${mesAtual}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast('CSV exportado!');
 }
 
 // ══════════════════════════════════════════════
@@ -1811,6 +1876,30 @@ function toast(msg, tipo='ok'){
   refreshIcons();
   setTimeout(()=>{ el.className='toast'; }, 3000);
 }
+
+// ══════════════════════════════════════════════
+//  ATALHOS DE TECLADO
+// ══════════════════════════════════════════════
+document.addEventListener('keydown', e=>{
+  const tag = (document.activeElement.tagName||'').toLowerCase();
+  const digitando = tag==='input' || tag==='textarea' || tag==='select';
+
+  if(e.key==='Escape'){
+    const aberto = document.querySelector('.modal-overlay.open');
+    if(aberto) closeModal(aberto.id);
+    return;
+  }
+  if(digitando) return;
+
+  if(e.key==='/'){
+    e.preventDefault();
+    goTab('transacoes', document.querySelectorAll('.nav-tab')[3]);
+    setTimeout(()=>document.getElementById('tx-filter-busca')?.focus(), 50);
+  } else if(e.key==='n' || e.key==='N'){
+    e.preventDefault();
+    abrirModalTransacao();
+  }
+});
 </script>
 </body>
 </html>
