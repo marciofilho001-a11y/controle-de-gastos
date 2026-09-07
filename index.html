@@ -1831,7 +1831,7 @@ function renderProjecaoChart(dados){
 function renderInvestChart(){
   destroyChart('chart-invest');
   const ctx = document.getElementById('chart-invest');
-  if(!investimentos.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px"><div class="empty-icon">${ic('inbox',28)}</div><p>Sem investimentos ainda</p></div>`; refreshIcons(); return; }
+  if(!investimentos.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px"><div class="empty-icon">${ic('inbox',28)}</div><p>Sem investimentos ainda</p><button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="abrirModalInvestimento()">${ic('plus',14)} Registrar Investimento</button></div>`; refreshIcons(); return; }
   const ordenado = [...investimentos].sort((a,b)=>new Date(a.data)-new Date(b.data));
   let acc = 0;
   const labels = ordenado.map(i=>fmtData(i.data));
@@ -1851,7 +1851,7 @@ function renderPatrimonioChart(){
   destroyChart('chart-patrimonio');
   const ctx = document.getElementById('chart-patrimonio');
   if(!saldosConta.length && !investimentos.length){
-    ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px"><div class="empty-icon">${ic('inbox',28)}</div><p>Registre um investimento ou o saldo em conta pra começar</p></div>`;
+    ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px"><div class="empty-icon">${ic('inbox',28)}</div><p>Registre um investimento ou o saldo em conta pra começar</p><button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="abrirModalInvestimento()">${ic('plus',14)} Registrar Investimento</button></div>`;
     refreshIcons(); return;
   }
   const primeiros = [
