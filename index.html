@@ -786,12 +786,18 @@ function goTab(id, el){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   if(el) el.classList.add('active');
-  if(id==='obrigacoes') renderObrigacoesTab();
-  if(id==='cartoes') renderCartoesTab();
-  if(id==='transacoes') renderTransacoesTab();
-  if(id==='projecao') renderProjecaoTab();
-  if(id==='graficos') renderGraficosTab();
-  if(id==='investimentos') renderInvestimentosTab();
+  // requestAnimationFrame: dá tempo do navegador terminar o layout da página que
+  // acabou de sair de display:none antes de qualquer gráfico medir o canvas -
+  // sem isso, o Chart.js às vezes mede 0x0 na primeira vez e desenha em branco
+  // (os eixos aparecem, os dados não) até re-renderizar de novo.
+  requestAnimationFrame(()=>{
+    if(id==='obrigacoes') renderObrigacoesTab();
+    if(id==='cartoes') renderCartoesTab();
+    if(id==='transacoes') renderTransacoesTab();
+    if(id==='projecao') renderProjecaoTab();
+    if(id==='graficos') renderGraficosTab();
+    if(id==='investimentos') renderInvestimentosTab();
+  });
 }
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
