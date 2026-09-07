@@ -217,8 +217,8 @@ td{padding:10px 14px;font-size:13px;}
 .obr-timeline-end{display:flex;align-items:center;gap:8px;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:12px;font-weight:600;color:var(--accent2);}
 
 /* ALERTA PROATIVO */
-.alert-banner{display:flex;align-items:center;gap:10px;background:rgba(240,82,82,.1);border:1px solid rgba(240,82,82,.3);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#ff8a8a;}
-.alert-banner .lic{flex-shrink:0;color:var(--danger);}
+.alert-banner{display:flex;align-items:flex-start;gap:10px;background:rgba(240,82,82,.1);border:1px solid rgba(240,82,82,.3);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#ff8a8a;line-height:1.5;}
+.alert-banner .lic{flex-shrink:0;color:var(--danger);margin-top:1px;}
 .alert-banner b{color:var(--text);}
 
 /* TOOLBAR */
@@ -280,6 +280,19 @@ td{padding:10px 14px;font-size:13px;}
   .chart-grid{grid-template-columns:1fr;}
   .form-row,.form-row-3{grid-template-columns:1fr;}
   .stats-grid{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:640px){
+  .stats-grid{grid-template-columns:1fr;}
+  .obr-detalhe-stats{grid-template-columns:1fr;}
+  .modal-lg{max-width:calc(100vw - 32px);}
+  /* tabelas viram cards empilhados — cada <td> exibe seu data-label como rótulo */
+  .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap th, .table-wrap tr{display:block;}
+  .table-wrap thead{position:absolute;left:-9999px;top:-9999px;}
+  .table-wrap tr{border-bottom:1px solid var(--border);padding:10px 14px;}
+  .table-wrap tr:last-child{border-bottom:none;}
+  .table-wrap td{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;border:none!important;text-align:right;}
+  .table-wrap td[data-label]:not([data-label=""])::before{content:attr(data-label);font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:left;flex-shrink:0;}
+  .table-wrap td[data-label=""]{justify-content:flex-end;}
 }
 </style>
 </head>
@@ -896,7 +909,7 @@ function renderDashboard(){
   const proximos = proximosMeses(3, hojeRef()).map(calcularProjecaoMes);
   const primeiroNegativo = proximos.find(d=>d.sobra<0);
   alertEl.innerHTML = primeiroNegativo
-    ? `<div class="alert-banner">${ic('alert-triangle',18)} Suas obrigações vão superar a receita em <b>${fmtMesRef(primeiroNegativo.mesRef)}</b> — sobra projetada de <b>${fmtR(primeiroNegativo.sobra)}</b>. <a href="#" onclick="event.preventDefault();goTab('projecao',document.querySelectorAll('.nav-tab')[4])" style="color:inherit;text-decoration:underline">ver projeção</a></div>`
+    ? `<div class="alert-banner">${ic('alert-triangle',18)} <span>Suas obrigações vão superar a receita em <b>${fmtMesRef(primeiroNegativo.mesRef)}</b> — sobra projetada de <b>${fmtR(primeiroNegativo.sobra)}</b>. <a href="#" onclick="event.preventDefault();goTab('projecao',document.querySelectorAll('.nav-tab')[4])" style="color:inherit;text-decoration:underline">ver projeção</a></span></div>`
     : '';
 
   document.getElementById('st-saldo').textContent = fmtR(saldo);
@@ -940,12 +953,12 @@ function renderDashboard(){
     hbody.innerHTML = hist.map(t=>{
       const ci = catInfo(t.categoria);
       return `<tr>
-        <td style="color:var(--muted)">${fmtData(t.data)}</td>
-        <td>${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
-        <td>${ic(ci.i)} ${ci.l}</td>
-        <td><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
-        <td style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
-        <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
+        <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
+        <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
+        <td data-label="Categoria">${ic(ci.i)} ${ci.l}</td>
+        <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
+        <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
+        <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
       </tr>`;
     }).join('');
   }
@@ -1585,12 +1598,12 @@ function renderProjecaoTab(){
     const anteriorQtd = i>0 ? dados[i-1].qtdObr : d.qtdObr;
     const terminou = i>0 && anteriorQtd > d.qtdObr;
     return `<tr class="${terminou?'proj-end-row':''}">
-      <td style="font-weight:600">${label} ${terminou?ic('party-popper',13):''}</td>
-      <td>${d.qtdObr}</td>
-      <td style="font-family:var(--mono);color:var(--danger)">${fmtR(d.totalObr)}</td>
-      <td style="font-family:var(--mono);color:var(--accent)">${fmtR(d.receita)}</td>
-      <td style="font-family:var(--mono);font-weight:700;color:${d.sobra>=0?'var(--accent)':'var(--danger)'}">${fmtR(d.sobra)}</td>
-      <td style="font-family:var(--mono);color:var(--accent2)">${fmtR(d.sugestao)}</td>
+      <td data-label="Mês" style="font-weight:600">${label} ${terminou?ic('party-popper',13):''}</td>
+      <td data-label="Obrigações Ativas">${d.qtdObr}</td>
+      <td data-label="Total Obrigações" style="font-family:var(--mono);color:var(--danger)">${fmtR(d.totalObr)}</td>
+      <td data-label="Receita" style="font-family:var(--mono);color:var(--accent)">${fmtR(d.receita)}</td>
+      <td data-label="Sobra" style="font-family:var(--mono);font-weight:700;color:${d.sobra>=0?'var(--accent)':'var(--danger)'}">${fmtR(d.sobra)}</td>
+      <td data-label="Sugestão Investir" style="font-family:var(--mono);color:var(--accent2)">${fmtR(d.sugestao)}</td>
     </tr>`;
   }).join('');
   refreshIcons();
@@ -1674,11 +1687,11 @@ function renderInvestimentosTab(){
   if(!investimentos.length){ body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhum investimento registrado</td></tr>'; }
   else {
     body.innerHTML = investimentos.map(i=>`<tr>
-      <td style="color:var(--muted)">${fmtData(i.data)}</td>
-      <td>${i.mes_ref}</td>
-      <td>${i.descricao||'—'}</td>
-      <td style="font-family:var(--mono);font-weight:600;color:var(--accent)">${fmtR(i.valor)}</td>
-      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deletarInvestimento(${i.id})">${ic('trash-2')}</button></td>
+      <td data-label="Data" style="color:var(--muted)">${fmtData(i.data)}</td>
+      <td data-label="Mês Ref.">${i.mes_ref}</td>
+      <td data-label="Descrição">${i.descricao||'—'}</td>
+      <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:var(--accent)">${fmtR(i.valor)}</td>
+      <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarInvestimento(${i.id})">${ic('trash-2')}</button></td>
     </tr>`).join('');
   }
   renderInvestChart();
