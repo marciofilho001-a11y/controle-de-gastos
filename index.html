@@ -33,11 +33,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 /* TOPBAR */
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px;}
 .brand{display:flex;align-items:center;gap:10px;}
-.brand-logo{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#0d1117;}
-.brand-name{font-weight:700;font-size:16px;color:var(--accent);}
-.month-nav{display:flex;align-items:center;gap:14px;}
+.brand-logo{width:34px;height:34px;background:linear-gradient(135deg,#00f7ec,var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:var(--bg);flex-shrink:0;}
+.brand-name{font-weight:700;font-size:16px;}
+.brand-name .pro{color:var(--accent2);}
+.month-nav{display:flex;align-items:center;gap:10px;}
 .month-nav .btn{font-size:14px;}
-.month-label{font-weight:600;font-size:14px;min-width:130px;text-align:center;}
+.month-chip{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:7px 14px;font-weight:600;font-size:14px;}
+.month-label{min-width:110px;text-align:left;}
 
 /* NAV TABS */
 .nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:2px;overflow-x:auto;}
@@ -52,13 +54,30 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 
 /* CARDS */
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;}
-.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:6px;justify-content:space-between;}
+.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:9px;justify-content:space-between;}
+.card-title > .lic:first-child{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px;color:var(--accent);box-sizing:content-box;}
 
 /* STAT CARDS */
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px;}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;}
-.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;justify-content:space-between;}
-.stat-value{font-size:24px;font-weight:700;margin-top:8px;font-family:var(--mono);}
+.stat-card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px 18px 22px;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;}
+.stat-card--teal::before{background:linear-gradient(180deg,#00e5d4,var(--accent));}
+.stat-card--teal{background:linear-gradient(120deg,rgba(34,211,165,.12),var(--card) 60%);}
+.stat-card--red::before{background:linear-gradient(180deg,#ff6b8a,var(--danger));}
+.stat-card--red{background:linear-gradient(120deg,rgba(240,82,82,.12),var(--card) 60%);}
+.stat-card--orange::before{background:linear-gradient(180deg,#ffc266,var(--warn));}
+.stat-card--orange{background:linear-gradient(120deg,rgba(240,168,50,.12),var(--card) 60%);}
+.stat-card--blue::before{background:linear-gradient(180deg,#6fb3ff,var(--accent2));}
+.stat-card--blue{background:linear-gradient(120deg,rgba(61,142,240,.12),var(--card) 60%);}
+.stat-card-top{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.stat-icon-badge{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#0d1117;}
+.stat-card--teal .stat-icon-badge{background:linear-gradient(135deg,#1de9c4,var(--accent-active));}
+.stat-card--red .stat-icon-badge{background:linear-gradient(135deg,#ff8fa8,var(--danger));}
+.stat-card--orange .stat-icon-badge{background:linear-gradient(135deg,#ffcc80,var(--warn));}
+.stat-card--blue .stat-icon-badge{background:linear-gradient(135deg,#8fc4ff,var(--accent2));}
+.stat-card-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;flex:1;}
+.stat-card-corner-icon{color:var(--muted);flex-shrink:0;}
+.stat-value{font-size:24px;font-weight:700;font-family:var(--mono);}
 .stat-value.pos{color:var(--accent);}
 .stat-value.neg{color:var(--danger);}
 .stat-value.warn{color:var(--warn);}
@@ -141,8 +160,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .obrow{display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface);border-radius:10px;border:1px solid var(--border);transition:all .15s;}
 .obrow.paid{opacity:.55;}
 .obcheck{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s;font-size:13px;}
-.obcheck.checked{background:var(--accent);border-color:var(--accent);color:#0d1117;}
-.obicon{width:30px;height:30px;border-radius:8px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.obcheck.checked{background:var(--accent);border-color:var(--accent);color:#fff;}
+.obicon{width:32px;height:32px;border-radius:9px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
 .obinfo{flex:1;min-width:0;}
 .obname{font-size:13px;font-weight:600;}
 .obname.strike{text-decoration:line-through;color:var(--muted);}
@@ -230,6 +249,13 @@ td{padding:10px 14px;font-size:13px;}
 .alert-banner .lic{flex-shrink:0;color:var(--danger);margin-top:1px;}
 .alert-banner b{color:var(--text);}
 
+/* LEGENDA EM PILL (donuts) */
+.pill-legend{display:flex;justify-content:center;flex-wrap:wrap;gap:0;margin-top:14px;}
+.pill-legend-inner{display:flex;flex-wrap:wrap;gap:18px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:8px 20px;}
+.pill-legend-item{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;white-space:nowrap;}
+.pill-legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.pill-legend-pct{color:var(--muted);font-weight:500;}
+
 /* TOOLBAR */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
 .search-input-wrap{position:relative;}
@@ -269,7 +295,7 @@ td{padding:10px 14px;font-size:13px;}
 
 /* INVEST SUMMARY */
 .invest-summary{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;}
-.invest-sum-card{flex:1;min-width:160px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.invest-summary .stat-card{flex:1;min-width:180px;}
 
 /* CARTÕES */
 .cartao-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:22px;}
@@ -308,10 +334,16 @@ td{padding:10px 14px;font-size:13px;}
 <body>
 
 <div class="topbar">
-  <div class="brand"><div class="brand-logo"><i data-lucide="wallet" class="lic" style="width:18px;height:18px"></i></div><span class="brand-name">FinFlow Pro</span></div>
+  <div class="brand"><div class="brand-logo">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+        <path d="M8 19V8.5C8 6 9.8 4 13 4c1.3 0 2.3.3 3 .7" stroke="#0d1117" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M6 12h8" stroke="#0d1117" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M16.5 15.5l2.5 2-2.5 2" stroke="#0d1117" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div><span class="brand-name">FinFlow <span class="pro">Pro</span></span></div>
   <div class="month-nav">
     <button class="btn btn-secondary btn-icon btn-sm" onclick="mudarMes(-1)" aria-label="Mês anterior"><i data-lucide="chevron-left" class="lic" style="width:15px;height:15px;vertical-align:-2px"></i></button>
-    <span class="month-label" id="month-label">—</span>
+    <span class="month-chip"><i data-lucide="calendar" class="lic" style="width:14px;height:14px;color:var(--accent)"></i><span class="month-label" id="month-label">—</span></span>
     <button class="btn btn-secondary btn-icon btn-sm" onclick="mudarMes(1)" aria-label="Próximo mês"><i data-lucide="chevron-right" class="lic" style="width:15px;height:15px;vertical-align:-2px"></i></button>
   </div>
 </div>
@@ -332,16 +364,16 @@ td{padding:10px 14px;font-size:13px;}
 <div class="page active" id="page-dashboard">
   <div id="dash-alert"></div>
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-label">Saldo do Mês <i data-lucide="scale" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value" id="st-saldo"><span class="skel skel-value"></span></div><div id="st-saldo-trend"></div></div>
-    <div class="stat-card"><div class="stat-label">Receitas <i data-lucide="trending-up" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value pos" id="st-receitas"><span class="skel skel-value"></span></div><div id="st-receitas-trend"></div></div>
-    <div class="stat-card"><div class="stat-label">Despesas <i data-lucide="trending-down" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value neg" id="st-despesas"><span class="skel skel-value"></span></div><div id="st-despesas-trend"></div></div>
-    <div class="stat-card"><div class="stat-label">Pendentes <i data-lucide="alert-triangle" class="lic" style="width:13px;height:13px"></i></div><div class="stat-value warn" id="st-pendentes"><span class="skel skel-value"></span></div></div>
+    <div class="stat-card stat-card--teal" id="stcard-st-saldo"><div class="stat-card-top"><div class="stat-icon-badge"><i data-lucide="wallet" class="lic" style="width:17px;height:17px"></i></div><div class="stat-card-label">SALDO DO MÊS</div><i data-lucide="scale" class="lic stat-card-corner-icon" style="width:14px;height:14px"></i></div><div class="stat-value " id="st-saldo"><span class="skel skel-value"></span></div><div id="st-saldo-trend"></div></div>
+    <div class="stat-card stat-card--teal" id="stcard-st-receitas"><div class="stat-card-top"><div class="stat-icon-badge"><i data-lucide="arrow-down-left" class="lic" style="width:17px;height:17px"></i></div><div class="stat-card-label">RECEITAS</div><i data-lucide="trending-up" class="lic stat-card-corner-icon" style="width:14px;height:14px"></i></div><div class="stat-value pos" id="st-receitas"><span class="skel skel-value"></span></div><div id="st-receitas-trend"></div></div>
+    <div class="stat-card stat-card--red" id="stcard-st-despesas"><div class="stat-card-top"><div class="stat-icon-badge"><i data-lucide="arrow-up-right" class="lic" style="width:17px;height:17px"></i></div><div class="stat-card-label">DESPESAS</div><i data-lucide="trending-down" class="lic stat-card-corner-icon" style="width:14px;height:14px"></i></div><div class="stat-value neg" id="st-despesas"><span class="skel skel-value"></span></div><div id="st-despesas-trend"></div></div>
+    <div class="stat-card stat-card--orange" id="stcard-st-pendentes"><div class="stat-card-top"><div class="stat-icon-badge"><i data-lucide="clock" class="lic" style="width:17px;height:17px"></i></div><div class="stat-card-label">PENDENTES</div><i data-lucide="alert-triangle" class="lic stat-card-corner-icon" style="width:14px;height:14px"></i></div><div class="stat-value warn" id="st-pendentes"><span class="skel skel-value"></span></div></div>
   </div>
 
   <div class="chart-grid" style="align-items:start">
     <div class="chart-box">
       <div class="card-title"><i data-lucide="chart-pie" class="lic" style="width:14px;height:14px"></i> Gastos por Categoria</div>
-      <div class="chart-canvas-wrap"><canvas id="chart-dash-donut"></canvas></div>
+      <div class="chart-canvas-wrap"><canvas id="chart-dash-donut"></canvas></div><div class="pill-legend" id="chart-dash-donut-legend"></div>
     </div>
     <div class="card">
       <div class="card-title">
@@ -466,11 +498,11 @@ td{padding:10px 14px;font-size:13px;}
   <div class="chart-grid">
     <div class="chart-box">
       <div class="card-title"><i data-lucide="chart-pie" class="lic" style="width:14px;height:14px"></i> Despesas por Categoria</div>
-      <div class="chart-canvas-wrap"><canvas id="chart-g1"></canvas></div>
+      <div class="chart-canvas-wrap"><canvas id="chart-g1"></canvas></div><div class="pill-legend" id="chart-g1-legend"></div>
     </div>
     <div class="chart-box">
       <div class="card-title"><i data-lucide="chart-pie" class="lic" style="width:14px;height:14px"></i> Composição da Renda</div>
-      <div class="chart-canvas-wrap"><canvas id="chart-g2"></canvas></div>
+      <div class="chart-canvas-wrap"><canvas id="chart-g2"></canvas></div><div class="pill-legend" id="chart-g2-legend"></div>
     </div>
     <div class="chart-box">
       <div class="card-title">
@@ -512,10 +544,10 @@ td{padding:10px 14px;font-size:13px;}
   </div>
 
   <div class="invest-summary">
-    <div class="invest-sum-card"><div class="stat-label">Patrimônio Total</div><div class="stat-value pos" id="inv-patrimonio"><span class="skel skel-value"></span></div></div>
-    <div class="invest-sum-card"><div class="stat-label">Total Investido (acumulado)</div><div class="stat-value pos" id="inv-total"><span class="skel skel-value"></span></div></div>
-    <div class="invest-sum-card"><div class="stat-label">Sugerido este mês</div><div class="stat-value neutral" id="inv-sugerido"><span class="skel skel-value"></span></div></div>
-    <div class="invest-sum-card"><div class="stat-label">Investido este mês</div><div class="stat-value" id="inv-mes"><span class="skel skel-value"></span></div></div>
+    <div class="stat-card stat-card--teal" id="stcard-inv-patrimonio"><div class="stat-card-top"><div class="stat-icon-badge"><i data-lucide="landmark" class="lic" style="width:17px;height:17px"></i></div><div class="stat-card-label">PATRIMÔNIO TOTAL</div></div><div class="stat-value pos" id="inv-patrimonio"><span class="skel skel-value"></span></div></div>
+    <div class="stat-card stat-card--teal" id="stcard-inv-total"><div class="stat-card-top"><div class="stat-icon-badge"><i data-lucide="trending-up" class="lic" style="width:17px;height:17px"></i></div><div class="stat-card-label">TOTAL INVESTIDO</div></div><div class="stat-value pos" id="inv-total"><span class="skel skel-value"></span></div></div>
+    <div class="stat-card stat-card--blue" id="stcard-inv-sugerido"><div class="stat-card-top"><div class="stat-icon-badge"><i data-lucide="sparkles" class="lic" style="width:17px;height:17px"></i></div><div class="stat-card-label">SUGERIDO ESTE MÊS</div></div><div class="stat-value neutral" id="inv-sugerido"><span class="skel skel-value"></span></div></div>
+    <div class="stat-card stat-card--teal" id="stcard-inv-mes"><div class="stat-card-top"><div class="stat-icon-badge"><i data-lucide="circle-dollar-sign" class="lic" style="width:17px;height:17px"></i></div><div class="stat-card-label">INVESTIDO ESTE MÊS</div></div><div class="stat-value " id="inv-mes"><span class="skel skel-value"></span></div></div>
   </div>
   <div class="chart-box" style="margin-bottom:16px">
     <div class="card-title"><i data-lucide="landmark" class="lic" style="width:14px;height:14px"></i> Patrimônio ao Longo do Tempo</div>
@@ -929,6 +961,7 @@ function renderDashboard(){
 
   document.getElementById('st-saldo').textContent = fmtR(saldo);
   document.getElementById('st-saldo').className = 'stat-value '+(saldo>=0?'pos':'neg');
+  document.getElementById('stcard-st-saldo').className = 'stat-card '+(saldo>=0?'stat-card--teal':'stat-card--red');
   document.getElementById('st-saldo-trend').innerHTML = fmtVariacao(saldo, saldoAnt);
   document.getElementById('st-receitas').textContent = fmtR(receitas);
   document.getElementById('st-receitas-trend').innerHTML = fmtVariacao(receitas, receitasAnt);
@@ -1697,6 +1730,7 @@ function renderInvestimentosTab(){
   const investidoMes = investimentos.filter(i=>i.mes_ref===mesAtual).reduce((s,i)=>s+Number(i.valor),0);
   document.getElementById('inv-mes').textContent = fmtR(investidoMes);
   document.getElementById('inv-mes').className = 'stat-value '+(investidoMes>=proj.sugestao?'pos':'warn');
+  document.getElementById('stcard-inv-mes').className = 'stat-card '+(investidoMes>=proj.sugestao?'stat-card--teal':'stat-card--orange');
 
   const body = document.getElementById('inv-body');
   if(!investimentos.length){ body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhum investimento registrado</td></tr>'; }
@@ -1745,14 +1779,42 @@ function destroyChart(id){ if(charts[id]){ charts[id].destroy(); delete charts[i
 if(window.Chart && window.ChartDataLabels) Chart.register(ChartDataLabels);
 const CHART_DEFAULTS = { plugins:{legend:{labels:{color:'#e8eaf0',font:{size:11}}}, datalabels:{display:false}}, };
 
+// texto centralizado nos donuts ("Total de gastos" / valor) - plugin generico,
+// so desenha quando o chart especifico configura plugins.centerText.display
+const centerTextPlugin = {
+  id:'centerText',
+  afterDraw(chart){
+    const opts = chart.config.options.plugins && chart.config.options.plugins.centerText;
+    if(!opts || !opts.display) return;
+    const {ctx, chartArea:{left,right,top,bottom}} = chart;
+    const cx=(left+right)/2, cy=(top+bottom)/2;
+    ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+    if(opts.label){ ctx.fillStyle='#6b7280'; ctx.font='11px Inter,sans-serif'; ctx.fillText(opts.label, cx, cy-11); }
+    ctx.fillStyle='#e8eaf0'; ctx.font='700 18px Inter,sans-serif'; ctx.fillText(opts.value, cx, opts.label?cy+10:cy);
+    ctx.restore();
+  }
+};
+if(window.Chart) Chart.register(centerTextPlugin);
+
+// legenda em pill fora do canvas (CSS não alcança a legenda desenhada pelo Chart.js)
+function renderPillLegend(containerId, items){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const total = items.reduce((s,i)=>s+i.value,0);
+  el.innerHTML = `<div class="pill-legend-inner">${items.map(i=>
+    `<span class="pill-legend-item"><span class="pill-legend-dot" style="background:${i.color}"></span>${i.label} <span class="pill-legend-pct">${total>0?Math.round(i.value/total*100):0}%</span></span>`
+  ).join('')}</div>`;
+}
+
 function renderDonutChart(canvasId, txList){
   destroyChart(canvasId);
   const ctx = document.getElementById(canvasId);
   if(!ctx) return;
+  const legendEl = document.getElementById(canvasId+'-legend');
   const porCat = {};
   txList.forEach(t=>{ porCat[t.categoria] = (porCat[t.categoria]||0) + Number(t.valor); });
   const labels = Object.keys(porCat);
-  if(!labels.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px"><div class="empty-icon">${ic('inbox',28)}</div><p>Sem despesas para exibir</p></div>`; refreshIcons(); return; }
+  if(!labels.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px"><div class="empty-icon">${ic('inbox',28)}</div><p>Sem despesas para exibir</p></div>`; if(legendEl) legendEl.innerHTML=''; refreshIcons(); return; }
   const data = labels.map(l=>porCat[l]);
   const total = data.reduce((s,v)=>s+v,0);
   const colors = labels.map(l=>CAT_COLORS[l]||'#6b7280');
@@ -1760,28 +1822,34 @@ function renderDonutChart(canvasId, txList){
     type:'doughnut',
     data:{ labels: labels.map(l=>catInfo(l).l), datasets:[{data, backgroundColor:colors, borderColor:'#1c2333', borderWidth:2}] },
     options:{ ...CHART_DEFAULTS, cutout:'65%', maintainAspectRatio:false,
-      plugins:{ legend:{position:'bottom', labels:{color:'#e8eaf0',font:{size:11},padding:10}},
+      plugins:{ legend:{display:false},
         tooltip:{callbacks:{label:c=>c.label+': '+fmtR(c.raw)}},
+        centerText:{display:true,label:'Total de gastos',value:fmtR(total)},
         datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#0d1117', font:{size:11,weight:'700'},
           formatter:v=>Math.round(v/total*100)+'%' } } }
   });
+  renderPillLegend(canvasId+'-legend', labels.map((l,i)=>({label:catInfo(l).l, color:colors[i], value:data[i]})));
 }
 
 function renderPieComposicao(canvasId, obr, livre, sobra){
   destroyChart(canvasId);
   const ctx = document.getElementById(canvasId);
+  const legendEl = document.getElementById(canvasId+'-legend');
   const total = obr+livre+sobra;
-  if(total<=0){ ctx.parentElement.querySelector('canvas')?.remove(); return; }
+  if(total<=0){ ctx.parentElement.querySelector('canvas')?.remove(); if(legendEl) legendEl.innerHTML=''; return; }
+  const cores = ['#f05252','#f0a832','#22d3a5'];
   charts[canvasId] = new Chart(ctx, {
     type:'doughnut',
     data:{ labels:['Obrigações Fixas','Gastos Livres','Sobra'],
-      datasets:[{ data:[obr,livre,sobra], backgroundColor:['#f05252','#f0a832','#22d3a5'], borderColor:'#1c2333', borderWidth:2 }] },
+      datasets:[{ data:[obr,livre,sobra], backgroundColor:cores, borderColor:'#1c2333', borderWidth:2 }] },
     options:{ ...CHART_DEFAULTS, cutout:'60%', maintainAspectRatio:false,
-      plugins:{ legend:{position:'bottom', labels:{color:'#e8eaf0',font:{size:11},padding:10}},
+      plugins:{ legend:{display:false},
         tooltip:{callbacks:{label:c=>{ const pct=total>0?(c.raw/total*100).toFixed(0):0; return c.label+': '+fmtR(c.raw)+' ('+pct+'%)'; }}},
+        centerText:{display:true,label:'Total do mês',value:fmtR(total)},
         datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#0d1117', font:{size:11,weight:'700'},
           formatter:v=>Math.round(v/total*100)+'%' } } }
   });
+  renderPillLegend(canvasId+'-legend', ['Obrigações Fixas','Gastos Livres','Sobra'].map((l,i)=>({label:l, color:cores[i], value:[obr,livre,sobra][i]})));
 }
 
 function renderHistBarChart(canvasId, meses){
