@@ -280,9 +280,11 @@ td{padding:10px 14px;font-size:13px;}
 /* LEGENDA EM PILL (donuts) */
 .pill-legend{display:flex;justify-content:center;flex-wrap:wrap;gap:0;margin-top:14px;}
 .pill-legend-inner{display:flex;flex-wrap:wrap;gap:18px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:8px 20px;}
-.pill-legend-item{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;white-space:nowrap;}
+.pill-legend-item{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;white-space:nowrap;font-family:'Inter',sans-serif;letter-spacing:.1px;}
+.pill-legend-icon-badge{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pill-legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-.pill-legend-pct{color:var(--muted);font-weight:500;}
+.pill-legend-label{color:var(--text);}
+.pill-legend-pct{color:var(--muted);font-weight:700;font-family:var(--mono);font-size:12px;}
 
 /* TOOLBAR */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
@@ -1584,7 +1586,8 @@ function renderFaturaCategoriaChart(canvasId, itens, restante){
   const labels = catKeys.map(k=>catInfo(k).l);
   const data = catKeys.map(k=>porCat[k]);
   const colors = catKeys.map(k=>CAT_COLORS[k]||'#6b7280');
-  if(restante > 0.005){ labels.push('Não detalhado'); data.push(restante); colors.push('#3f4a63'); }
+  const icones = catKeys.map(k=>catInfo(k).i);
+  if(restante > 0.005){ labels.push('Não detalhado'); data.push(restante); colors.push('#3f4a63'); icones.push('help-circle'); }
   const total = data.reduce((s,v)=>s+v,0);
   if(total<=0.005){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:14px"><p style="font-size:11px;color:var(--muted)">Sem itens pra mostrar</p></div>`; const lg=document.getElementById(canvasId+'-legend'); if(lg) lg.innerHTML=''; return; }
   charts[canvasId] = new Chart(ctx, {
@@ -1592,14 +1595,14 @@ function renderFaturaCategoriaChart(canvasId, itens, restante){
     data:{ labels, datasets:[{data, backgroundColor:colors, borderColor:'#1c2333', borderWidth:2}] },
     options:{ ...CHART_DEFAULTS, cutout:'62%', maintainAspectRatio:false,
       plugins:{ legend:{display:false},
-        tooltip:{callbacks:{label:c=>c.label+': '+fmtR(c.raw)}},
+        tooltip:{enabled:false},
         centerText:{display:true,value:fmtR(total)},
         datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#fff', font:{size:12,weight:'700',family:'Inter,sans-serif'},
           textStrokeColor:'rgba(0,0,0,.55)', textStrokeWidth:3, textShadowBlur:4, textShadowColor:'rgba(0,0,0,.6)',
           formatter:v=>Math.round(v/total*100)+'%' } } }
   });
   const legendId = canvasId+'-legend';
-  if(document.getElementById(legendId)) renderPillLegend(legendId, labels.map((l,i)=>({label:l, color:colors[i], value:data[i]})));
+  if(document.getElementById(legendId)) renderPillLegend(legendId, labels.map((l,i)=>({label:l, color:colors[i], value:data[i], icon:icones[i]})));
 }
 
 function fmtMesRef(mesRef){ const [a,m]=mesRef.split('-').map(Number); return MESES[m-1].slice(0,3)+'/'+a; }
@@ -2037,8 +2040,13 @@ function renderPillLegend(containerId, items){
   if(!el) return;
   const total = items.reduce((s,i)=>s+i.value,0);
   el.innerHTML = `<div class="pill-legend-inner">${items.map(i=>
-    `<span class="pill-legend-item"><span class="pill-legend-dot" style="background:${i.color}"></span>${i.label} <span class="pill-legend-pct">${total>0?Math.round(i.value/total*100):0}%</span></span>`
+    `<span class="pill-legend-item">
+      <span class="pill-legend-icon-badge" style="background:${i.color}22;color:${i.color}">${i.icon?ic(i.icon,13):`<span class="pill-legend-dot" style="background:${i.color}"></span>`}</span>
+      <span class="pill-legend-label">${i.label}</span>
+      <span class="pill-legend-pct">${total>0?Math.round(i.value/total*100):0}%</span>
+    </span>`
   ).join('')}</div>`;
+  refreshIcons();
 }
 
 function renderDonutChart(canvasId, txList){
@@ -2058,12 +2066,12 @@ function renderDonutChart(canvasId, txList){
     data:{ labels: labels.map(l=>catInfo(l).l), datasets:[{data, backgroundColor:colors, borderColor:'#1c2333', borderWidth:2}] },
     options:{ ...CHART_DEFAULTS, cutout:'65%', maintainAspectRatio:false,
       plugins:{ legend:{display:false},
-        tooltip:{callbacks:{label:c=>c.label+': '+fmtR(c.raw)}},
+        tooltip:{enabled:false},
         centerText:{display:true,label:'Total de gastos',value:fmtR(total)},
         datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#fff', font:{size:12,weight:'700',family:'Inter,sans-serif'}, textStrokeColor:'rgba(0,0,0,.55)', textStrokeWidth:3,
           formatter:v=>Math.round(v/total*100)+'%' } } }
   });
-  renderPillLegend(canvasId+'-legend', labels.map((l,i)=>({label:catInfo(l).l, color:colors[i], value:data[i]})));
+  renderPillLegend(canvasId+'-legend', labels.map((l,i)=>({label:catInfo(l).l, color:colors[i], value:data[i], icon:catInfo(l).i})));
 }
 
 function renderPieComposicao(canvasId, obr, livre, sobra){
@@ -2073,18 +2081,19 @@ function renderPieComposicao(canvasId, obr, livre, sobra){
   const total = obr+livre+sobra;
   if(total<=0){ ctx.parentElement.querySelector('canvas')?.remove(); if(legendEl) legendEl.innerHTML=''; return; }
   const cores = ['#f05252','#f0a832','#22d3a5'];
+  const icones = ['lock','shopping-bag','piggy-bank'];
   charts[canvasId] = new Chart(ctx, {
     type:'doughnut',
     data:{ labels:['Obrigações Fixas','Gastos Livres','Sobra'],
       datasets:[{ data:[obr,livre,sobra], backgroundColor:cores, borderColor:'#1c2333', borderWidth:2 }] },
     options:{ ...CHART_DEFAULTS, cutout:'60%', maintainAspectRatio:false,
       plugins:{ legend:{display:false},
-        tooltip:{callbacks:{label:c=>{ const pct=total>0?(c.raw/total*100).toFixed(0):0; return c.label+': '+fmtR(c.raw)+' ('+pct+'%)'; }}},
+        tooltip:{enabled:false},
         centerText:{display:true,label:'Total do mês',value:fmtR(total)},
         datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#fff', font:{size:12,weight:'700',family:'Inter,sans-serif'}, textStrokeColor:'rgba(0,0,0,.55)', textStrokeWidth:3,
           formatter:v=>Math.round(v/total*100)+'%' } } }
   });
-  renderPillLegend(canvasId+'-legend', ['Obrigações Fixas','Gastos Livres','Sobra'].map((l,i)=>({label:l, color:cores[i], value:[obr,livre,sobra][i]})));
+  renderPillLegend(canvasId+'-legend', ['Obrigações Fixas','Gastos Livres','Sobra'].map((l,i)=>({label:l, color:cores[i], value:[obr,livre,sobra][i], icon:icones[i]})));
 }
 
 function renderHistBarChart(canvasId, meses){
