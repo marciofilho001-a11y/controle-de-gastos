@@ -234,6 +234,11 @@ td{padding:10px 14px;font-size:13px;}
 .obr-timeline-status{flex:1;color:var(--muted);font-size:12px;}
 .obr-timeline-valor{font-family:var(--mono);font-weight:600;flex-shrink:0;}
 .obr-timeline-end{display:flex;align-items:center;gap:8px;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:12px;font-weight:600;color:var(--accent2);}
+.fatura-itens-expand{padding:6px 0 14px 26px;display:flex;flex-direction:column;gap:7px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);}
+.fatura-item-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);}
+.fatura-item-restante{color:var(--text);font-style:italic;}
+.fatura-item-form{display:flex;gap:6px;margin-top:2px;}
+.fatura-item-form .form-input{padding:6px 10px;font-size:12px;height:32px;}
 
 /* SKELETON DE CARREGAMENTO */
 @keyframes skel-shimmer{0%{background-position:-200px 0;}100%{background-position:calc(200px + 100%) 0;}}
@@ -773,7 +778,7 @@ function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
 // ══════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════
-let obrigacoes=[], transacoes=[], investimentos=[], config={}, cartoes=[], compras=[], saldosConta=[];
+let obrigacoes=[], transacoes=[], investimentos=[], config={}, cartoes=[], compras=[], saldosConta=[], faturaItens=[];
 let mesAtual = new Date().toISOString().slice(0,7); // 'YYYY-MM'
 let charts = {};
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -782,7 +787,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 //  INIT
 // ══════════════════════════════════════════════
 (async function init(){
-  await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras(), loadSaldosConta()]);
+  await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras(), loadSaldosConta(), loadFaturaItens()]);
   document.getElementById('cfg-renda').value = config.renda_projetada || '';
   document.getElementById('cfg-pct').value = config.pct_investimento || 20;
   document.getElementById('tx-data').value = new Date().toISOString().slice(0,10);
@@ -800,6 +805,7 @@ async function loadInvestimentos(){ const {data} = await sb.from('fin_investimen
 async function loadCartoes(){ const {data} = await sb.from('fin_cartoes').select('*').order('criado_em'); cartoes = data||[]; }
 async function loadCompras(){ const {data} = await sb.from('fin_cartao_compras').select('*').order('criado_em'); compras = data||[]; }
 async function loadSaldosConta(){ const {data} = await sb.from('fin_saldo_conta').select('*').order('mes_ref'); saldosConta = data||[]; }
+async function loadFaturaItens(){ const {data} = await sb.from('fin_fatura_itens').select('*').order('criado_em'); faturaItens = data||[]; }
 async function loadConfig(){
   const {data} = await sb.from('fin_config').select('*');
   config = {};
@@ -1323,11 +1329,30 @@ function renderCartoesTab(){
 
 // Linha do tempo mês a mês de UM cartão: fatura de cada mês (soma das transações
 // vinculadas a esse cartao_id) e quantos lançamentos a compõem.
+let cartaoDetalheAtual = null;
+let faturaExpandidas = new Set();
+
 function abrirDetalheCartao(id){
   const c = cartoes.find(x=>x.id===id);
   if(!c) return;
-  const hoje = hojeRef();
+  cartaoDetalheAtual = id;
+  faturaExpandidas = new Set();
   const band = bandeiraDoCartao(c.nome);
+  document.getElementById('cartd-titulo').innerHTML = `<span style="color:${band.cor}">${ic(band.icone,16)}</span> ${c.nome}`;
+  document.getElementById('cartd-meta').textContent = `Vencimento dia ${c.dia_vencimento||'—'}` + (c.limite ? ` · limite ${fmtR(c.limite)}` : '');
+  renderCartaoTimeline();
+  openModal('modal-cartao-detalhe');
+  refreshIcons();
+}
+
+// Clique numa fatura (mês com valor>0) expande e mostra o "extrato": itens que o
+// usuário detalhou manualmente (fin_fatura_itens) + o que sobrou sem detalhar,
+// somando sempre pro valor total da fatura daquele mês.
+function renderCartaoTimeline(){
+  const id = cartaoDetalheAtual;
+  const c = cartoes.find(x=>x.id===id);
+  if(!c) return;
+  const hoje = hojeRef();
   const mesesComFatura = [...new Set(transacoes.filter(t=>t.cartao_id===id).map(t=>t.mes_ref))].sort();
   const mesesComCompra = [...new Set(compras.filter(cp=>cp.cartao_id===id).map(cp=>cp.data_inicio.slice(0,7)))];
   const todos = [...new Set([...mesesComFatura, ...mesesComCompra, hoje])].sort();
@@ -1348,25 +1373,75 @@ function abrirDetalheCartao(id){
   const totalPeriodo = comFatura.reduce((s,l)=>s+l.valor,0);
   const mediaMensal = comFatura.length ? totalPeriodo/comFatura.length : 0;
 
-  document.getElementById('cartd-titulo').innerHTML = `<span style="color:${band.cor}">${ic(band.icone,16)}</span> ${c.nome}`;
-  document.getElementById('cartd-meta').textContent = `Vencimento dia ${c.dia_vencimento||'—'}` + (c.limite ? ` · limite ${fmtR(c.limite)}` : '');
-
   document.getElementById('cartd-stats').innerHTML = `
     <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Total no período</div><div class="obr-detalhe-stat-value">${fmtR(totalPeriodo)}</div></div>
     <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Faturas registradas</div><div class="obr-detalhe-stat-value">${comFatura.length}</div></div>
     <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Média mensal</div><div class="obr-detalhe-stat-value">${fmtR(mediaMensal)}</div></div>`;
 
-  document.getElementById('cartd-timeline').innerHTML = linhas.map(l=>`
-    <div class="obr-timeline-item ${l.status}">
+  document.getElementById('cartd-timeline').innerHTML = linhas.map(l=>{
+    const clicavel = l.valor>0;
+    const expandido = clicavel && faturaExpandidas.has(l.mesRef);
+    const linhaPrincipal = `<div class="obr-timeline-item ${l.status}" ${clicavel?`onclick="toggleFaturaExpand('${l.mesRef}')" style="cursor:pointer"`:''}>
       <div class="obr-timeline-dot"></div>
       <div class="obr-timeline-mes">${fmtMesRef(l.mesRef)}</div>
       <div class="obr-timeline-status">${l.statusTxt}</div>
       <div class="obr-timeline-valor">${fmtR(l.valor)}</div>
-    </div>`).join('');
+      ${clicavel?`<i data-lucide="${expandido?'chevron-up':'chevron-down'}" class="lic" style="width:14px;height:14px;color:var(--muted);margin-left:2px"></i>`:'<span style="width:14px"></span>'}
+    </div>`;
+    if(!expandido) return linhaPrincipal;
+
+    const itens = faturaItens.filter(fi=>fi.cartao_id===id && fi.mes_ref===l.mesRef);
+    const somaItens = itens.reduce((s,i)=>s+Number(i.valor),0);
+    const restante = l.valor - somaItens;
+    const listaItens = itens.map(i=>`
+      <div class="fatura-item-row">
+        <span>${i.descricao}</span>
+        <span style="display:flex;align-items:center;gap:8px">${fmtR(i.valor)} <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deletarFaturaItem(${i.id})">${ic('trash-2',12)}</button></span>
+      </div>`).join('');
+    const restanteHtml = restante > 0.005
+      ? `<div class="fatura-item-row fatura-item-restante"><span>Não detalhado</span><span>${fmtR(restante)}</span></div>`
+      : (restante < -0.005 ? `<div class="fatura-item-row" style="color:var(--danger)"><span>${ic('alert-triangle',12)} itens somam mais que a fatura</span><span>${fmtR(somaItens)}</span></div>` : '');
+
+    return linhaPrincipal + `<div class="fatura-itens-expand" onclick="event.stopPropagation()">
+      ${listaItens || '<div class="fatura-item-row" style="font-style:italic">Nenhum item detalhado ainda</div>'}
+      ${restanteHtml}
+      <div class="fatura-item-form">
+        <input type="text" placeholder="Descrição (ex: iFood)" id="fi-desc-${l.mesRef}" class="form-input">
+        <input type="number" step="0.01" placeholder="Valor" id="fi-valor-${l.mesRef}" class="form-input" style="max-width:100px">
+        <button class="btn btn-secondary btn-sm" onclick="adicionarFaturaItem('${l.mesRef}')">${ic('plus',13)} Add</button>
+      </div>
+    </div>`;
+  }).join('');
 
   openModal('modal-cartao-detalhe');
   refreshIcons();
 }
+
+function toggleFaturaExpand(mesRef){
+  if(faturaExpandidas.has(mesRef)) faturaExpandidas.delete(mesRef); else faturaExpandidas.add(mesRef);
+  renderCartaoTimeline();
+}
+
+async function adicionarFaturaItem(mesRef){
+  const descInput = document.getElementById(`fi-desc-${mesRef}`);
+  const valorInput = document.getElementById(`fi-valor-${mesRef}`);
+  const descricao = descInput.value.trim();
+  const valor = parseFloat(valorInput.value);
+  if(!descricao || isNaN(valor) || valor<=0){ toast('Preenche descrição e valor do item','err'); return; }
+  await sb.from('fin_fatura_itens').insert({cartao_id:cartaoDetalheAtual, mes_ref:mesRef, descricao, valor});
+  toast('Item adicionado!');
+  await loadFaturaItens();
+  renderCartaoTimeline();
+}
+
+async function deletarFaturaItem(id){
+  if(!(await confirmarAcao('Remover este item detalhado da fatura?'))) return;
+  await sb.from('fin_fatura_itens').delete().eq('id', id);
+  toast('Item removido');
+  await loadFaturaItens();
+  renderCartaoTimeline();
+}
+
 function fmtMesRef(mesRef){ const [a,m]=mesRef.split('-').map(Number); return MESES[m-1].slice(0,3)+'/'+a; }
 
 function abrirModalCartao(){
