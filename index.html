@@ -69,6 +69,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .stat-card--orange{background:linear-gradient(120deg,rgba(240,168,50,.12),var(--card) 60%);}
 .stat-card--blue::before{background:linear-gradient(180deg,#6fb3ff,var(--accent2));}
 .stat-card--blue{background:linear-gradient(120deg,rgba(61,142,240,.12),var(--card) 60%);}
+.stat-card--purple::before{background:linear-gradient(180deg,#c4a3ff,#a78bfa);}
+.stat-card--purple{background:linear-gradient(120deg,rgba(167,139,250,.12),var(--card) 60%);}
+.stat-card--purple .stat-icon-badge{background:linear-gradient(135deg,#d8c4ff,#a78bfa);}
+.stat-card--bold.stat-card--teal{background:linear-gradient(120deg,rgba(34,211,165,.22),var(--card) 75%);}
+.stat-card--bold.stat-card--red{background:linear-gradient(120deg,rgba(240,82,82,.22),var(--card) 75%);}
+.stat-card--bold.stat-card--orange{background:linear-gradient(120deg,rgba(240,168,50,.22),var(--card) 75%);}
+.stat-card--bold.stat-card--blue{background:linear-gradient(120deg,rgba(61,142,240,.22),var(--card) 75%);}
+.stat-card--bold.stat-card--purple{background:linear-gradient(120deg,rgba(167,139,250,.22),var(--card) 75%);}
 .stat-card-top{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
 .stat-icon-badge{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#0d1117;}
 .stat-card--teal .stat-icon-badge{background:linear-gradient(135deg,#1de9c4,var(--accent-active));}
@@ -243,6 +251,17 @@ td{padding:10px 14px;font-size:13px;}
 .fatura-item-form{display:flex;gap:6px;margin-top:2px;}
 .fatura-item-form .form-input{padding:6px 10px;font-size:12px;height:32px;}
 .fatura-item-cat-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:6px;padding:4px 8px;flex-shrink:0;max-width:140px;}
+.cartd-main-grid{display:grid;grid-template-columns:1fr 230px;gap:20px;align-items:start;margin-top:16px;}
+.cartd-mes-sidebar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;position:sticky;top:0;}
+.cartd-mes-sidebar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:10px;}
+.cartd-mes-list{display:flex;flex-direction:column;gap:4px;max-height:520px;overflow-y:auto;}
+.cartd-mes-row{display:flex;flex-direction:column;gap:2px;padding:9px 10px;border-radius:9px;cursor:pointer;border:1px solid transparent;}
+.cartd-mes-row:hover{background:var(--card);}
+.cartd-mes-row.selecionada{background:var(--card);border-color:var(--accent);}
+.cartd-mes-row-top{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;}
+.cartd-mes-row-valor{font-family:var(--mono);font-size:13px;font-weight:700;margin-left:15px;}
+.cartd-mes-row-sub{font-size:10px;color:var(--muted);margin-left:15px;}
+.cartd-mes-content{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;min-height:340px;}
 
 /* SKELETON DE CARREGAMENTO */
 @keyframes skel-shimmer{0%{background-position:-200px 0;}100%{background-position:calc(200px + 100%) 0;}}
@@ -331,6 +350,9 @@ td{padding:10px 14px;font-size:13px;}
   .modal-lg{max-width:calc(100vw - 32px);}
   .modal-xl{width:calc(100vw - 24px);max-height:94vh;}
   .fatura-expand-grid{grid-template-columns:1fr!important;}
+  .cartd-main-grid{grid-template-columns:1fr!important;}
+  .cartd-mes-sidebar{position:static;}
+  .cartd-mes-list{max-height:220px;}
   /* tabelas viram cards empilhados — cada <td> exibe seu data-label como rótulo */
   .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap th, .table-wrap tr{display:block;}
   .table-wrap thead{position:absolute;left:-9999px;top:-9999px;}
@@ -665,8 +687,13 @@ td{padding:10px 14px;font-size:13px;}
         <div class="pill-legend" id="cartd-agg-chart-legend"></div>
       </div>
     </div>
-    <div class="card-title" style="margin:18px 0 10px"><i data-lucide="calendar-range" class="lic" style="width:14px;height:14px"></i> Extrato mês a mês</div>
-    <div class="obr-timeline" id="cartd-timeline" style="max-height:none"></div>
+    <div class="cartd-main-grid">
+      <div class="cartd-mes-content" id="cartd-mes-content"></div>
+      <div class="cartd-mes-sidebar">
+        <div class="cartd-mes-sidebar-title"><i data-lucide="calendar-range" class="lic" style="width:13px;height:13px;vertical-align:-2px"></i> Extrato mês a mês</div>
+        <div class="cartd-mes-list" id="cartd-mes-list"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1347,22 +1374,143 @@ function renderCartoesTab(){
 // Linha do tempo mês a mês de UM cartão: fatura de cada mês (soma das transações
 // vinculadas a esse cartao_id) e quantos lançamentos a compõem.
 let cartaoDetalheAtual = null;
-let faturaExpandidas = new Set();
+let mesSelecionado = null;
 let cartaoAggVisivel = false;
 
 function abrirDetalheCartao(id){
   const c = cartoes.find(x=>x.id===id);
   if(!c) return;
   cartaoDetalheAtual = id;
-  faturaExpandidas = new Set();
   cartaoAggVisivel = false;
   document.getElementById('cartd-agg-section').style.display = 'none';
   document.getElementById('cartd-agg-toggle-btn').innerHTML = `${ic('chart-pie',14)} Ver gráfico do período todo`;
   const band = bandeiraDoCartao(c.nome);
   document.getElementById('cartd-titulo').innerHTML = `<span style="color:${band.cor}">${ic(band.icone,16)}</span> ${c.nome}`;
-  document.getElementById('cartd-meta').textContent = `Vencimento dia ${c.dia_vencimento||'—'}` + (c.limite ? ` · limite ${fmtR(c.limite)}` : '');
-  renderCartaoTimeline();
+  document.getElementById('cartd-meta').innerHTML = `${ic('clock',12)} Vencimento dia ${c.dia_vencimento||'—'}` + (c.limite ? ` · limite ${fmtR(c.limite)}` : '');
+
+  const meses = mesesDoCartao(id);
+  const comFatura = meses.filter(m=>faturaDoMes(id,m)>0);
+  mesSelecionado = comFatura.length ? comFatura[comFatura.length-1] : (meses[meses.length-1]||hojeRef());
+
+  renderCartaoStats();
+  renderCartaoMesLista();
+  renderCartaoMesContent();
   openModal('modal-cartao-detalhe');
+  refreshIcons();
+}
+
+function mesesDoCartao(id){
+  const hoje = hojeRef();
+  const mesesComFatura = [...new Set(transacoes.filter(t=>t.cartao_id===id).map(t=>t.mes_ref))].sort();
+  const mesesComCompra = [...new Set(compras.filter(cp=>cp.cartao_id===id).map(cp=>cp.data_inicio.slice(0,7)))];
+  const todos = [...new Set([...mesesComFatura, ...mesesComCompra, hoje])].sort();
+  const mesIni = todos[0] || hoje;
+  const meses = [];
+  for(let cursor=mesIni; cursor<=hoje; cursor=addMonths(cursor,1)) meses.push(cursor);
+  return meses;
+}
+
+function renderCartaoStats(){
+  const id = cartaoDetalheAtual;
+  const c = cartoes.find(x=>x.id===id);
+  const band = bandeiraDoCartao(c.nome);
+  const meses = mesesDoCartao(id);
+  const comFatura = meses.map(m=>({mesRef:m, valor:faturaDoMes(id,m)})).filter(l=>l.valor>0);
+  const totalPeriodo = comFatura.reduce((s,l)=>s+l.valor,0);
+  const mediaMensal = comFatura.length ? totalPeriodo/comFatura.length : 0;
+  document.getElementById('cartd-stats').innerHTML = `
+    <div class="stat-card stat-card--bold" style="border-left:4px solid ${band.cor};background:linear-gradient(120deg,${band.cor}2e,var(--card) 70%)">
+      <div class="stat-card-top"><div class="stat-icon-badge" style="background:linear-gradient(135deg,${band.cor}dd,${band.cor})">${ic('credit-card',17)}</div><div class="stat-card-label">Total no período</div></div>
+      <div class="stat-value">${fmtR(totalPeriodo)}</div>
+    </div>
+    <div class="stat-card stat-card--bold stat-card--blue">
+      <div class="stat-card-top"><div class="stat-icon-badge">${ic('receipt',17)}</div><div class="stat-card-label">Faturas registradas</div></div>
+      <div class="stat-value">${comFatura.length}</div>
+    </div>
+    <div class="stat-card stat-card--bold stat-card--teal">
+      <div class="stat-card-top"><div class="stat-icon-badge">${ic('wallet',17)}</div><div class="stat-card-label">Média mensal</div></div>
+      <div class="stat-value">${fmtR(mediaMensal)}</div>
+    </div>`;
+  refreshIcons();
+}
+
+function renderCartaoMesLista(){
+  const id = cartaoDetalheAtual;
+  const hoje = hojeRef();
+  const meses = mesesDoCartao(id);
+  document.getElementById('cartd-mes-list').innerHTML = [...meses].reverse().map(mesRef=>{
+    const valor = faturaDoMes(id, mesRef);
+    const selecionada = mesRef===mesSelecionado;
+    let sub;
+    if(valor>0) sub = `${transacoes.filter(t=>t.cartao_id===id&&t.mes_ref===mesRef).length} lançamento(s)`;
+    else if(mesRef===hoje) sub = 'mês atual · sem fatura';
+    else sub = 'sem fatura';
+    return `<div class="cartd-mes-row ${selecionada?'selecionada':''}" onclick="selecionarMesFatura('${mesRef}')">
+      <div class="cartd-mes-row-top"><span style="width:7px;height:7px;border-radius:50%;background:${valor>0?'var(--accent)':'var(--muted)'};flex-shrink:0;display:inline-block"></span>${fmtMesRef(mesRef)}</div>
+      <div class="cartd-mes-row-valor" style="color:${valor>0?'var(--text)':'var(--muted)'}">${fmtR(valor)}</div>
+      <div class="cartd-mes-row-sub">${sub}</div>
+    </div>`;
+  }).join('');
+}
+
+function selecionarMesFatura(mesRef){
+  mesSelecionado = mesRef;
+  renderCartaoMesLista();
+  renderCartaoMesContent();
+}
+
+// Conteúdo do mês selecionado: gráfico de categoria + itens detalhados + form pra
+// adicionar mais um. Só existe UM mês selecionado por vez (troca ao clicar na lista).
+function renderCartaoMesContent(){
+  const id = cartaoDetalheAtual;
+  const mesRef = mesSelecionado;
+  const el = document.getElementById('cartd-mes-content');
+  if(!mesRef){ el.innerHTML = `<div class="empty" style="padding:40px"><p>Selecione um mês ao lado</p></div>`; return; }
+  const valor = faturaDoMes(id, mesRef);
+  const hoje = hojeRef();
+
+  if(valor<=0){
+    const msg = mesRef===hoje ? 'Mês atual — ainda sem fatura lançada.' : 'Sem fatura registrada nesse mês.';
+    el.innerHTML = `<div class="card-title" style="margin-bottom:4px">${fmtMesRef(mesRef)}</div><div class="empty" style="padding:60px 20px"><div class="empty-icon">${ic('inbox',30)}</div><p>${msg}</p></div>`;
+    refreshIcons();
+    return;
+  }
+
+  const itens = faturaItens.filter(fi=>fi.cartao_id===id && fi.mes_ref===mesRef);
+  const somaItens = itens.reduce((s,i)=>s+Number(i.valor),0);
+  const restante = valor - somaItens;
+  const catOptions = cats=>DESPESA_CATS.map(dc=>`<option value="${dc.v}" ${dc.v===cats?'selected':''}>${dc.l}</option>`).join('');
+  const listaItens = itens.map(i=>`
+    <div class="fatura-item-row">
+      <span style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.descricao}</span>
+        <select class="fatura-item-cat-select" onchange="atualizarFaturaItemCategoria(${i.id}, this.value)">${catOptions(i.categoria)}</select>
+      </span>
+      <span style="display:flex;align-items:center;gap:10px;flex-shrink:0">${fmtR(i.valor)} <button class="btn btn-danger btn-sm btn-icon" onclick="deletarFaturaItem(${i.id})">${ic('trash-2',13)}</button></span>
+    </div>`).join('');
+  const restanteHtml = restante > 0.005
+    ? `<div class="fatura-item-row fatura-item-restante"><span>Não detalhado</span><span>${fmtR(restante)}</span></div>`
+    : (restante < -0.005 ? `<div class="fatura-item-row" style="color:var(--danger)"><span>${ic('alert-triangle',13)} itens somam mais que a fatura</span><span>${fmtR(somaItens)}</span></div>` : '');
+
+  el.innerHTML = `
+    <div class="card-title" style="margin-bottom:14px">${fmtMesRef(mesRef)} <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">· ${fmtR(valor)}</span></div>
+    <div class="fatura-expand-grid">
+      <div class="fatura-chart-panel">
+        <div class="chart-canvas-wrap" style="height:200px"><canvas id="fatura-chart-mes"></canvas></div>
+        <div class="pill-legend" id="fatura-chart-mes-legend"></div>
+      </div>
+      <div>
+        ${listaItens || '<div class="fatura-item-row" style="font-style:italic">Nenhum item detalhado ainda</div>'}
+        ${restanteHtml}
+        <div class="fatura-item-form">
+          <input type="text" placeholder="Descrição (ex: iFood)" id="fi-desc-atual" class="form-input">
+          <select id="fi-cat-atual" class="form-select" style="max-width:150px">${catOptions('outro')}</select>
+          <input type="number" step="0.01" placeholder="Valor" id="fi-valor-atual" class="form-input" style="max-width:100px">
+          <button class="btn btn-secondary btn-sm" onclick="adicionarFaturaItem('${mesRef}')">${ic('plus',13)} Add</button>
+        </div>
+      </div>
+    </div>`;
+  renderFaturaCategoriaChart('fatura-chart-mes', itens, Math.max(0,restante));
   refreshIcons();
 }
 
@@ -1388,104 +1536,39 @@ function renderCartaoAggChart(){
   renderFaturaCategoriaChart('cartd-agg-chart', itensDoCartao, Math.max(0, totalPeriodo - somaItensCartao));
 }
 
-// Clique numa fatura (mês com valor>0) expande e mostra o "extrato": itens que o
-// usuário detalhou manualmente (fin_fatura_itens) + o que sobrou sem detalhar,
-// somando sempre pro valor total da fatura daquele mês.
-function renderCartaoTimeline(){
-  const id = cartaoDetalheAtual;
-  const c = cartoes.find(x=>x.id===id);
-  if(!c) return;
-  const hoje = hojeRef();
-  const mesesComFatura = [...new Set(transacoes.filter(t=>t.cartao_id===id).map(t=>t.mes_ref))].sort();
-  const mesesComCompra = [...new Set(compras.filter(cp=>cp.cartao_id===id).map(cp=>cp.data_inicio.slice(0,7)))];
-  const todos = [...new Set([...mesesComFatura, ...mesesComCompra, hoje])].sort();
-  const mesIni = todos[0] || hoje;
-  const meses = [];
-  for(let cursor=mesIni; cursor<=hoje; cursor=addMonths(cursor,1)) meses.push(cursor);
-
-  const linhas = meses.map(mesRef=>{
-    const valor = faturaDoMes(id, mesRef);
-    let status, statusTxt;
-    if(valor>0){ status='pago'; statusTxt = `${transacoes.filter(t=>t.cartao_id===id&&t.mes_ref===mesRef).length} lançamento(s)`; }
-    else if(mesRef===hoje){ status='previsto'; statusTxt = 'mês atual · sem fatura ainda'; }
-    else { status='previsto'; statusTxt = 'sem fatura no mês'; }
-    return { mesRef, valor, status, statusTxt };
-  });
-
-  const comFatura = linhas.filter(l=>l.valor>0);
-  const totalPeriodo = comFatura.reduce((s,l)=>s+l.valor,0);
-  const mediaMensal = comFatura.length ? totalPeriodo/comFatura.length : 0;
-
-  document.getElementById('cartd-stats').innerHTML = `
-    <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Total no período</div><div class="obr-detalhe-stat-value">${fmtR(totalPeriodo)}</div></div>
-    <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Faturas registradas</div><div class="obr-detalhe-stat-value">${comFatura.length}</div></div>
-    <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Média mensal</div><div class="obr-detalhe-stat-value">${fmtR(mediaMensal)}</div></div>`;
-
+async function adicionarFaturaItem(mesRef){
+  const descInput = document.getElementById('fi-desc-atual');
+  const valorInput = document.getElementById('fi-valor-atual');
+  const catInput = document.getElementById('fi-cat-atual');
+  const descricao = descInput.value.trim();
+  const valor = parseFloat(valorInput.value);
+  const categoria = catInput.value;
+  if(!descricao || isNaN(valor) || valor<=0){ toast('Preenche descrição e valor do item','err'); return; }
+  await sb.from('fin_fatura_itens').insert({cartao_id:cartaoDetalheAtual, mes_ref:mesRef, descricao, valor, categoria});
+  toast('Item adicionado!');
+  await loadFaturaItens();
+  renderCartaoStats();
+  renderCartaoMesLista();
+  renderCartaoMesContent();
   if(cartaoAggVisivel) renderCartaoAggChart();
+}
 
-  document.getElementById('cartd-timeline').innerHTML = linhas.map(l=>{
-    const clicavel = l.valor>0;
-    const expandido = clicavel && faturaExpandidas.has(l.mesRef);
-    const linhaPrincipal = `<div class="obr-timeline-item ${l.status}" ${clicavel?`onclick="toggleFaturaExpand('${l.mesRef}')" style="cursor:pointer"`:''}>
-      <div class="obr-timeline-dot"></div>
-      <div class="obr-timeline-mes">${fmtMesRef(l.mesRef)}</div>
-      <div class="obr-timeline-status">${l.statusTxt}</div>
-      <div class="obr-timeline-valor">${fmtR(l.valor)}</div>
-      ${clicavel?`<i data-lucide="${expandido?'chevron-up':'chevron-down'}" class="lic" style="width:14px;height:14px;color:var(--muted);margin-left:2px"></i>`:'<span style="width:14px"></span>'}
-    </div>`;
-    if(!expandido) return linhaPrincipal;
+async function atualizarFaturaItemCategoria(id, categoria){
+  await sb.from('fin_fatura_itens').update({categoria}).eq('id', id);
+  await loadFaturaItens();
+  renderCartaoMesContent();
+  if(cartaoAggVisivel) renderCartaoAggChart();
+}
 
-    const itens = faturaItens.filter(fi=>fi.cartao_id===id && fi.mes_ref===l.mesRef);
-    const somaItens = itens.reduce((s,i)=>s+Number(i.valor),0);
-    const restante = l.valor - somaItens;
-    const catOptions = cats=>DESPESA_CATS.map(dc=>`<option value="${dc.v}" ${dc.v===cats?'selected':''}>${dc.l}</option>`).join('');
-    const listaItens = itens.map(i=>`
-      <div class="fatura-item-row">
-        <span style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.descricao}</span>
-          <select class="fatura-item-cat-select" onchange="atualizarFaturaItemCategoria(${i.id}, this.value)">${catOptions(i.categoria)}</select>
-        </span>
-        <span style="display:flex;align-items:center;gap:10px;flex-shrink:0">${fmtR(i.valor)} <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deletarFaturaItem(${i.id})">${ic('trash-2',13)}</button></span>
-      </div>`).join('');
-    const restanteHtml = restante > 0.005
-      ? `<div class="fatura-item-row fatura-item-restante"><span>Não detalhado</span><span>${fmtR(restante)}</span></div>`
-      : (restante < -0.005 ? `<div class="fatura-item-row" style="color:var(--danger)"><span>${ic('alert-triangle',13)} itens somam mais que a fatura</span><span>${fmtR(somaItens)}</span></div>` : '');
-
-    const chartId = `fatura-chart-${l.mesRef}`;
-    const listaEForm = `
-      ${listaItens || '<div class="fatura-item-row" style="font-style:italic">Nenhum item detalhado ainda</div>'}
-      ${restanteHtml}
-      <div class="fatura-item-form">
-        <input type="text" placeholder="Descrição (ex: iFood)" id="fi-desc-${l.mesRef}" class="form-input">
-        <select id="fi-cat-${l.mesRef}" class="form-select" style="max-width:150px">${catOptions('outro')}</select>
-        <input type="number" step="0.01" placeholder="Valor" id="fi-valor-${l.mesRef}" class="form-input" style="max-width:100px">
-        <button class="btn btn-secondary btn-sm" onclick="adicionarFaturaItem('${l.mesRef}')">${ic('plus',13)} Add</button>
-      </div>`;
-
-    const conteudo = itens.length
-      ? `<div class="fatura-expand-grid">
-          <div class="fatura-chart-panel">
-            <div class="chart-canvas-wrap" style="height:190px"><canvas id="${chartId}"></canvas></div>
-            <div class="pill-legend" id="${chartId}-legend"></div>
-          </div>
-          <div>${listaEForm}</div>
-        </div>`
-      : listaEForm;
-
-    return linhaPrincipal + `<div class="fatura-itens-expand" onclick="event.stopPropagation()">${conteudo}</div>`;
-  }).join('');
-
-  // os mini-gráficos por mês só existem no DOM depois do innerHTML acima, então renderizam aqui
-  linhas.forEach(l=>{
-    if(!faturaExpandidas.has(l.mesRef)) return;
-    const itens = faturaItens.filter(fi=>fi.cartao_id===id && fi.mes_ref===l.mesRef);
-    if(!itens.length) return;
-    const somaItens = itens.reduce((s,i)=>s+Number(i.valor),0);
-    renderFaturaCategoriaChart(`fatura-chart-${l.mesRef}`, itens, Math.max(0, l.valor - somaItens));
-  });
-
-  openModal('modal-cartao-detalhe');
-  refreshIcons();
+async function deletarFaturaItem(id){
+  if(!(await confirmarAcao('Remover este item detalhado da fatura?'))) return;
+  await sb.from('fin_fatura_itens').delete().eq('id', id);
+  toast('Item removido');
+  await loadFaturaItens();
+  renderCartaoStats();
+  renderCartaoMesLista();
+  renderCartaoMesContent();
+  if(cartaoAggVisivel) renderCartaoAggChart();
 }
 
 // Donut de categoria pros itens de fatura - reaproveita as mesmas cores/nomes de
@@ -1517,39 +1600,6 @@ function renderFaturaCategoriaChart(canvasId, itens, restante){
   });
   const legendId = canvasId+'-legend';
   if(document.getElementById(legendId)) renderPillLegend(legendId, labels.map((l,i)=>({label:l, color:colors[i], value:data[i]})));
-}
-
-function toggleFaturaExpand(mesRef){
-  if(faturaExpandidas.has(mesRef)) faturaExpandidas.delete(mesRef); else faturaExpandidas.add(mesRef);
-  renderCartaoTimeline();
-}
-
-async function adicionarFaturaItem(mesRef){
-  const descInput = document.getElementById(`fi-desc-${mesRef}`);
-  const valorInput = document.getElementById(`fi-valor-${mesRef}`);
-  const catInput = document.getElementById(`fi-cat-${mesRef}`);
-  const descricao = descInput.value.trim();
-  const valor = parseFloat(valorInput.value);
-  const categoria = catInput.value;
-  if(!descricao || isNaN(valor) || valor<=0){ toast('Preenche descrição e valor do item','err'); return; }
-  await sb.from('fin_fatura_itens').insert({cartao_id:cartaoDetalheAtual, mes_ref:mesRef, descricao, valor, categoria});
-  toast('Item adicionado!');
-  await loadFaturaItens();
-  renderCartaoTimeline();
-}
-
-async function atualizarFaturaItemCategoria(id, categoria){
-  await sb.from('fin_fatura_itens').update({categoria}).eq('id', id);
-  await loadFaturaItens();
-  renderCartaoTimeline();
-}
-
-async function deletarFaturaItem(id){
-  if(!(await confirmarAcao('Remover este item detalhado da fatura?'))) return;
-  await sb.from('fin_fatura_itens').delete().eq('id', id);
-  toast('Item removido');
-  await loadFaturaItens();
-  renderCartaoTimeline();
 }
 
 function fmtMesRef(mesRef){ const [a,m]=mesRef.split('-').map(Number); return MESES[m-1].slice(0,3)+'/'+a; }
