@@ -217,6 +217,7 @@ td{padding:10px 14px;font-size:13px;}
 
 /* MODAL DETALHE OBRIGAÇÃO */
 .modal-lg{max-width:600px;}
+.modal-xl{max-width:1120px;width:92vw;max-height:92vh;}
 .obr-detalhe-meta{font-size:12px;color:var(--muted);margin:4px 0 16px;}
 .obr-detalhe-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
 .obr-detalhe-stat{background:var(--surface);border-radius:10px;padding:10px 12px;}
@@ -234,12 +235,14 @@ td{padding:10px 14px;font-size:13px;}
 .obr-timeline-status{flex:1;color:var(--muted);font-size:12px;}
 .obr-timeline-valor{font-family:var(--mono);font-weight:600;flex-shrink:0;}
 .obr-timeline-end{display:flex;align-items:center;gap:8px;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:12px;font-weight:600;color:var(--accent2);}
-.fatura-itens-expand{padding:6px 0 14px 26px;display:flex;flex-direction:column;gap:7px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);}
-.fatura-item-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);}
+.fatura-itens-expand{padding:10px 4px 16px 26px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);}
+.fatura-expand-grid{display:grid;grid-template-columns:260px 1fr;gap:22px;align-items:start;}
+.fatura-chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;}
+.fatura-item-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);gap:10px;}
 .fatura-item-restante{color:var(--text);font-style:italic;}
 .fatura-item-form{display:flex;gap:6px;margin-top:2px;}
 .fatura-item-form .form-input{padding:6px 10px;font-size:12px;height:32px;}
-.fatura-item-cat-select{background:var(--surface);border:1px solid var(--border);color:var(--muted);font-size:10px;border-radius:6px;padding:2px 6px;flex-shrink:0;max-width:110px;}
+.fatura-item-cat-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:6px;padding:4px 8px;flex-shrink:0;max-width:140px;}
 
 /* SKELETON DE CARREGAMENTO */
 @keyframes skel-shimmer{0%{background-position:-200px 0;}100%{background-position:calc(200px + 100%) 0;}}
@@ -326,6 +329,8 @@ td{padding:10px 14px;font-size:13px;}
   .stats-grid{grid-template-columns:1fr;}
   .obr-detalhe-stats{grid-template-columns:1fr;}
   .modal-lg{max-width:calc(100vw - 32px);}
+  .modal-xl{width:calc(100vw - 24px);max-height:94vh;}
+  .fatura-expand-grid{grid-template-columns:1fr!important;}
   /* tabelas viram cards empilhados — cada <td> exibe seu data-label como rótulo */
   .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap th, .table-wrap tr{display:block;}
   .table-wrap thead{position:absolute;left:-9999px;top:-9999px;}
@@ -643,18 +648,25 @@ td{padding:10px 14px;font-size:13px;}
 
 <!-- MODAL DETALHE / FATURAS DO CARTÃO -->
 <div class="modal-overlay" id="modal-cartao-detalhe">
-  <div class="modal modal-lg">
+  <div class="modal modal-xl">
     <div class="modal-header">
       <span class="modal-title" id="cartd-titulo">Cartão</span>
       <button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-cartao-detalhe')" aria-label="Fechar"><i data-lucide="x" class="lic" style="width:14px;height:14px"></i></button>
     </div>
     <div class="obr-detalhe-meta" id="cartd-meta"></div>
     <div class="obr-detalhe-stats" id="cartd-stats"></div>
-    <div class="card-title" style="margin:18px 0 8px"><i data-lucide="chart-pie" class="lic" style="width:14px;height:14px"></i> Gastos por Categoria — período todo</div>
-    <div class="chart-canvas-wrap" style="height:170px"><canvas id="cartd-agg-chart"></canvas></div>
-    <div class="pill-legend" id="cartd-agg-chart-legend" style="margin-top:8px;margin-bottom:6px"></div>
-    <div class="card-title" style="margin:14px 0 8px"><i data-lucide="calendar-range" class="lic" style="width:14px;height:14px"></i> Extrato mês a mês</div>
-    <div class="obr-timeline" id="cartd-timeline"></div>
+    <button class="btn btn-secondary btn-sm" id="cartd-agg-toggle-btn" onclick="toggleCartaoAggChart()" style="margin:14px 0">
+      <i data-lucide="chart-pie" class="lic" style="width:14px;height:14px"></i> Ver gráfico do período todo
+    </button>
+    <div id="cartd-agg-section" style="display:none">
+      <div class="card-title" style="margin:4px 0 10px"><i data-lucide="chart-pie" class="lic" style="width:14px;height:14px"></i> Gastos por Categoria — período todo</div>
+      <div class="fatura-chart-panel">
+        <div class="chart-canvas-wrap" style="height:220px"><canvas id="cartd-agg-chart"></canvas></div>
+        <div class="pill-legend" id="cartd-agg-chart-legend"></div>
+      </div>
+    </div>
+    <div class="card-title" style="margin:18px 0 10px"><i data-lucide="calendar-range" class="lic" style="width:14px;height:14px"></i> Extrato mês a mês</div>
+    <div class="obr-timeline" id="cartd-timeline" style="max-height:none"></div>
   </div>
 </div>
 
@@ -1336,18 +1348,44 @@ function renderCartoesTab(){
 // vinculadas a esse cartao_id) e quantos lançamentos a compõem.
 let cartaoDetalheAtual = null;
 let faturaExpandidas = new Set();
+let cartaoAggVisivel = false;
 
 function abrirDetalheCartao(id){
   const c = cartoes.find(x=>x.id===id);
   if(!c) return;
   cartaoDetalheAtual = id;
   faturaExpandidas = new Set();
+  cartaoAggVisivel = false;
+  document.getElementById('cartd-agg-section').style.display = 'none';
+  document.getElementById('cartd-agg-toggle-btn').innerHTML = `${ic('chart-pie',14)} Ver gráfico do período todo`;
   const band = bandeiraDoCartao(c.nome);
   document.getElementById('cartd-titulo').innerHTML = `<span style="color:${band.cor}">${ic(band.icone,16)}</span> ${c.nome}`;
   document.getElementById('cartd-meta').textContent = `Vencimento dia ${c.dia_vencimento||'—'}` + (c.limite ? ` · limite ${fmtR(c.limite)}` : '');
   renderCartaoTimeline();
   openModal('modal-cartao-detalhe');
   refreshIcons();
+}
+
+// O gráfico do período todo só é calculado/desenhado quando o usuário pede -
+// por padrão fica escondido, o foco inicial é o extrato mês a mês.
+function toggleCartaoAggChart(){
+  cartaoAggVisivel = !cartaoAggVisivel;
+  const sec = document.getElementById('cartd-agg-section');
+  sec.style.display = cartaoAggVisivel ? 'block' : 'none';
+  document.getElementById('cartd-agg-toggle-btn').innerHTML = cartaoAggVisivel
+    ? `${ic('chevron-up',14)} Ocultar gráfico do período todo`
+    : `${ic('chart-pie',14)} Ver gráfico do período todo`;
+  refreshIcons();
+  if(cartaoAggVisivel) renderCartaoAggChart();
+}
+
+function renderCartaoAggChart(){
+  const id = cartaoDetalheAtual;
+  const itensDoCartao = faturaItens.filter(fi=>fi.cartao_id===id);
+  const somaItensCartao = itensDoCartao.reduce((s,i)=>s+Number(i.valor),0);
+  const totalPeriodo = [...new Set(transacoes.filter(t=>t.cartao_id===id).map(t=>t.mes_ref))]
+    .reduce((s,mesRef)=>s+faturaDoMes(id,mesRef),0);
+  renderFaturaCategoriaChart('cartd-agg-chart', itensDoCartao, Math.max(0, totalPeriodo - somaItensCartao));
 }
 
 // Clique numa fatura (mês com valor>0) expande e mostra o "extrato": itens que o
@@ -1383,11 +1421,7 @@ function renderCartaoTimeline(){
     <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Faturas registradas</div><div class="obr-detalhe-stat-value">${comFatura.length}</div></div>
     <div class="obr-detalhe-stat"><div class="obr-detalhe-stat-label">Média mensal</div><div class="obr-detalhe-stat-value">${fmtR(mediaMensal)}</div></div>`;
 
-  // gráfico agregado: soma todos os itens detalhados do cartão inteiro, em qualquer mês,
-  // mais um "não detalhado" único pra cobrir o que falta em relação ao total do período
-  const itensDoCartao = faturaItens.filter(fi=>fi.cartao_id===id);
-  const somaItensCartao = itensDoCartao.reduce((s,i)=>s+Number(i.valor),0);
-  renderFaturaCategoriaChart('cartd-agg-chart', itensDoCartao, Math.max(0, totalPeriodo - somaItensCartao));
+  if(cartaoAggVisivel) renderCartaoAggChart();
 
   document.getElementById('cartd-timeline').innerHTML = linhas.map(l=>{
     const clicavel = l.valor>0;
@@ -1407,28 +1441,38 @@ function renderCartaoTimeline(){
     const catOptions = cats=>DESPESA_CATS.map(dc=>`<option value="${dc.v}" ${dc.v===cats?'selected':''}>${dc.l}</option>`).join('');
     const listaItens = itens.map(i=>`
       <div class="fatura-item-row">
-        <span style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
+        <span style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.descricao}</span>
           <select class="fatura-item-cat-select" onchange="atualizarFaturaItemCategoria(${i.id}, this.value)">${catOptions(i.categoria)}</select>
         </span>
-        <span style="display:flex;align-items:center;gap:8px;flex-shrink:0">${fmtR(i.valor)} <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deletarFaturaItem(${i.id})">${ic('trash-2',12)}</button></span>
+        <span style="display:flex;align-items:center;gap:10px;flex-shrink:0">${fmtR(i.valor)} <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deletarFaturaItem(${i.id})">${ic('trash-2',13)}</button></span>
       </div>`).join('');
     const restanteHtml = restante > 0.005
       ? `<div class="fatura-item-row fatura-item-restante"><span>Não detalhado</span><span>${fmtR(restante)}</span></div>`
-      : (restante < -0.005 ? `<div class="fatura-item-row" style="color:var(--danger)"><span>${ic('alert-triangle',12)} itens somam mais que a fatura</span><span>${fmtR(somaItens)}</span></div>` : '');
+      : (restante < -0.005 ? `<div class="fatura-item-row" style="color:var(--danger)"><span>${ic('alert-triangle',13)} itens somam mais que a fatura</span><span>${fmtR(somaItens)}</span></div>` : '');
 
     const chartId = `fatura-chart-${l.mesRef}`;
-    return linhaPrincipal + `<div class="fatura-itens-expand" onclick="event.stopPropagation()">
-      ${itens.length ? `<div class="chart-canvas-wrap" style="height:130px;margin-bottom:8px"><canvas id="${chartId}"></canvas></div><div class="pill-legend" id="${chartId}-legend" style="margin-bottom:8px"></div>` : ''}
+    const listaEForm = `
       ${listaItens || '<div class="fatura-item-row" style="font-style:italic">Nenhum item detalhado ainda</div>'}
       ${restanteHtml}
       <div class="fatura-item-form">
         <input type="text" placeholder="Descrição (ex: iFood)" id="fi-desc-${l.mesRef}" class="form-input">
-        <select id="fi-cat-${l.mesRef}" class="form-select" style="max-width:130px">${catOptions('outro')}</select>
-        <input type="number" step="0.01" placeholder="Valor" id="fi-valor-${l.mesRef}" class="form-input" style="max-width:90px">
+        <select id="fi-cat-${l.mesRef}" class="form-select" style="max-width:150px">${catOptions('outro')}</select>
+        <input type="number" step="0.01" placeholder="Valor" id="fi-valor-${l.mesRef}" class="form-input" style="max-width:100px">
         <button class="btn btn-secondary btn-sm" onclick="adicionarFaturaItem('${l.mesRef}')">${ic('plus',13)} Add</button>
-      </div>
-    </div>`;
+      </div>`;
+
+    const conteudo = itens.length
+      ? `<div class="fatura-expand-grid">
+          <div class="fatura-chart-panel">
+            <div class="chart-canvas-wrap" style="height:190px"><canvas id="${chartId}"></canvas></div>
+            <div class="pill-legend" id="${chartId}-legend"></div>
+          </div>
+          <div>${listaEForm}</div>
+        </div>`
+      : listaEForm;
+
+    return linhaPrincipal + `<div class="fatura-itens-expand" onclick="event.stopPropagation()">${conteudo}</div>`;
   }).join('');
 
   // os mini-gráficos por mês só existem no DOM depois do innerHTML acima, então renderizam aqui
@@ -1467,7 +1511,8 @@ function renderFaturaCategoriaChart(canvasId, itens, restante){
       plugins:{ legend:{display:false},
         tooltip:{callbacks:{label:c=>c.label+': '+fmtR(c.raw)}},
         centerText:{display:true,value:fmtR(total)},
-        datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.08, color:'#0d1117', font:{size:10,weight:'700'},
+        datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#fff', font:{size:12,weight:'700',family:'Inter,sans-serif'},
+          textStrokeColor:'rgba(0,0,0,.55)', textStrokeWidth:3, textShadowBlur:4, textShadowColor:'rgba(0,0,0,.6)',
           formatter:v=>Math.round(v/total*100)+'%' } } }
   });
   const legendId = canvasId+'-legend';
@@ -1965,7 +2010,7 @@ function renderDonutChart(canvasId, txList){
       plugins:{ legend:{display:false},
         tooltip:{callbacks:{label:c=>c.label+': '+fmtR(c.raw)}},
         centerText:{display:true,label:'Total de gastos',value:fmtR(total)},
-        datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#0d1117', font:{size:11,weight:'700'},
+        datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#fff', font:{size:12,weight:'700',family:'Inter,sans-serif'}, textStrokeColor:'rgba(0,0,0,.55)', textStrokeWidth:3,
           formatter:v=>Math.round(v/total*100)+'%' } } }
   });
   renderPillLegend(canvasId+'-legend', labels.map((l,i)=>({label:catInfo(l).l, color:colors[i], value:data[i]})));
@@ -1986,7 +2031,7 @@ function renderPieComposicao(canvasId, obr, livre, sobra){
       plugins:{ legend:{display:false},
         tooltip:{callbacks:{label:c=>{ const pct=total>0?(c.raw/total*100).toFixed(0):0; return c.label+': '+fmtR(c.raw)+' ('+pct+'%)'; }}},
         centerText:{display:true,label:'Total do mês',value:fmtR(total)},
-        datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#0d1117', font:{size:11,weight:'700'},
+        datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#fff', font:{size:12,weight:'700',family:'Inter,sans-serif'}, textStrokeColor:'rgba(0,0,0,.55)', textStrokeWidth:3,
           formatter:v=>Math.round(v/total*100)+'%' } } }
   });
   renderPillLegend(canvasId+'-legend', ['Obrigações Fixas','Gastos Livres','Sobra'].map((l,i)=>({label:l, color:cores[i], value:[obr,livre,sobra][i]})));
