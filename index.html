@@ -246,10 +246,17 @@ td{padding:10px 14px;font-size:13px;}
 .fatura-itens-expand{padding:10px 4px 16px 26px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);}
 .fatura-expand-grid{display:grid;grid-template-columns:320px 1fr;gap:22px;align-items:start;}
 .fatura-chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;}
-.fatura-item-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);gap:10px;}
+.fatura-item-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);gap:10px;padding:6px 10px;border-radius:8px;background:var(--card);margin-bottom:5px;}
 .fatura-item-restante{color:var(--text);font-style:italic;}
 .fatura-item-form{display:flex;gap:6px;margin-top:2px;}
 .fatura-item-form .form-input{padding:6px 10px;font-size:12px;height:32px;}
+.pill-legend-item.clicavel{cursor:pointer;transition:background .12s,opacity .12s;}
+.pill-legend-item.ativo{background:var(--card);box-shadow:inset 2px 0 0 currentColor;}
+.pill-legend-item.apagado{opacity:.4;}
+.pill-legend-hint{font-size:10px;color:var(--muted);text-align:center;margin-top:7px;display:flex;align-items:center;justify-content:center;gap:4px;}
+.fatura-item-cat-icon{width:20px;height:20px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.fatura-item-valor{font-family:var(--mono);font-weight:700;color:var(--danger);font-size:12.5px;}
+.fatura-filtro-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 10px;margin-bottom:10px;font-size:12px;}
 .fatura-item-cat-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:6px;padding:4px 8px;flex-shrink:0;max-width:140px;}
 .cartd-main-grid{display:grid;grid-template-columns:1fr 230px;gap:20px;align-items:start;margin-top:16px;}
 .cartd-mes-sidebar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;position:sticky;top:0;}
@@ -1466,6 +1473,8 @@ function selecionarMesFatura(mesRef){
 
 // Conteúdo do mês selecionado: gráfico de categoria + itens detalhados + form pra
 // adicionar mais um. Só existe UM mês selecionado por vez (troca ao clicar na lista).
+let catFiltro = null; // categoria selecionada na legenda; null = mostrar tudo
+
 function renderCartaoMesContent(){
   const id = cartaoDetalheAtual;
   const mesRef = mesSelecionado;
@@ -1481,42 +1490,80 @@ function renderCartaoMesContent(){
     return;
   }
 
-  const itens = faturaItens.filter(fi=>fi.cartao_id===id && fi.mes_ref===mesRef);
-  const somaItens = itens.reduce((s,i)=>s+Number(i.valor),0);
+  const todosItens = faturaItens.filter(fi=>fi.cartao_id===id && fi.mes_ref===mesRef);
+  const somaItens = todosItens.reduce((s,i)=>s+Number(i.valor),0);
   const restante = valor - somaItens;
+
+  // O filtro só afeta a LISTA de gastos à direita — o gráfico continua mostrando
+  // a fatura inteira, senão perde a referência de proporção ao filtrar.
+  const itens = catFiltro ? todosItens.filter(i=>i.categoria===catFiltro) : todosItens;
+  const somaFiltrada = itens.reduce((s,i)=>s+Number(i.valor),0);
+
   const catOptions = cats=>DESPESA_CATS.map(dc=>`<option value="${dc.v}" ${dc.v===cats?'selected':''}>${dc.l}</option>`).join('');
-  const listaItens = itens.map(i=>`
-    <div class="fatura-item-row">
+  const listaItens = itens.map(i=>{
+    const cor = CAT_COLORS[i.categoria] || '#6b7280';
+    return `
+    <div class="fatura-item-row" style="border-left:3px solid ${cor}">
       <span style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.descricao}</span>
+        <span class="fatura-item-cat-icon" style="background:${cor}22;color:${cor}">${ic(catInfo(i.categoria).i,12)}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${i.descricao}</span>
         <select class="fatura-item-cat-select" onchange="atualizarFaturaItemCategoria(${i.id}, this.value)">${catOptions(i.categoria)}</select>
       </span>
-      <span style="display:flex;align-items:center;gap:10px;flex-shrink:0">${fmtR(i.valor)} <button class="btn btn-danger btn-sm btn-icon" onclick="deletarFaturaItem(${i.id})">${ic('trash-2',13)}</button></span>
-    </div>`).join('');
-  const restanteHtml = restante > 0.005
-    ? `<div class="fatura-item-row fatura-item-restante"><span>Não detalhado</span><span>${fmtR(restante)}</span></div>`
-    : (restante < -0.005 ? `<div class="fatura-item-row" style="color:var(--danger)"><span>${ic('alert-triangle',13)} itens somam mais que a fatura</span><span>${fmtR(somaItens)}</span></div>` : '');
+      <span style="display:flex;align-items:center;gap:10px;flex-shrink:0"><span class="fatura-item-valor">${fmtR(i.valor)}</span> <button class="btn btn-danger btn-sm btn-icon" onclick="deletarFaturaItem(${i.id})">${ic('trash-2',13)}</button></span>
+    </div>`;
+  }).join('');
+
+  // "Não detalhado" é uma fatia sintética, não um item real - só aparece quando não há filtro
+  // de categoria ativo, ou quando o próprio "não detalhado" é o filtro escolhido.
+  const mostrarRestante = (!catFiltro || catFiltro==='__restante__') && restante > 0.005;
+  const restanteHtml = mostrarRestante
+    ? `<div class="fatura-item-row fatura-item-restante" style="border-left:3px solid #3f4a63"><span style="display:flex;align-items:center;gap:8px"><span class="fatura-item-cat-icon" style="background:#3f4a6322;color:#8792ab">${ic('help-circle',12)}</span>Não detalhado</span><span class="fatura-item-valor" style="opacity:.75">${fmtR(restante)}</span></div>`
+    : (!catFiltro && restante < -0.005 ? `<div class="fatura-item-row" style="color:var(--danger);border-left:3px solid var(--danger)"><span>${ic('alert-triangle',13)} itens somam mais que a fatura</span><span class="fatura-item-valor">${fmtR(somaItens)}</span></div>` : '');
+
+  const filtroBanner = catFiltro ? `
+    <div class="fatura-filtro-banner">
+      <span style="display:flex;align-items:center;gap:8px">
+        <span class="fatura-item-cat-icon" style="background:${(catFiltro==='__restante__'?'#3f4a63':CAT_COLORS[catFiltro]||'#6b7280')}22;color:${catFiltro==='__restante__'?'#8792ab':CAT_COLORS[catFiltro]||'#6b7280'}">${ic(catFiltro==='__restante__'?'help-circle':catInfo(catFiltro).i,12)}</span>
+        Filtrando: <b>${catFiltro==='__restante__'?'Não detalhado':catInfo(catFiltro).l}</b>
+        <span style="color:var(--muted)">· ${catFiltro==='__restante__'?fmtR(restante):`${itens.length} item(ns) · ${fmtR(somaFiltrada)}`}</span>
+      </span>
+      <button class="btn btn-ghost btn-sm" onclick="limparFiltroCategoria()">${ic('x',13)} limpar</button>
+    </div>` : '';
+
+  const listaVazia = catFiltro && !itens.length && !mostrarRestante
+    ? `<div class="fatura-item-row" style="font-style:italic">Nenhum gasto nessa categoria</div>` : '';
 
   el.innerHTML = `
-    <div class="card-title" style="margin-bottom:14px">${fmtMesRef(mesRef)} <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">· ${fmtR(valor)}</span></div>
+    <div class="card-title" style="margin-bottom:14px">${fmtMesRef(mesRef)} <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">· <span class="fatura-item-valor" style="font-size:13px">${fmtR(valor)}</span></span></div>
     <div class="fatura-expand-grid">
       <div class="fatura-chart-panel">
         <div class="chart-canvas-wrap" style="height:200px"><canvas id="fatura-chart-mes"></canvas></div>
         <div class="pill-legend" id="fatura-chart-mes-legend"></div>
+        <div class="pill-legend-hint">${ic('mouse-pointer-click',11)} clique numa categoria pra filtrar</div>
       </div>
       <div>
-        ${listaItens || '<div class="fatura-item-row" style="font-style:italic">Nenhum item detalhado ainda</div>'}
+        ${filtroBanner}
+        ${listaItens || listaVazia || (todosItens.length ? '' : '<div class="fatura-item-row" style="font-style:italic">Nenhum item detalhado ainda</div>')}
         ${restanteHtml}
         <div class="fatura-item-form">
           <input type="text" placeholder="Descrição (ex: iFood)" id="fi-desc-atual" class="form-input">
-          <select id="fi-cat-atual" class="form-select" style="max-width:150px">${catOptions('outro')}</select>
+          <select id="fi-cat-atual" class="form-select" style="max-width:150px">${catOptions(catFiltro && catFiltro!=='__restante__' ? catFiltro : 'outro')}</select>
           <input type="number" step="0.01" placeholder="Valor" id="fi-valor-atual" class="form-input" style="max-width:100px">
           <button class="btn btn-secondary btn-sm" onclick="adicionarFaturaItem('${mesRef}')">${ic('plus',13)} Add</button>
         </div>
       </div>
     </div>`;
-  renderFaturaCategoriaChart('fatura-chart-mes', itens, Math.max(0,restante));
+  renderFaturaCategoriaChart('fatura-chart-mes', todosItens, Math.max(0,restante), true);
   refreshIcons();
+}
+
+function filtrarPorCategoria(cat){
+  catFiltro = (catFiltro===cat) ? null : cat; // clicar de novo na mesma limpa
+  renderCartaoMesContent();
+}
+function limparFiltroCategoria(){
+  catFiltro = null;
+  renderCartaoMesContent();
 }
 
 // O gráfico do período todo só é calculado/desenhado quando o usuário pede -
@@ -1579,7 +1626,7 @@ async function deletarFaturaItem(id){
 // Donut de categoria pros itens de fatura - reaproveita as mesmas cores/nomes de
 // categoria do resto do site (CAT_COLORS/catInfo), mais uma fatia "Não detalhado"
 // (cinza, sem categoria formal) pra fechar 100% do valor.
-function renderFaturaCategoriaChart(canvasId, itens, restante){
+function renderFaturaCategoriaChart(canvasId, itens, restante, clicavel){
   destroyChart(canvasId);
   const ctx = document.getElementById(canvasId);
   if(!ctx) return;
@@ -1590,7 +1637,8 @@ function renderFaturaCategoriaChart(canvasId, itens, restante){
   const data = catKeys.map(k=>porCat[k]);
   const colors = catKeys.map(k=>CAT_COLORS[k]||'#6b7280');
   const icones = catKeys.map(k=>catInfo(k).i);
-  if(restante > 0.005){ labels.push('Não detalhado'); data.push(restante); colors.push('#3f4a63'); icones.push('help-circle'); }
+  const chaves = catKeys.slice();
+  if(restante > 0.005){ labels.push('Não detalhado'); data.push(restante); colors.push('#3f4a63'); icones.push('help-circle'); chaves.push('__restante__'); }
   const total = data.reduce((s,v)=>s+v,0);
   if(total<=0.005){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:14px"><p style="font-size:11px;color:var(--muted)">Sem itens pra mostrar</p></div>`; const lg=document.getElementById(canvasId+'-legend'); if(lg) lg.innerHTML=''; return; }
   charts[canvasId] = new Chart(ctx, {
@@ -1608,7 +1656,7 @@ function renderFaturaCategoriaChart(canvasId, itens, restante){
           formatter:v=>Math.round(v/total*100)+'%' } } }
   });
   const legendId = canvasId+'-legend';
-  if(document.getElementById(legendId)) renderPillLegend(legendId, labels.map((l,i)=>({label:l, color:colors[i], value:data[i], icon:icones[i]})));
+  if(document.getElementById(legendId)) renderPillLegend(legendId, labels.map((l,i)=>({label:l, color:colors[i], value:data[i], icon:icones[i], key:chaves[i]})), clicavel);
 }
 
 function fmtMesRef(mesRef){ const [a,m]=mesRef.split('-').map(Number); return MESES[m-1].slice(0,3)+'/'+a; }
@@ -2045,18 +2093,22 @@ const centerTextPlugin = {
 if(window.Chart) Chart.register(centerTextPlugin);
 
 // legenda em pill fora do canvas (CSS não alcança a legenda desenhada pelo Chart.js)
-function renderPillLegend(containerId, items){
+function renderPillLegend(containerId, items, clicavel){
   const el = document.getElementById(containerId);
   if(!el) return;
   const total = items.reduce((s,i)=>s+i.value,0);
-  el.innerHTML = `<div class="pill-legend-inner">${items.map(i=>
-    `<span class="pill-legend-item" title="${i.label}: ${fmtR(i.value)}">
+  el.innerHTML = `<div class="pill-legend-inner">${items.map(i=>{
+    const ativo = clicavel && typeof catFiltro!=='undefined' && catFiltro===i.key;
+    const apagado = clicavel && typeof catFiltro!=='undefined' && catFiltro && catFiltro!==i.key;
+    return `<span class="pill-legend-item ${clicavel?'clicavel':''} ${ativo?'ativo':''} ${apagado?'apagado':''}"
+      ${clicavel&&i.key?`onclick="filtrarPorCategoria('${i.key}')"`:''}
+      title="${i.label}: ${fmtR(i.value)}${clicavel?' — clique pra filtrar':''}">
       <span class="pill-legend-icon-badge" style="background:${i.color}22;color:${i.color}">${i.icon?ic(i.icon,13):`<span class="pill-legend-dot" style="background:${i.color}"></span>`}</span>
       <span class="pill-legend-label">${i.label}</span>
       <span class="pill-legend-valor">${fmtR(i.value)}</span>
       <span class="pill-legend-pct">${total>0?Math.round(i.value/total*100):0}%</span>
-    </span>`
-  ).join('')}</div>`;
+    </span>`;
+  }).join('')}</div>`;
   refreshIcons();
 }
 
