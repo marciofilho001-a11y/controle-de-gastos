@@ -244,7 +244,7 @@ td{padding:10px 14px;font-size:13px;}
 .obr-timeline-valor{font-family:var(--mono);font-weight:600;flex-shrink:0;}
 .obr-timeline-end{display:flex;align-items:center;gap:8px;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:12px;font-weight:600;color:var(--accent2);}
 .fatura-itens-expand{padding:10px 4px 16px 26px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);}
-.fatura-expand-grid{display:grid;grid-template-columns:260px 1fr;gap:22px;align-items:start;}
+.fatura-expand-grid{display:grid;grid-template-columns:320px 1fr;gap:22px;align-items:start;}
 .fatura-chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;}
 .fatura-item-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);gap:10px;}
 .fatura-item-restante{color:var(--text);font-style:italic;}
@@ -278,13 +278,16 @@ td{padding:10px 14px;font-size:13px;}
 .alert-banner b{color:var(--text);}
 
 /* LEGENDA EM PILL (donuts) */
-.pill-legend{display:flex;justify-content:center;flex-wrap:wrap;gap:0;margin-top:14px;}
-.pill-legend-inner{display:flex;flex-wrap:wrap;gap:18px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:8px 20px;}
-.pill-legend-item{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;white-space:nowrap;font-family:'Inter',sans-serif;letter-spacing:.1px;}
-.pill-legend-icon-badge{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+/* LEGENDA DE CATEGORIA (donuts) — lista em linhas, com valor em R$ e % */
+.pill-legend{margin-top:14px;}
+.pill-legend-inner{display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px;}
+.pill-legend-item{display:grid;grid-template-columns:24px 1fr auto auto;align-items:center;gap:9px;font-size:12.5px;font-weight:600;font-family:'Inter',sans-serif;padding:5px 8px;border-radius:8px;min-width:0;}
+.pill-legend-item:hover{background:var(--card);}
+.pill-legend-icon-badge{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pill-legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-.pill-legend-label{color:var(--text);}
-.pill-legend-pct{color:var(--muted);font-weight:700;font-family:var(--mono);font-size:12px;}
+.pill-legend-label{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.pill-legend-valor{color:var(--text);font-family:var(--mono);font-size:12px;font-weight:700;white-space:nowrap;}
+.pill-legend-pct{color:var(--muted);font-family:var(--mono);font-size:11px;font-weight:600;white-space:nowrap;min-width:34px;text-align:right;}
 
 /* TOOLBAR */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
@@ -1595,7 +1598,10 @@ function renderFaturaCategoriaChart(canvasId, itens, restante){
     data:{ labels, datasets:[{data, backgroundColor:colors, borderColor:'#1c2333', borderWidth:2}] },
     options:{ ...CHART_DEFAULTS, cutout:'62%', maintainAspectRatio:false,
       plugins:{ legend:{display:false},
-        tooltip:{enabled:false},
+        tooltip:{position:'nearest', backgroundColor:'#0d1117', borderColor:'#2a3348', borderWidth:1,
+          titleFont:{size:12,weight:'700',family:'Inter,sans-serif'}, bodyFont:{size:12,family:'Inter,sans-serif'},
+          padding:10, cornerRadius:8, displayColors:true, boxPadding:4,
+          callbacks:{label:c=>' '+fmtR(c.raw)}},
         centerText:{display:true,value:fmtR(total)},
         datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#fff', font:{size:12,weight:'700',family:'Inter,sans-serif'},
           textStrokeColor:'rgba(0,0,0,.55)', textStrokeWidth:3, textShadowBlur:4, textShadowColor:'rgba(0,0,0,.6)',
@@ -2024,6 +2030,10 @@ const centerTextPlugin = {
   afterDraw(chart){
     const opts = chart.config.options.plugins && chart.config.options.plugins.centerText;
     if(!opts || !opts.display) return;
+    // Enquanto o tooltip está ativo ele é desenhado por cima do miolo do donut e
+    // colide com esse texto, virando um borrão ilegível. Some com o texto central
+    // nesse momento — o tooltip já mostra a informação da fatia sob o cursor.
+    if(chart.tooltip && chart.tooltip.getActiveElements && chart.tooltip.getActiveElements().length) return;
     const {ctx, chartArea:{left,right,top,bottom}} = chart;
     const cx=(left+right)/2, cy=(top+bottom)/2;
     ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -2040,9 +2050,10 @@ function renderPillLegend(containerId, items){
   if(!el) return;
   const total = items.reduce((s,i)=>s+i.value,0);
   el.innerHTML = `<div class="pill-legend-inner">${items.map(i=>
-    `<span class="pill-legend-item">
+    `<span class="pill-legend-item" title="${i.label}: ${fmtR(i.value)}">
       <span class="pill-legend-icon-badge" style="background:${i.color}22;color:${i.color}">${i.icon?ic(i.icon,13):`<span class="pill-legend-dot" style="background:${i.color}"></span>`}</span>
       <span class="pill-legend-label">${i.label}</span>
+      <span class="pill-legend-valor">${fmtR(i.value)}</span>
       <span class="pill-legend-pct">${total>0?Math.round(i.value/total*100):0}%</span>
     </span>`
   ).join('')}</div>`;
@@ -2066,7 +2077,10 @@ function renderDonutChart(canvasId, txList){
     data:{ labels: labels.map(l=>catInfo(l).l), datasets:[{data, backgroundColor:colors, borderColor:'#1c2333', borderWidth:2}] },
     options:{ ...CHART_DEFAULTS, cutout:'65%', maintainAspectRatio:false,
       plugins:{ legend:{display:false},
-        tooltip:{enabled:false},
+        tooltip:{position:'nearest', backgroundColor:'#0d1117', borderColor:'#2a3348', borderWidth:1,
+          titleFont:{size:12,weight:'700',family:'Inter,sans-serif'}, bodyFont:{size:12,family:'Inter,sans-serif'},
+          padding:10, cornerRadius:8, displayColors:true, boxPadding:4,
+          callbacks:{label:c=>' '+fmtR(c.raw)}},
         centerText:{display:true,label:'Total de gastos',value:fmtR(total)},
         datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#fff', font:{size:12,weight:'700',family:'Inter,sans-serif'}, textStrokeColor:'rgba(0,0,0,.55)', textStrokeWidth:3,
           formatter:v=>Math.round(v/total*100)+'%' } } }
@@ -2088,7 +2102,10 @@ function renderPieComposicao(canvasId, obr, livre, sobra){
       datasets:[{ data:[obr,livre,sobra], backgroundColor:cores, borderColor:'#1c2333', borderWidth:2 }] },
     options:{ ...CHART_DEFAULTS, cutout:'60%', maintainAspectRatio:false,
       plugins:{ legend:{display:false},
-        tooltip:{enabled:false},
+        tooltip:{position:'nearest', backgroundColor:'#0d1117', borderColor:'#2a3348', borderWidth:1,
+          titleFont:{size:12,weight:'700',family:'Inter,sans-serif'}, bodyFont:{size:12,family:'Inter,sans-serif'},
+          padding:10, cornerRadius:8, displayColors:true, boxPadding:4,
+          callbacks:{label:c=>' '+fmtR(c.raw)}},
         centerText:{display:true,label:'Total do mês',value:fmtR(total)},
         datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#fff', font:{size:12,weight:'700',family:'Inter,sans-serif'}, textStrokeColor:'rgba(0,0,0,.55)', textStrokeWidth:3,
           formatter:v=>Math.round(v/total*100)+'%' } } }
