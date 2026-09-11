@@ -296,6 +296,31 @@ td{padding:10px 14px;font-size:13px;}
 .pill-legend-valor{color:var(--text);font-family:var(--mono);font-size:12px;font-weight:700;white-space:nowrap;}
 .pill-legend-pct{color:var(--muted);font-family:var(--mono);font-size:11px;font-weight:600;white-space:nowrap;min-width:34px;text-align:right;}
 
+/* LIMITES DE GASTO */
+.teto-hero{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;position:relative;overflow:hidden;}
+.teto-hero::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;}
+.teto-hero.st-ok::before{background:var(--accent);} .teto-hero.st-ok{background:linear-gradient(120deg,rgba(34,211,165,.10),var(--card) 60%);}
+.teto-hero.st-alerta::before{background:var(--warn);} .teto-hero.st-alerta{background:linear-gradient(120deg,rgba(240,168,50,.12),var(--card) 60%);}
+.teto-hero.st-critico::before{background:var(--danger);} .teto-hero.st-critico{background:linear-gradient(120deg,rgba(240,82,82,.14),var(--card) 60%);}
+.teto-hero-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.teto-hero-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+.teto-hero-valor{font-family:var(--mono);font-size:28px;font-weight:700;}
+.teto-hero-de{font-size:13px;color:var(--muted);margin-left:6px;font-family:var(--mono);}
+.teto-bar-bg{background:var(--surface);border-radius:999px;height:9px;overflow:hidden;margin-top:12px;}
+.teto-bar-fill{height:100%;border-radius:999px;transition:width .35s;}
+.teto-ritmo{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:13px;border-top:1px solid var(--border);font-size:12.5px;color:var(--muted);}
+.teto-balde{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:9px;}
+.teto-balde-top{display:flex;align-items:center;gap:11px;margin-bottom:10px;flex-wrap:wrap;}
+.teto-balde-nome{font-size:14px;font-weight:600;flex:1;min-width:120px;}
+.teto-balde-nums{font-family:var(--mono);font-size:12.5px;font-weight:600;white-space:nowrap;}
+.teto-input{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 9px;width:104px;font-family:var(--mono);font-size:12.5px;}
+.teto-input:focus{outline:none;border-color:var(--accent);}
+.teto-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;font-family:var(--mono);white-space:nowrap;}
+.teto-badge.st-ok{background:rgba(34,211,165,.15);color:var(--accent);}
+.teto-badge.st-alerta{background:rgba(240,168,50,.15);color:var(--warn);}
+.teto-badge.st-critico{background:rgba(240,82,82,.15);color:var(--danger);}
+.teto-badge.st-vazio{background:var(--surface);color:var(--muted);}
+
 /* TOOLBAR */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
 .search-input-wrap{position:relative;}
@@ -401,6 +426,7 @@ td{padding:10px 14px;font-size:13px;}
   <div class="nav-tab" onclick="goTab('projecao',this)"><i data-lucide="telescope" class="lic" style="width:14px;height:14px"></i> Projeção</div>
   <div class="nav-tab" onclick="goTab('graficos',this)"><i data-lucide="bar-chart-3" class="lic" style="width:14px;height:14px"></i> Gráficos</div>
   <div class="nav-tab" onclick="goTab('investimentos',this)"><i data-lucide="landmark" class="lic" style="width:14px;height:14px"></i> Investimentos</div>
+  <div class="nav-tab" onclick="goTab('tetos',this)"><i data-lucide="gauge" class="lic" style="width:14px;height:14px"></i> Limites</div>
 </div>
 
 <div class="main">
@@ -568,6 +594,18 @@ td{padding:10px 14px;font-size:13px;}
   </div>
 </div>
 
+<!-- ═══════════════ LIMITES DE GASTO ═══════════════ -->
+<div class="page" id="page-tetos">
+  <div class="section-hdr">
+    <h2>Limites de Gasto — <span id="tetos-mes-label" style="color:var(--accent)"></span></h2>
+    <button class="btn btn-secondary btn-sm" onclick="copiarTetosMesAnterior()"><i data-lucide="copy" class="lic" style="width:13px;height:13px"></i> Copiar do mês anterior</button>
+  </div>
+  <div class="form-hint" style="margin-bottom:16px">Só gasto variável entra aqui — obrigações fixas (consórcio, parcelas) ficam de fora de propósito, pra o limite medir o que você realmente controla no mês.</div>
+  <div id="teto-total-card"></div>
+  <div class="card-title" style="margin:20px 0 10px"><i data-lucide="wallet" class="lic" style="width:14px;height:14px"></i> Por forma de pagamento</div>
+  <div id="teto-baldes"></div>
+</div>
+
 <!-- ═══════════════ INVESTIMENTOS ═══════════════ -->
 <div class="page" id="page-investimentos">
   <div class="section-hdr">
@@ -622,7 +660,7 @@ td{padding:10px 14px;font-size:13px;}
     <p id="confirm-msg" style="font-size:13px;color:var(--muted);line-height:1.5">Tem certeza?</p>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
       <button class="btn btn-secondary" onclick="_confirmResponder(false)">Cancelar</button>
-      <button class="btn btn-danger" onclick="_confirmResponder(true)"><i data-lucide="trash-2" class="lic" style="width:14px;height:14px"></i> Remover</button>
+      <button class="btn btn-danger" id="confirm-ok-btn" onclick="_confirmResponder(true)"><i data-lucide="trash-2" class="lic" style="width:14px;height:14px"></i> Remover</button>
     </div>
   </div>
 </div>
@@ -834,7 +872,7 @@ function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
 // ══════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════
-let obrigacoes=[], transacoes=[], investimentos=[], config={}, cartoes=[], compras=[], saldosConta=[], faturaItens=[];
+let obrigacoes=[], transacoes=[], investimentos=[], config={}, cartoes=[], compras=[], saldosConta=[], faturaItens=[], tetos=[];
 let mesAtual = new Date().toISOString().slice(0,7); // 'YYYY-MM'
 let charts = {};
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -843,7 +881,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 //  INIT
 // ══════════════════════════════════════════════
 (async function init(){
-  await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras(), loadSaldosConta(), loadFaturaItens()]);
+  await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras(), loadSaldosConta(), loadFaturaItens(), loadTetos()]);
   document.getElementById('cfg-renda').value = config.renda_projetada || '';
   document.getElementById('cfg-pct').value = config.pct_investimento || 20;
   document.getElementById('tx-data').value = new Date().toISOString().slice(0,10);
@@ -862,6 +900,7 @@ async function loadCartoes(){ const {data} = await sb.from('fin_cartoes').select
 async function loadCompras(){ const {data} = await sb.from('fin_cartao_compras').select('*').order('criado_em'); compras = data||[]; }
 async function loadSaldosConta(){ const {data} = await sb.from('fin_saldo_conta').select('*').order('mes_ref'); saldosConta = data||[]; }
 async function loadFaturaItens(){ const {data} = await sb.from('fin_fatura_itens').select('*').order('criado_em'); faturaItens = data||[]; }
+async function loadTetos(){ const {data} = await sb.from('fin_tetos').select('*').order('mes_ref'); tetos = data||[]; }
 async function loadConfig(){
   const {data} = await sb.from('fin_config').select('*');
   config = {};
@@ -891,6 +930,7 @@ function goTab(id, el){
     if(id==='projecao') renderProjecaoTab();
     if(id==='graficos') renderGraficosTab();
     if(id==='investimentos') renderInvestimentosTab();
+    if(id==='tetos') renderTetosTab();
   });
 }
 function openModal(id){ document.getElementById(id).classList.add('open'); }
@@ -898,10 +938,12 @@ function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 
 // Substitui window.confirm() por um modal no tema do app. Uso: if(!(await confirmarAcao('texto'))) return;
 let _confirmResolve = null;
-function confirmarAcao(msg, titulo='Confirmar remoção'){
+function confirmarAcao(msg, titulo='Confirmar remoção', okLabel='Remover', okIcone='trash-2'){
   document.getElementById('confirm-titulo').textContent = titulo;
   document.getElementById('confirm-msg').textContent = msg;
+  document.getElementById('confirm-ok-btn').innerHTML = ic(okIcone,14)+' '+okLabel;
   openModal('modal-confirm');
+  refreshIcons();
   return new Promise(resolve => { _confirmResolve = resolve; });
 }
 function _confirmResponder(valor){
@@ -932,6 +974,7 @@ function renderAll(){
   if(document.getElementById('page-projecao').classList.contains('active')) renderProjecaoTab();
   if(document.getElementById('page-graficos').classList.contains('active')) renderGraficosTab();
   if(document.getElementById('page-investimentos').classList.contains('active')) renderInvestimentosTab();
+  if(document.getElementById('page-tetos').classList.contains('active')) renderTetosTab();
 }
 
 // ══════════════════════════════════════════════
@@ -1017,9 +1060,19 @@ function renderDashboard(){
   const alertEl = document.getElementById('dash-alert');
   const proximos = proximosMeses(3, hojeRef()).map(calcularProjecaoMes);
   const primeiroNegativo = proximos.find(d=>d.sobra<0);
-  alertEl.innerHTML = primeiroNegativo
+  let bannersHtml = primeiroNegativo
     ? `<div class="alert-banner">${ic('alert-triangle',18)} <span>Suas obrigações vão superar a receita em <b>${fmtMesRef(primeiroNegativo.mesRef)}</b> — sobra projetada de <b>${fmtR(primeiroNegativo.sobra)}</b>. <a href="#" onclick="event.preventDefault();goTab('projecao',document.querySelectorAll('.nav-tab')[4])" style="color:inherit;text-decoration:underline">ver projeção</a></span></div>`
     : '';
+
+  // limite de gasto estourado no mês navegado
+  const tetoTotalMes = getTeto(mesAtual,'total');
+  if(tetoTotalMes){
+    const gastoVar = gastoVariavelTotalNoMes(mesAtual);
+    if(gastoVar > tetoTotalMes){
+      bannersHtml += `<div class="alert-banner">${ic('gauge',18)} <span>Limite de gastos de <b>${fmtMesRef(mesAtual)}</b> estourado: <b>${fmtR(gastoVar)}</b> de ${fmtR(tetoTotalMes)} (${fmtR(gastoVar-tetoTotalMes)} acima). <a href="#" onclick="event.preventDefault();goTab('tetos',document.querySelectorAll('.nav-tab')[7])" style="color:inherit;text-decoration:underline">ver limites</a></span></div>`;
+    }
+  }
+  alertEl.innerHTML = bannersHtml;
 
   document.getElementById('st-saldo').textContent = fmtR(saldo);
   document.getElementById('st-saldo').className = 'stat-value '+(saldo>=0?'pos':'neg');
@@ -2006,6 +2059,137 @@ async function salvarSaldoConta(){
   toast('Saldo salvo!');
   await loadSaldosConta();
   renderInvestimentosTab();
+}
+
+// ══════════════════════════════════════════════
+//  LIMITES DE GASTO (tetos mensais)
+// ══════════════════════════════════════════════
+// Regra combinada: só GASTO VARIÁVEL entra no limite. Obrigações fixas (consórcio,
+// parcelas — tudo que tem obrigacao_id) ficam de fora, senão a conta fixa infla o
+// balde e esconde o descontrole real. Faturas de cartão têm cartao_id e caem no
+// balde do cartão correspondente; o resto sem cartao_id nem obrigacao_id é débito.
+function gastoDebitoNoMes(mesRef){
+  return txDoMes(mesRef)
+    .filter(t=>t.tipo==='despesa' && !t.cartao_id && !t.obrigacao_id)
+    .reduce((s,t)=>s+Number(t.valor),0);
+}
+function gastoVariavelTotalNoMes(mesRef){
+  return gastoDebitoNoMes(mesRef) + totalCartoesNoMes(mesRef);
+}
+function getTeto(mesRef, escopo, cartaoId){
+  const t = tetos.find(x=>x.mes_ref===mesRef && x.escopo===escopo && (cartaoId?Number(x.cartao_id)===Number(cartaoId):!x.cartao_id));
+  return t ? Number(t.valor) : null;
+}
+async function salvarTeto(mesRef, escopo, cartaoId, valorStr){
+  const valor = parseFloat(valorStr);
+  const linha = tetos.find(x=>x.mes_ref===mesRef && x.escopo===escopo && (cartaoId?Number(x.cartao_id)===Number(cartaoId):!x.cartao_id));
+  if(isNaN(valor) || valor<=0){
+    if(linha){ await sb.from('fin_tetos').delete().eq('id', linha.id); toast('Limite removido'); }
+    else return;
+  } else if(linha){
+    await sb.from('fin_tetos').update({valor}).eq('id', linha.id);
+    toast('Limite salvo!');
+  } else {
+    await sb.from('fin_tetos').insert({mes_ref:mesRef, escopo, cartao_id:cartaoId||null, valor});
+    toast('Limite salvo!');
+  }
+  await loadTetos();
+  renderTetosTab();
+  renderDashboard();
+}
+// <80% ok, 80-100% alerta, >100% crítico
+function statusTeto(gasto, teto){
+  if(!teto) return 'vazio';
+  const pct = gasto/teto;
+  if(pct > 1) return 'critico';
+  if(pct >= 0.8) return 'alerta';
+  return 'ok';
+}
+function corStatus(st){ return st==='critico'?'var(--danger)':st==='alerta'?'var(--warn)':'var(--accent)'; }
+
+// Projeção de ritmo: só faz sentido pro mês corrente (nos passados o mês já fechou,
+// no futuro ainda não começou) — extrapola o gasto até aqui pro total de dias.
+function ritmoDoMes(mesRef, gasto, teto){
+  if(mesRef !== hojeRef() || !teto || gasto<=0) return null;
+  const hoje = new Date();
+  const diaAtual = hoje.getDate();
+  const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+  if(diaAtual < 3) return null; // cedo demais pra extrapolar com sentido
+  const projetado = gasto / diaAtual * diasNoMes;
+  return { diaAtual, diasNoMes, projetado, estoura: projetado > teto };
+}
+
+function renderTetosTab(){
+  const [ano,mes] = mesAtual.split('-').map(Number);
+  document.getElementById('tetos-mes-label').textContent = MESES[mes-1]+' '+ano;
+
+  const gastoTotal = gastoVariavelTotalNoMes(mesAtual);
+  const tetoTotal = getTeto(mesAtual,'total');
+  const stTotal = statusTeto(gastoTotal, tetoTotal);
+  const pctTotal = tetoTotal ? Math.min(100, gastoTotal/tetoTotal*100) : 0;
+  const ritmo = ritmoDoMes(mesAtual, gastoTotal, tetoTotal);
+
+  document.getElementById('teto-total-card').innerHTML = `
+    <div class="teto-hero st-${stTotal}">
+      <div class="teto-hero-top">
+        <span class="teto-hero-label">Limite total do mês</span>
+        ${tetoTotal?`<span class="teto-badge st-${stTotal}">${Math.round(gastoTotal/tetoTotal*100)}% usado</span>`:''}
+      </div>
+      <div>
+        <span class="teto-hero-valor" style="color:${tetoTotal?corStatus(stTotal):'var(--text)'}">${fmtR(gastoTotal)}</span>
+        ${tetoTotal?`<span class="teto-hero-de">de ${fmtR(tetoTotal)}</span>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <span style="font-size:12px;color:var(--muted)">Definir limite:</span>
+        <input class="teto-input" type="number" step="0.01" placeholder="0,00" value="${tetoTotal||''}"
+          onchange="salvarTeto('${mesAtual}','total',null,this.value)">
+      </div>
+      ${tetoTotal?`<div class="teto-bar-bg"><div class="teto-bar-fill" style="width:${pctTotal}%;background:${corStatus(stTotal)}"></div></div>`:''}
+      ${ritmo?`<div class="teto-ritmo">${ic(ritmo.estoura?'trending-up':'trending-down',15)}
+        <span>Dia ${ritmo.diaAtual} de ${ritmo.diasNoMes} — nesse ritmo fecha em
+        <b style="color:${ritmo.estoura?'var(--danger)':'var(--accent)'}">${fmtR(ritmo.projetado)}</b></span></div>`:''}
+      ${(tetoTotal && stTotal==='critico')?`<div class="teto-ritmo" style="color:var(--danger)">${ic('alert-triangle',15)} <span>Limite estourado em <b>${fmtR(gastoTotal-tetoTotal)}</b></span></div>`:''}
+    </div>`;
+
+  const baldes = [{key:'debito', nome:'Débito e dinheiro', icone:'banknote', cor:'#22d3a5', gasto:gastoDebitoNoMes(mesAtual), cartaoId:null}]
+    .concat(cartoes.filter(c=>c.ativo!==false).map(c=>{
+      const band = bandeiraDoCartao(c.nome);
+      return {key:'cartao', nome:c.nome, icone:band.icone, cor:band.cor, gasto:faturaDoMes(c.id,mesAtual), cartaoId:c.id};
+    }));
+
+  document.getElementById('teto-baldes').innerHTML = baldes.map(b=>{
+    const teto = getTeto(mesAtual, b.key, b.cartaoId);
+    const st = statusTeto(b.gasto, teto);
+    const pct = teto ? Math.min(100, b.gasto/teto*100) : 0;
+    return `<div class="teto-balde">
+      <div class="teto-balde-top">
+        <span class="stat-icon-badge" style="width:30px;height:30px;border-radius:9px;background:${b.cor}22;color:${b.cor}">${ic(b.icone,16)}</span>
+        <span class="teto-balde-nome">${b.nome}</span>
+        <span class="teto-balde-nums" style="color:${teto?corStatus(st):'var(--muted)'}">${fmtR(b.gasto)}${teto?` <span style="color:var(--muted)">/ ${fmtR(teto)}</span>`:''}</span>
+        <input class="teto-input" type="number" step="0.01" placeholder="sem limite" value="${teto||''}"
+          onchange="salvarTeto('${mesAtual}','${b.key}',${b.cartaoId||'null'},this.value)">
+        <span class="teto-badge st-${st}">${teto?Math.round(b.gasto/teto*100)+'%':'—'}</span>
+      </div>
+      ${teto?`<div class="teto-bar-bg" style="height:6px"><div class="teto-bar-fill" style="width:${pct}%;background:${corStatus(st)}"></div></div>`:''}
+    </div>`;
+  }).join('');
+  refreshIcons();
+}
+
+async function copiarTetosMesAnterior(){
+  const anterior = addMonths(mesAtual,-1);
+  const doAnterior = tetos.filter(t=>t.mes_ref===anterior);
+  if(!doAnterior.length){ toast('Nenhum limite definido em '+fmtMesRef(anterior),'err'); return; }
+  if(!(await confirmarAcao(`Copiar ${doAnterior.length} limite(s) de ${fmtMesRef(anterior)} para ${fmtMesRef(mesAtual)}? Os limites já definidos neste mês serão substituídos.`, 'Copiar limites', 'Copiar', 'copy'))) return;
+  for(const t of doAnterior){
+    const existente = tetos.find(x=>x.mes_ref===mesAtual && x.escopo===t.escopo && String(x.cartao_id||'')===String(t.cartao_id||''));
+    if(existente) await sb.from('fin_tetos').update({valor:t.valor}).eq('id', existente.id);
+    else await sb.from('fin_tetos').insert({mes_ref:mesAtual, escopo:t.escopo, cartao_id:t.cartao_id, valor:t.valor});
+  }
+  toast('Limites copiados!');
+  await loadTetos();
+  renderTetosTab();
+  renderDashboard();
 }
 
 function renderInvestimentosTab(){
