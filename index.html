@@ -1651,10 +1651,15 @@ function mesesDoCartao(id){
   const hoje = hojeRef();
   const mesesComFatura = [...new Set(transacoes.filter(t=>t.cartao_id===id).map(t=>t.mes_ref))].sort();
   const mesesComCompra = [...new Set(compras.filter(cp=>cp.cartao_id===id).map(cp=>cp.data_inicio.slice(0,7)))];
-  const todos = [...new Set([...mesesComFatura, ...mesesComCompra, hoje])].sort();
+  const mesesComItem = [...new Set(faturaItens.filter(fi=>fi.cartao_id===id).map(fi=>fi.mes_ref))];
+  // horizonte pra frente: pelo menos 6 meses além de hoje, pra dar pra planejar/
+  // registrar gastos de faturas futuras mesmo antes delas fecharem
+  const horizonteFuturo = addMonths(hoje, 6);
+  const todos = [...new Set([...mesesComFatura, ...mesesComCompra, ...mesesComItem, hoje, horizonteFuturo])].sort();
   const mesIni = todos[0] || hoje;
+  const mesFim = todos[todos.length-1] || hoje;
   const meses = [];
-  for(let cursor=mesIni; cursor<=hoje; cursor=addMonths(cursor,1)) meses.push(cursor);
+  for(let cursor=mesIni; cursor<=mesFim; cursor=addMonths(cursor,1)) meses.push(cursor);
   return meses;
 }
 
@@ -1689,12 +1694,16 @@ function renderCartaoMesLista(){
   document.getElementById('cartd-mes-list').innerHTML = [...meses].reverse().map(mesRef=>{
     const valor = faturaDoMes(id, mesRef);
     const selecionada = mesRef===mesSelecionado;
+    const ehFuturo = mesRef > hoje;
+    const qtdItensPlanejados = ehFuturo && valor<=0 ? faturaItens.filter(fi=>fi.cartao_id===id && fi.mes_ref===mesRef).length : 0;
     let sub;
     if(valor>0) sub = `${transacoes.filter(t=>t.cartao_id===id&&t.mes_ref===mesRef).length} lançamento(s)`;
+    else if(qtdItensPlanejados>0) sub = `${qtdItensPlanejados} planejado(s)`;
     else if(mesRef===hoje) sub = 'mês atual · sem fatura';
+    else if(ehFuturo) sub = 'fatura futura · sem lançamento ainda';
     else sub = 'sem fatura';
     return `<div class="cartd-mes-row ${selecionada?'selecionada':''}" onclick="selecionarMesFatura('${mesRef}')">
-      <div class="cartd-mes-row-top"><span style="width:7px;height:7px;border-radius:50%;background:${valor>0?'var(--accent)':'var(--muted)'};flex-shrink:0;display:inline-block"></span>${fmtMesRef(mesRef)}</div>
+      <div class="cartd-mes-row-top"><span style="width:7px;height:7px;border-radius:50%;background:${valor>0?'var(--accent)':(qtdItensPlanejados>0?'var(--accent2)':'var(--muted)')};flex-shrink:0;display:inline-block"></span>${fmtMesRef(mesRef)}</div>
       <div class="cartd-mes-row-valor" style="color:${valor>0?'var(--text)':'var(--muted)'}">${fmtR(valor)}</div>
       <div class="cartd-mes-row-sub">${sub}</div>
     </div>`;
@@ -1716,10 +1725,12 @@ function renderCartaoMesContent(){
   const mesRef = mesSelecionado;
   const el = document.getElementById('cartd-mes-content');
   if(!mesRef){ el.innerHTML = `<div class="empty" style="padding:40px"><p>Selecione um mês ao lado</p></div>`; return; }
-  const valor = faturaDoMes(id, mesRef);
+  const valorFatura = faturaDoMes(id, mesRef);
   const hoje = hojeRef();
+  const ehFuturo = mesRef > hoje;
 
-  if(valor<=0){
+  // mês passado ou atual sem nenhuma fatura: não tem o que detalhar de verdade
+  if(valorFatura<=0 && !ehFuturo){
     const msg = mesRef===hoje ? 'Mês atual — ainda sem fatura lançada.' : 'Sem fatura registrada nesse mês.';
     el.innerHTML = `<div class="card-title" style="margin-bottom:4px">${fmtMesRef(mesRef)}</div><div class="empty" style="padding:60px 20px"><div class="empty-icon">${ic('inbox',30)}</div><p>${msg}</p></div>`;
     refreshIcons();
@@ -1728,7 +1739,11 @@ function renderCartaoMesContent(){
 
   const todosItens = faturaItens.filter(fi=>fi.cartao_id===id && fi.mes_ref===mesRef);
   const somaItens = todosItens.reduce((s,i)=>s+Number(i.valor),0);
-  const restante = valor - somaItens;
+  // mês futuro sem fatura fechada ainda: não há total oficial pra comparar, então o
+  // "total" da tela vira o que o usuário já foi planejando/anotando manualmente
+  const planejando = valorFatura<=0 && ehFuturo;
+  const valor = planejando ? somaItens : valorFatura;
+  const restante = planejando ? 0 : (valorFatura - somaItens);
 
   // O filtro só afeta a LISTA de gastos à direita — o gráfico continua mostrando
   // a fatura inteira, senão perde a referência de proporção ao filtrar.
@@ -1753,12 +1768,17 @@ function renderCartaoMesContent(){
     </div>`;
   }).join('');
 
-  // "Não detalhado" é uma fatia sintética, não um item real - só aparece quando não há filtro
-  // de categoria ativo, ou quando o próprio "não detalhado" é o filtro escolhido.
-  const mostrarRestante = (!catFiltro || catFiltro==='__restante__') && restante > 0.005;
+  // "Não detalhado" é uma fatia sintética, não um item real - só aparece quando não há
+  // filtro de categoria ativo e existe um total OFICIAL de fatura pra comparar (ou seja,
+  // nunca aparece no modo "planejando", já que ali não há total fechado ainda)
+  const mostrarRestante = !planejando && (!catFiltro || catFiltro==='__restante__') && restante > 0.005;
   const restanteHtml = mostrarRestante
     ? `<div class="fatura-item-row fatura-item-restante" style="border-left:3px solid #3f4a63"><span style="display:flex;align-items:center;gap:8px"><span class="fatura-item-cat-icon" style="background:#3f4a6322;color:#8792ab">${ic('help-circle',12)}</span>Não detalhado</span><span class="fatura-item-valor" style="opacity:.75">${fmtR(restante)}</span></div>`
-    : (!catFiltro && restante < -0.005 ? `<div class="fatura-item-row" style="color:var(--danger);border-left:3px solid var(--danger)"><span>${ic('alert-triangle',13)} itens somam mais que a fatura</span><span class="fatura-item-valor">${fmtR(somaItens)}</span></div>` : '');
+    : (!planejando && !catFiltro && restante < -0.005 ? `<div class="fatura-item-row" style="color:var(--danger);border-left:3px solid var(--danger)"><span>${ic('alert-triangle',13)} itens somam mais que a fatura</span><span class="fatura-item-valor">${fmtR(somaItens)}</span></div>` : '');
+
+  const avisoPlanejando = planejando
+    ? `<div class="fatura-filtro-banner" style="border-color:var(--accent2)"><span style="display:flex;align-items:center;gap:8px;color:var(--accent2)">${ic('calendar-clock',14)} Fatura de ${fmtMesRef(mesRef)} ainda não fechou — o que você adicionar aqui fica registrado como planejado, e vira o extrato real assim que a fatura chegar.</span></div>`
+    : '';
 
   const filtroBanner = catFiltro ? `
     <div class="fatura-filtro-banner">
@@ -1772,9 +1792,16 @@ function renderCartaoMesContent(){
 
   const listaVazia = catFiltro && !itens.length && !mostrarRestante
     ? `<div class="fatura-item-row" style="font-style:italic">Nenhum gasto nessa categoria</div>` : '';
+  const semNadaAinda = planejando
+    ? '<div class="fatura-item-row" style="font-style:italic">Nada planejado ainda pra esse mês — usa o formulário abaixo</div>'
+    : '<div class="fatura-item-row" style="font-style:italic">Nenhum item detalhado ainda</div>';
+
+  const tituloValor = planejando
+    ? `<span style="color:var(--accent2);font-weight:400;text-transform:none;letter-spacing:0">· planejado: <span class="fatura-item-valor" style="font-size:13px;color:var(--accent2)">${fmtR(valor)}</span></span>`
+    : `<span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">· <span class="fatura-item-valor" style="font-size:13px">${fmtR(valor)}</span></span>`;
 
   el.innerHTML = `
-    <div class="card-title" style="margin-bottom:14px">${fmtMesRef(mesRef)} <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">· <span class="fatura-item-valor" style="font-size:13px">${fmtR(valor)}</span></span></div>
+    <div class="card-title" style="margin-bottom:14px">${fmtMesRef(mesRef)} ${tituloValor}</div>
     <div class="fatura-expand-grid">
       <div class="fatura-chart-panel">
         <div class="chart-canvas-wrap" style="height:260px"><canvas id="fatura-chart-mes"></canvas></div>
@@ -1782,8 +1809,9 @@ function renderCartaoMesContent(){
         <div class="pill-legend-hint">${ic('mouse-pointer-click',11)} clique numa categoria pra filtrar</div>
       </div>
       <div>
+        ${avisoPlanejando}
         ${filtroBanner}
-        ${listaItens || listaVazia || (todosItens.length ? '' : '<div class="fatura-item-row" style="font-style:italic">Nenhum item detalhado ainda</div>')}
+        ${listaItens || listaVazia || (todosItens.length ? '' : semNadaAinda)}
         ${restanteHtml}
         <div class="fatura-item-form">
           <input type="text" placeholder="Descrição (ex: iFood)" id="fi-desc-atual" class="form-input">
