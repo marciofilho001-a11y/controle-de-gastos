@@ -249,7 +249,7 @@ td{padding:10px 14px;font-size:13px;}
 .fatura-itens-expand{padding:10px 4px 16px 26px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);}
 .fatura-expand-grid{display:grid;grid-template-columns:400px 1fr;gap:28px;align-items:start;}
 .fatura-chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;}
-.fatura-item-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);gap:10px;padding:6px 10px;border-radius:8px;background:var(--card);margin-bottom:5px;}
+.fatura-item-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);gap:12px;padding:11px 12px;border-radius:9px;background:var(--card);margin-bottom:6px;}
 .fatura-item-restante{color:var(--text);font-style:italic;}
 .fatura-item-form{display:flex;gap:6px;margin-top:2px;}
 .fatura-item-form .form-input{padding:6px 10px;font-size:12px;height:32px;}
@@ -257,7 +257,7 @@ td{padding:10px 14px;font-size:13px;}
 .pill-legend-item.ativo{background:var(--card);box-shadow:inset 2px 0 0 currentColor;}
 .pill-legend-item.apagado{opacity:.4;}
 .pill-legend-hint{font-size:10px;color:var(--muted);text-align:center;margin-top:7px;display:flex;align-items:center;justify-content:center;gap:4px;}
-.fatura-item-cat-icon{width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:transform .12s;}
+.fatura-item-cat-icon{width:44px;height:44px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:transform .12s;}
 .fatura-item-cat-icon:hover{transform:scale(1.12);}
 .btn-icone-restaurar{background:var(--surface);border:1px solid var(--border);color:var(--muted);width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0;}
 .btn-icone-restaurar:hover{color:var(--text);border-color:#33405c;}
@@ -989,7 +989,7 @@ async function uploadIconeLancamento(descricaoEnc, inputEl){
   const descricaoNorm = normalizarDescricao(descricao);
   if(!descricaoNorm){ toast('Esse lançamento não tem um nome pra vincular o ícone','err'); return; }
   try{
-    const imagem = await comprimirImagemParaIcone(file, 128);
+    const imagem = await comprimirImagemParaIcone(file, 192);
     await sb.from('fin_descricao_icones').upsert({descricao_norm:descricaoNorm, imagem, atualizado_em:new Date().toISOString()});
     await loadDescricaoIcones();
     toast(`Ícone de "${descricao}" salvo! Vale pra qualquer lançamento com esse mesmo nome.`);
@@ -1760,7 +1760,7 @@ function renderCartaoMesContent(){
     <div class="fatura-item-row" style="border-left:2px solid ${cor}">
       <span style="display:flex;align-items:center;gap:5px;flex:1;min-width:0">
         <label class="fatura-item-cat-icon" style="background:${cor}22;color:${cor}" title="Clique pra usar sua própria imagem pra esse lançamento — vale pra qualquer outro com o mesmo nome também">
-          ${itemIconHtml(i.descricao, i.categoria, 19)}
+          ${itemIconHtml(i.descricao, i.categoria, 32)}
           <input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadIconeLancamento('${encDesc(i.descricao)}', this)">
         </label>
         ${iconeRestaurarHtml(i.descricao, i.categoria)}
