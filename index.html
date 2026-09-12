@@ -257,11 +257,11 @@ td{padding:10px 14px;font-size:13px;}
 .pill-legend-item.ativo{background:var(--card);box-shadow:inset 2px 0 0 currentColor;}
 .pill-legend-item.apagado{opacity:.4;}
 .pill-legend-hint{font-size:10px;color:var(--muted);text-align:center;margin-top:7px;display:flex;align-items:center;justify-content:center;gap:4px;}
-.fatura-item-cat-icon{width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:transform .12s;}
+.fatura-item-cat-icon{width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:transform .12s;}
 .fatura-item-cat-icon:hover{transform:scale(1.12);}
 .btn-icone-restaurar{background:var(--surface);border:1px solid var(--border);color:var(--muted);width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0;}
 .btn-icone-restaurar:hover{color:var(--text);border-color:#33405c;}
-.fatura-item-valor{font-family:var(--mono);font-weight:700;color:var(--danger);font-size:12.5px;}
+.fatura-item-valor{font-family:var(--mono);font-weight:700;color:var(--danger);font-size:15px;}
 .fatura-filtro-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 10px;margin-bottom:10px;font-size:12px;}
 .fatura-item-cat-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:6px;padding:4px 8px;flex-shrink:0;max-width:140px;}
 .cartd-main-grid{display:grid;grid-template-columns:1fr 280px;gap:24px;align-items:start;margin-top:16px;}
@@ -1739,10 +1739,10 @@ function renderCartaoMesContent(){
   const listaItens = itens.map(i=>{
     const cor = CAT_COLORS[i.categoria] || '#6b7280';
     return `
-    <div class="fatura-item-row" style="border-left:3px solid ${cor}">
+    <div class="fatura-item-row" style="border-left:2px solid ${cor}">
       <span style="display:flex;align-items:center;gap:5px;flex:1;min-width:0">
         <label class="fatura-item-cat-icon" style="background:${cor}22;color:${cor}" title="Clique pra usar sua própria imagem pra esse lançamento — vale pra qualquer outro com o mesmo nome também">
-          ${itemIconHtml(i.descricao, i.categoria, 14)}
+          ${itemIconHtml(i.descricao, i.categoria, 19)}
           <input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadIconeLancamento('${encDesc(i.descricao)}', this)">
         </label>
         ${iconeRestaurarHtml(i.descricao, i.categoria)}
