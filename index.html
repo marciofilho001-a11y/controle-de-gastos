@@ -943,22 +943,25 @@ function iconeRestaurarHtml(descricao, categoriaKey){
 }
 function encDesc(s){ return encodeURIComponent(s||''); }
 
-// Redimensiona a imagem pro quadrado "tamanho" (cover: preenche cortando o excesso,
-// sem distorcer) e recodifica em PNG - assim qualquer PNG/JPG enviado vira um
-// ícone pequeno e leve, consistente, em vez de guardar o arquivo original inteiro.
-function comprimirImagemParaIcone(file, tamanho){
+// Recorta a imagem num quadrado (cover: sem distorcer) NA RESOLUÇÃO ORIGINAL, e só
+// reduz se ela for maior que o teto - nunca aumenta uma imagem pequena, que é
+// exatamente o que borrava os ícones antes (esticar um logo de 32px pra 64px).
+function comprimirImagemParaIcone(file, tamanhoMax){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
     reader.onload = e=>{
       const img = new Image();
       img.onload = ()=>{
+        const ladoOriginal = Math.min(img.width, img.height);
+        const ladoFinal = Math.min(ladoOriginal, tamanhoMax); // nunca maior que o original
+        const offsetX = (img.width - ladoOriginal)/2, offsetY = (img.height - ladoOriginal)/2;
         const canvas = document.createElement('canvas');
-        canvas.width = tamanho; canvas.height = tamanho;
+        canvas.width = ladoFinal; canvas.height = ladoFinal;
         const ctx = canvas.getContext('2d');
-        const escala = Math.max(tamanho/img.width, tamanho/img.height);
-        const w = img.width*escala, h = img.height*escala;
-        ctx.drawImage(img, (tamanho-w)/2, (tamanho-h)/2, w, h);
-        resolve(canvas.toDataURL('image/png', 0.9));
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, offsetX, offsetY, ladoOriginal, ladoOriginal, 0, 0, ladoFinal, ladoFinal);
+        resolve(canvas.toDataURL('image/png'));
       };
       img.onerror = ()=>reject(new Error('Não foi possível ler essa imagem'));
       img.src = e.target.result;
@@ -986,7 +989,7 @@ async function uploadIconeLancamento(descricaoEnc, inputEl){
   const descricaoNorm = normalizarDescricao(descricao);
   if(!descricaoNorm){ toast('Esse lançamento não tem um nome pra vincular o ícone','err'); return; }
   try{
-    const imagem = await comprimirImagemParaIcone(file, 64);
+    const imagem = await comprimirImagemParaIcone(file, 128);
     await sb.from('fin_descricao_icones').upsert({descricao_norm:descricaoNorm, imagem, atualizado_em:new Date().toISOString()});
     await loadDescricaoIcones();
     toast(`Ícone de "${descricao}" salvo! Vale pra qualquer lançamento com esse mesmo nome.`);
@@ -1270,7 +1273,7 @@ function renderDashboard(){
       return `<tr>
         <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
         <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
-        <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(t.descricao,ci.v,13)} ${ci.l}</td>
+        <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(t.descricao,ci.v,17)} ${ci.l}</td>
         <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
         <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
         <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
@@ -1608,7 +1611,7 @@ function renderCartoesTab(){
     return `<tr>
       <td data-label="Cartão">${cartaoNome(cp.cartao_id)}</td>
       <td data-label="Descrição">${cp.descricao||'—'}</td>
-      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(cp.descricao,ci.v,13)} ${ci.l}</td>
+      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(cp.descricao,ci.v,17)} ${ci.l}</td>
       <td data-label="Parcela"><span class="parcela-tag">${cp.parcela_total>1?`${parcelaAtual}/${cp.parcela_total}`:'à vista'}</span></td>
       <td data-label="Valor Parcela" style="font-family:var(--mono)">${fmtR(cp.valor_parcela)}</td>
       <td data-label="Valor Total" style="font-family:var(--mono);color:var(--muted)">${fmtR(valorTotal)}</td>
@@ -2116,7 +2119,7 @@ function renderTransacoesQuadros(list){
       return `<div class="quadro-item-row">
         <span style="color:var(--muted);font-family:var(--mono);font-size:11px;flex-shrink:0">${fmtData(t.data)}</span>
         <span class="quadro-item-desc">${t.descricao||'—'}</span>
-        <span class="quadro-item-cat" style="color:${CAT_COLORS[ci.v]||'var(--muted)'}">${itemIconHtml(t.descricao,ci.v,12)} ${ci.l}</span>
+        <span class="quadro-item-cat" style="color:${CAT_COLORS[ci.v]||'var(--muted)'}">${itemIconHtml(t.descricao,ci.v,17)} ${ci.l}</span>
         <span style="font-family:var(--mono);font-weight:700;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'};flex-shrink:0">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</span>
         <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deletarTransacao(${t.id})">${ic('trash-2',12)}</button>
       </div>`;
@@ -2182,7 +2185,7 @@ function renderTransacoesTab(){
       <td><input type="checkbox" class="tx-check" data-id="${t.id}" ${txSelecionadas.has(t.id)?'checked':''} onchange="toggleSelecionada(${t.id},this.checked)"></td>
       <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
       <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
-      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(t.descricao,ci.v,13)} ${ci.l}</td>
+      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(t.descricao,ci.v,17)} ${ci.l}</td>
       <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
       <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
       <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
