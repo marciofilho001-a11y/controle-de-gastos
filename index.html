@@ -158,6 +158,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center;padding:20px;}
+#modal-confirm{z-index:300;} /* confirmação precisa ficar por cima de qualquer outro modal já aberto, inclusive o fullscreen */
 .modal-overlay.open{display:flex;}
 .modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;}
 .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
@@ -931,11 +932,14 @@ function itemIconHtml(descricao, categoriaKey, size){
 }
 function normalizarDescricao(d){ return (d||'').trim().toLowerCase(); }
 function imgIconHtml(src, size){ return `<img src="${src}" style="width:${size}px;height:${size}px;border-radius:5px;object-fit:cover;vertical-align:-${Math.round(size*0.2)}px;flex-shrink:0">`; }
-// botãozinho de restaurar, só aparece quando o lançamento tem um ícone próprio salvo
-function iconeRestaurarHtml(descricao){
+// botãozinho de restaurar: aparece se esse item tem ícone próprio (por nome) OU
+// se está herdando um ícone antigo de categoria (do sistema anterior, por lote)
+function iconeRestaurarHtml(descricao, categoriaKey){
   const dn = normalizarDescricao(descricao);
-  if(!dn || !descricaoIcones[dn]) return '';
-  return `<button class="btn-icone-restaurar" onclick="removerIconeLancamento('${encDesc(descricao)}')" title="Restaurar ícone padrão">${ic('rotate-ccw',9)}</button>`;
+  const temNome = dn && descricaoIcones[dn];
+  const temCategoria = categoriaKey && categoriaIcones[categoriaKey];
+  if(!temNome && !temCategoria) return '';
+  return `<button class="btn-icone-restaurar" onclick="removerIconeLancamento('${encDesc(descricao)}','${categoriaKey||''}')" title="Restaurar ícone padrão">${ic('rotate-ccw',9)}</button>`;
 }
 function encDesc(s){ return encodeURIComponent(s||''); }
 
@@ -990,12 +994,22 @@ async function uploadIconeLancamento(descricaoEnc, inputEl){
   }catch(err){ toast('Erro ao processar a imagem: '+err.message,'err'); }
 }
 
-async function removerIconeLancamento(descricaoEnc){
+async function removerIconeLancamento(descricaoEnc, categoriaKey){
   const descricao = decodeURIComponent(descricaoEnc);
   const descricaoNorm = normalizarDescricao(descricao);
-  await sb.from('fin_descricao_icones').delete().eq('descricao_norm', descricaoNorm);
-  await loadDescricaoIcones();
-  toast('Ícone restaurado ao padrão');
+  if(descricaoNorm && descricaoIcones[descricaoNorm]){
+    // tem ícone específico pra esse nome - remove só esse, mais preciso
+    await sb.from('fin_descricao_icones').delete().eq('descricao_norm', descricaoNorm);
+    await loadDescricaoIcones();
+    toast('Ícone restaurado ao padrão');
+  } else if(categoriaKey && categoriaIcones[categoriaKey]){
+    // não tem ícone próprio - o que está aparecendo é o ícone antigo (por lote) da
+    // categoria inteira. Avisa que isso afeta todos os itens dessa categoria antes de remover.
+    if(!(await confirmarAcao(`Esse item ainda não tem ícone próprio — o que aparece é o ícone salvo pra toda a categoria "${catInfo(categoriaKey).l}". Remover vai tirar de TODOS os itens dessa categoria, não só desse. Continuar?`, 'Remover ícone da categoria', 'Remover', 'trash-2'))) return;
+    await sb.from('fin_categoria_icones').delete().eq('categoria', categoriaKey);
+    await loadCategoriaIcones();
+    toast('Ícone da categoria removido');
+  }
   rerenderApósMudarIcone();
 }
 
@@ -1731,7 +1745,7 @@ function renderCartaoMesContent(){
           ${itemIconHtml(i.descricao, i.categoria, 14)}
           <input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadIconeLancamento('${encDesc(i.descricao)}', this)">
         </label>
-        ${iconeRestaurarHtml(i.descricao)}
+        ${iconeRestaurarHtml(i.descricao, i.categoria)}
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);margin-left:3px">${i.descricao}</span>
         <select class="fatura-item-cat-select" onchange="atualizarFaturaItemCategoria(${i.id}, this.value)">${catOptions(i.categoria)}</select>
       </span>
