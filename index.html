@@ -520,6 +520,14 @@ td{padding:10px 14px;font-size:13px;}
   <div class="card">
     <div class="card-title">Compras e Parcelamentos Lançados</div>
     <div class="form-hint" style="margin-bottom:12px">Cada compra gera automaticamente uma transação por parcela, já no mês certo — excluir aqui remove todas as parcelas dela de uma vez, em qualquer mês.</div>
+    <div class="toolbar" style="margin-bottom:12px">
+      <select class="form-select" id="compras-filter-periodo" onchange="renderCartoesTab()" style="width:190px">
+        <option value="atual">Só o mês navegado</option>
+        <option value="todos">Todos os meses</option>
+      </select>
+      <select class="form-select" id="compras-filter-cartao" onchange="renderCartoesTab()" style="width:190px"><option value="">Todos os cartões</option></select>
+    </div>
+    <div id="compras-resumo-filtro"></div>
     <div class="table-wrap">
       <table><thead><tr><th>Cartão</th><th>Descrição</th><th>Categoria</th><th>Parcela</th><th>Valor Parcela</th><th>Valor Total</th><th>Início</th><th></th></tr></thead>
       <tbody id="compras-body"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Nenhuma compra lançada</td></tr></tbody></table>
@@ -1448,9 +1456,40 @@ function renderCartoesTab(){
   const sel = document.getElementById('compra-cartao');
   sel.innerHTML = cartoes.filter(c=>c.ativo!==false).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('') || '<option value="">Cadastre um cartão primeiro</option>';
 
+  // popula o filtro de cartão da tabela de compras (uma vez só, preservando a seleção atual)
+  const filtroCartaoSel = document.getElementById('compras-filter-cartao');
+  const valorAtualFiltro = filtroCartaoSel.value;
+  filtroCartaoSel.innerHTML = '<option value="">Todos os cartões</option>' + cartoes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  filtroCartaoSel.value = valorAtualFiltro;
+
+  const filtroPeriodo = document.getElementById('compras-filter-periodo').value;
+  const filtroCartaoId = filtroCartaoSel.value;
+
   const body = document.getElementById('compras-body');
-  if(!compras.length){ body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Nenhuma compra lançada</td></tr>'; refreshIcons(); return; }
-  const ordenadas = [...compras].sort((a,b)=> b.data_inicio.localeCompare(a.data_inicio));
+  if(!compras.length){ body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Nenhuma compra lançada</td></tr>'; document.getElementById('compras-resumo-filtro').innerHTML=''; refreshIcons(); return; }
+
+  let filtradas = compras;
+  if(filtroCartaoId) filtradas = filtradas.filter(cp=>String(cp.cartao_id)===String(filtroCartaoId));
+  // "só o mês navegado" = a parcela dessa compra que cai no mesAtual está dentro do intervalo
+  // [1, parcela_total] - ou seja, a compra realmente tem uma parcela ativa cobrando esse mês
+  if(filtroPeriodo==='atual'){
+    filtradas = filtradas.filter(cp=>{
+      const parc = parcelaNoMes({data_inicio:cp.data_inicio}, mesAtual);
+      return parc>=1 && parc<=cp.parcela_total;
+    });
+  }
+
+  const resumoEl = document.getElementById('compras-resumo-filtro');
+  if(filtradas.length){
+    const totalFiltrado = filtroPeriodo==='atual'
+      ? filtradas.reduce((s,cp)=>s+Number(cp.valor_parcela),0)
+      : filtradas.reduce((s,cp)=>s+Number(cp.valor_parcela)*cp.parcela_total,0);
+    resumoEl.innerHTML = `<div class="tx-resumo-filtro">${ic('calculator',13)} ${filtradas.length} compra(s)${filtroPeriodo==='atual'?` · parcelas de ${fmtMesRef(mesAtual)}`:''} · <span style="color:var(--danger);font-weight:700">${fmtR(totalFiltrado)}</span></div>`;
+  } else resumoEl.innerHTML = '';
+
+  if(!filtradas.length){ body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Nenhuma compra ${filtroPeriodo==='atual'?`com parcela em ${fmtMesRef(mesAtual)}`:'encontrada'} com esse filtro</td></tr>`; refreshIcons(); return; }
+
+  const ordenadas = [...filtradas].sort((a,b)=> b.data_inicio.localeCompare(a.data_inicio));
   body.innerHTML = ordenadas.map(cp=>{
     const ci = catInfo(cp.categoria);
     const valorTotal = Number(cp.valor_parcela) * cp.parcela_total;
