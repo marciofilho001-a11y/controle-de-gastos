@@ -258,6 +258,8 @@ td{padding:10px 14px;font-size:13px;}
 .pill-legend-hint{font-size:10px;color:var(--muted);text-align:center;margin-top:7px;display:flex;align-items:center;justify-content:center;gap:4px;}
 .fatura-item-cat-icon{width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:transform .12s;}
 .fatura-item-cat-icon:hover{transform:scale(1.12);}
+.btn-icone-restaurar{background:var(--surface);border:1px solid var(--border);color:var(--muted);width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0;}
+.btn-icone-restaurar:hover{color:var(--text);border-color:#33405c;}
 .fatura-item-valor{font-family:var(--mono);font-weight:700;color:var(--danger);font-size:12.5px;}
 .fatura-filtro-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 10px;margin-bottom:10px;font-size:12px;}
 .fatura-item-cat-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:6px;padding:4px 8px;flex-shrink:0;max-width:140px;}
@@ -907,13 +909,35 @@ const RECEITA_CATS = [
 const CAT_COLORS = {moradia:'#3d8ef0',cartao:'#f472b6',consorcio:'#a78bfa',financiamento:'#fb923c',assinatura:'#60a5fa',alimentacao:'#f0a832',transporte:'#22d3a5',saude:'#f05252',lazer:'#34d399',educacao:'#94a3b8',outro:'#6b7280',salario:'#22d3a5',freelance:'#3d8ef0',investimento:'#a78bfa'};
 function catInfo(v){ return DESPESA_CATS.find(c=>c.v===v) || RECEITA_CATS.find(c=>c.v===v) || {v,l:v||'Outro',i:'more-horizontal'}; }
 
-// Ícone de categoria pra exibição: usa a imagem customizada (enviada pelo usuário)
-// quando existe pra aquela categoria, senão cai no ícone padrão do lucide.
+// Ícone de categoria pra exibição (usado nas legendas de gráfico, que representam
+// uma categoria inteira agregada — ali não faz sentido "por lançamento").
 function catIconHtml(categoriaKey, size){
   size = size || 14;
-  if(categoriaIcones[categoriaKey]) return `<img src="${categoriaIcones[categoriaKey]}" style="width:${size}px;height:${size}px;border-radius:5px;object-fit:cover;vertical-align:-${Math.round(size*0.2)}px;flex-shrink:0">`;
+  if(categoriaIcones[categoriaKey]) return imgIconHtml(categoriaIcones[categoriaKey], size);
   return ic(catInfo(categoriaKey).i, size);
 }
+
+// Ícone de um LANÇAMENTO específico (linha de item, transação, etc). Prioridade:
+// 1) ícone salvo pro nome exato desse lançamento (ex: "Komprao") - assim, ao trocar
+//    o ícone de um "Komprao", qualquer outro lançamento com o mesmo nome já usa o
+//    mesmo ícone automaticamente, em qualquer categoria ou mês
+// 2) ícone da categoria (se o usuário tiver definido um, sem ser por nome)
+// 3) ícone padrão do lucide pra aquela categoria
+function itemIconHtml(descricao, categoriaKey, size){
+  size = size || 14;
+  const dn = normalizarDescricao(descricao);
+  if(dn && descricaoIcones[dn]) return imgIconHtml(descricaoIcones[dn], size);
+  return catIconHtml(categoriaKey, size);
+}
+function normalizarDescricao(d){ return (d||'').trim().toLowerCase(); }
+function imgIconHtml(src, size){ return `<img src="${src}" style="width:${size}px;height:${size}px;border-radius:5px;object-fit:cover;vertical-align:-${Math.round(size*0.2)}px;flex-shrink:0">`; }
+// botãozinho de restaurar, só aparece quando o lançamento tem um ícone próprio salvo
+function iconeRestaurarHtml(descricao){
+  const dn = normalizarDescricao(descricao);
+  if(!dn || !descricaoIcones[dn]) return '';
+  return `<button class="btn-icone-restaurar" onclick="removerIconeLancamento('${encDesc(descricao)}')" title="Restaurar ícone padrão">${ic('rotate-ccw',9)}</button>`;
+}
+function encDesc(s){ return encodeURIComponent(s||''); }
 
 // Redimensiona a imagem pro quadrado "tamanho" (cover: preenche cortando o excesso,
 // sem distorcer) e recodifica em PNG - assim qualquer PNG/JPG enviado vira um
@@ -940,23 +964,39 @@ function comprimirImagemParaIcone(file, tamanho){
   });
 }
 
-async function uploadIconeCategoria(categoria, inputEl){
+function rerenderApósMudarIcone(){
+  if(document.getElementById('modal-cartao-detalhe').classList.contains('open')){
+    renderCartaoMesContent();
+    if(cartaoAggVisivel) renderCartaoAggChart();
+  }
+  if(document.getElementById('page-transacoes').classList.contains('active')) renderTransacoesTab();
+  if(document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
+}
+
+async function uploadIconeLancamento(descricaoEnc, inputEl){
+  const descricao = decodeURIComponent(descricaoEnc);
   const file = inputEl.files[0];
   inputEl.value = ''; // permite escolher o mesmo arquivo de novo depois, se quiser trocar
   if(!file) return;
   if(!file.type.startsWith('image/')){ toast('Escolhe uma imagem (PNG ou JPG)','err'); return; }
+  const descricaoNorm = normalizarDescricao(descricao);
+  if(!descricaoNorm){ toast('Esse lançamento não tem um nome pra vincular o ícone','err'); return; }
   try{
     const imagem = await comprimirImagemParaIcone(file, 64);
-    await sb.from('fin_categoria_icones').upsert({categoria, imagem, atualizado_em:new Date().toISOString()});
-    await loadCategoriaIcones();
-    toast('Ícone da categoria atualizado!');
-    // re-renderiza só o que pode estar mostrando essa categoria agora, sem fechar o modal
-    if(document.getElementById('modal-cartao-detalhe').classList.contains('open')){
-      renderCartaoMesContent();
-      if(cartaoAggVisivel) renderCartaoAggChart();
-    }
-    if(document.getElementById('page-transacoes').classList.contains('active')) renderTransacoesTab();
+    await sb.from('fin_descricao_icones').upsert({descricao_norm:descricaoNorm, imagem, atualizado_em:new Date().toISOString()});
+    await loadDescricaoIcones();
+    toast(`Ícone de "${descricao}" salvo! Vale pra qualquer lançamento com esse mesmo nome.`);
+    rerenderApósMudarIcone();
   }catch(err){ toast('Erro ao processar a imagem: '+err.message,'err'); }
+}
+
+async function removerIconeLancamento(descricaoEnc){
+  const descricao = decodeURIComponent(descricaoEnc);
+  const descricaoNorm = normalizarDescricao(descricao);
+  await sb.from('fin_descricao_icones').delete().eq('descricao_norm', descricaoNorm);
+  await loadDescricaoIcones();
+  toast('Ícone restaurado ao padrão');
+  rerenderApósMudarIcone();
 }
 
 // ══════════════════════════════════════════════
@@ -968,7 +1008,7 @@ function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
 // ══════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════
-let obrigacoes=[], transacoes=[], investimentos=[], config={}, cartoes=[], compras=[], saldosConta=[], faturaItens=[], tetos=[], categoriaIcones={};
+let obrigacoes=[], transacoes=[], investimentos=[], config={}, cartoes=[], compras=[], saldosConta=[], faturaItens=[], tetos=[], categoriaIcones={}, descricaoIcones={};
 let mesAtual = new Date().toISOString().slice(0,7); // 'YYYY-MM'
 let charts = {};
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -977,7 +1017,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 //  INIT
 // ══════════════════════════════════════════════
 (async function init(){
-  await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras(), loadSaldosConta(), loadFaturaItens(), loadTetos(), loadCategoriaIcones()]);
+  await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras(), loadSaldosConta(), loadFaturaItens(), loadTetos(), loadCategoriaIcones(), loadDescricaoIcones()]);
   document.getElementById('cfg-renda').value = config.renda_projetada || '';
   document.getElementById('cfg-pct').value = config.pct_investimento || 20;
   document.getElementById('tx-data').value = new Date().toISOString().slice(0,10);
@@ -998,6 +1038,7 @@ async function loadSaldosConta(){ const {data} = await sb.from('fin_saldo_conta'
 async function loadFaturaItens(){ const {data} = await sb.from('fin_fatura_itens').select('*').order('criado_em'); faturaItens = data||[]; }
 async function loadTetos(){ const {data} = await sb.from('fin_tetos').select('*').order('mes_ref'); tetos = data||[]; }
 async function loadCategoriaIcones(){ const {data} = await sb.from('fin_categoria_icones').select('*').order('categoria'); categoriaIcones = {}; (data||[]).forEach(r=>categoriaIcones[r.categoria]=r.imagem); }
+async function loadDescricaoIcones(){ const {data} = await sb.from('fin_descricao_icones').select('*').order('descricao_norm'); descricaoIcones = {}; (data||[]).forEach(r=>descricaoIcones[r.descricao_norm]=r.imagem); }
 async function loadConfig(){
   const {data} = await sb.from('fin_config').select('*');
   config = {};
@@ -1215,7 +1256,7 @@ function renderDashboard(){
       return `<tr>
         <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
         <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
-        <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${catIconHtml(ci.v,13)} ${ci.l}</td>
+        <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(t.descricao,ci.v,13)} ${ci.l}</td>
         <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
         <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
         <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
@@ -1553,7 +1594,7 @@ function renderCartoesTab(){
     return `<tr>
       <td data-label="Cartão">${cartaoNome(cp.cartao_id)}</td>
       <td data-label="Descrição">${cp.descricao||'—'}</td>
-      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${catIconHtml(ci.v,13)} ${ci.l}</td>
+      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(cp.descricao,ci.v,13)} ${ci.l}</td>
       <td data-label="Parcela"><span class="parcela-tag">${cp.parcela_total>1?`${parcelaAtual}/${cp.parcela_total}`:'à vista'}</span></td>
       <td data-label="Valor Parcela" style="font-family:var(--mono)">${fmtR(cp.valor_parcela)}</td>
       <td data-label="Valor Total" style="font-family:var(--mono);color:var(--muted)">${fmtR(valorTotal)}</td>
@@ -1685,12 +1726,13 @@ function renderCartaoMesContent(){
     const cor = CAT_COLORS[i.categoria] || '#6b7280';
     return `
     <div class="fatura-item-row" style="border-left:3px solid ${cor}">
-      <span style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
-        <label class="fatura-item-cat-icon" style="background:${cor}22;color:${cor}" title="Clique pra usar sua própria imagem nessa categoria">
-          ${catIconHtml(i.categoria,14)}
-          <input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadIconeCategoria('${i.categoria}', this)">
+      <span style="display:flex;align-items:center;gap:5px;flex:1;min-width:0">
+        <label class="fatura-item-cat-icon" style="background:${cor}22;color:${cor}" title="Clique pra usar sua própria imagem pra esse lançamento — vale pra qualquer outro com o mesmo nome também">
+          ${itemIconHtml(i.descricao, i.categoria, 14)}
+          <input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadIconeLancamento('${encDesc(i.descricao)}', this)">
         </label>
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${i.descricao}</span>
+        ${iconeRestaurarHtml(i.descricao)}
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);margin-left:3px">${i.descricao}</span>
         <select class="fatura-item-cat-select" onchange="atualizarFaturaItemCategoria(${i.id}, this.value)">${catOptions(i.categoria)}</select>
       </span>
       <span style="display:flex;align-items:center;gap:10px;flex-shrink:0"><span class="fatura-item-valor">${fmtR(i.valor)}</span> <button class="btn btn-danger btn-sm btn-icon" onclick="deletarFaturaItem(${i.id})">${ic('trash-2',13)}</button></span>
@@ -2032,7 +2074,7 @@ function renderTransacoesQuadros(list){
       return `<div class="quadro-item-row">
         <span style="color:var(--muted);font-family:var(--mono);font-size:11px;flex-shrink:0">${fmtData(t.data)}</span>
         <span class="quadro-item-desc">${t.descricao||'—'}</span>
-        <span class="quadro-item-cat" style="color:${CAT_COLORS[ci.v]||'var(--muted)'}">${catIconHtml(ci.v,12)} ${ci.l}</span>
+        <span class="quadro-item-cat" style="color:${CAT_COLORS[ci.v]||'var(--muted)'}">${itemIconHtml(t.descricao,ci.v,12)} ${ci.l}</span>
         <span style="font-family:var(--mono);font-weight:700;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'};flex-shrink:0">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</span>
         <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deletarTransacao(${t.id})">${ic('trash-2',12)}</button>
       </div>`;
@@ -2098,7 +2140,7 @@ function renderTransacoesTab(){
       <td><input type="checkbox" class="tx-check" data-id="${t.id}" ${txSelecionadas.has(t.id)?'checked':''} onchange="toggleSelecionada(${t.id},this.checked)"></td>
       <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
       <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
-      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${catIconHtml(ci.v,13)} ${ci.l}</td>
+      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(t.descricao,ci.v,13)} ${ci.l}</td>
       <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
       <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
       <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
