@@ -226,6 +226,8 @@ td{padding:10px 14px;font-size:13px;}
 /* MODAL DETALHE OBRIGAÇÃO */
 .modal-lg{max-width:600px;}
 .modal-xl{max-width:1120px;width:92vw;max-height:92vh;}
+.modal-overlay.fullscreen-overlay{padding:0;}
+.modal-fullscreen{width:100vw;height:100vh;max-width:100vw;max-height:100vh;border-radius:0;border:none;}
 .obr-detalhe-meta{font-size:12px;color:var(--muted);margin:4px 0 16px;}
 .obr-detalhe-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
 .obr-detalhe-stat{background:var(--surface);border-radius:10px;padding:10px 12px;}
@@ -244,8 +246,8 @@ td{padding:10px 14px;font-size:13px;}
 .obr-timeline-valor{font-family:var(--mono);font-weight:600;flex-shrink:0;}
 .obr-timeline-end{display:flex;align-items:center;gap:8px;padding:10px 0 0;margin-top:6px;border-top:1px solid var(--border);font-size:12px;font-weight:600;color:var(--accent2);}
 .fatura-itens-expand{padding:10px 4px 16px 26px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);}
-.fatura-expand-grid{display:grid;grid-template-columns:320px 1fr;gap:22px;align-items:start;}
-.fatura-chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;}
+.fatura-expand-grid{display:grid;grid-template-columns:400px 1fr;gap:28px;align-items:start;}
+.fatura-chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;}
 .fatura-item-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);gap:10px;padding:6px 10px;border-radius:8px;background:var(--card);margin-bottom:5px;}
 .fatura-item-restante{color:var(--text);font-style:italic;}
 .fatura-item-form{display:flex;gap:6px;margin-top:2px;}
@@ -254,12 +256,13 @@ td{padding:10px 14px;font-size:13px;}
 .pill-legend-item.ativo{background:var(--card);box-shadow:inset 2px 0 0 currentColor;}
 .pill-legend-item.apagado{opacity:.4;}
 .pill-legend-hint{font-size:10px;color:var(--muted);text-align:center;margin-top:7px;display:flex;align-items:center;justify-content:center;gap:4px;}
-.fatura-item-cat-icon{width:20px;height:20px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.fatura-item-cat-icon{width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:transform .12s;}
+.fatura-item-cat-icon:hover{transform:scale(1.12);}
 .fatura-item-valor{font-family:var(--mono);font-weight:700;color:var(--danger);font-size:12.5px;}
 .fatura-filtro-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 10px;margin-bottom:10px;font-size:12px;}
 .fatura-item-cat-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:6px;padding:4px 8px;flex-shrink:0;max-width:140px;}
-.cartd-main-grid{display:grid;grid-template-columns:1fr 230px;gap:20px;align-items:start;margin-top:16px;}
-.cartd-mes-sidebar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;position:sticky;top:0;}
+.cartd-main-grid{display:grid;grid-template-columns:1fr 280px;gap:24px;align-items:start;margin-top:16px;}
+.cartd-mes-sidebar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;position:sticky;top:0;}
 .cartd-mes-sidebar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:10px;}
 .cartd-mes-list{display:flex;flex-direction:column;gap:4px;max-height:520px;overflow-y:auto;}
 .cartd-mes-row{display:flex;flex-direction:column;gap:2px;padding:9px 10px;border-radius:9px;cursor:pointer;border:1px solid transparent;}
@@ -760,21 +763,21 @@ td{padding:10px 14px;font-size:13px;}
 </div>
 
 <!-- MODAL DETALHE / FATURAS DO CARTÃO -->
-<div class="modal-overlay" id="modal-cartao-detalhe">
-  <div class="modal modal-xl">
+<div class="modal-overlay fullscreen-overlay" id="modal-cartao-detalhe">
+  <div class="modal modal-fullscreen">
     <div class="modal-header">
-      <span class="modal-title" id="cartd-titulo">Cartão</span>
-      <button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-cartao-detalhe')" aria-label="Fechar"><i data-lucide="x" class="lic" style="width:14px;height:14px"></i></button>
+      <span class="modal-title" id="cartd-titulo" style="font-size:20px">Cartão</span>
+      <button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-cartao-detalhe')" aria-label="Fechar"><i data-lucide="x" class="lic" style="width:18px;height:18px"></i></button>
     </div>
-    <div class="obr-detalhe-meta" id="cartd-meta"></div>
-    <div class="obr-detalhe-stats" id="cartd-stats"></div>
+    <div class="obr-detalhe-meta" id="cartd-meta" style="font-size:13px"></div>
+    <div class="obr-detalhe-stats" id="cartd-stats" style="max-width:900px"></div>
     <button class="btn btn-secondary btn-sm" id="cartd-agg-toggle-btn" onclick="toggleCartaoAggChart()" style="margin:14px 0">
       <i data-lucide="chart-pie" class="lic" style="width:14px;height:14px"></i> Ver gráfico do período todo
     </button>
-    <div id="cartd-agg-section" style="display:none">
+    <div id="cartd-agg-section" style="display:none;max-width:900px">
       <div class="card-title" style="margin:4px 0 10px"><i data-lucide="chart-pie" class="lic" style="width:14px;height:14px"></i> Gastos por Categoria — período todo</div>
       <div class="fatura-chart-panel">
-        <div class="chart-canvas-wrap" style="height:220px"><canvas id="cartd-agg-chart"></canvas></div>
+        <div class="chart-canvas-wrap" style="height:280px"><canvas id="cartd-agg-chart"></canvas></div>
         <div class="pill-legend" id="cartd-agg-chart-legend"></div>
       </div>
     </div>
@@ -904,6 +907,58 @@ const RECEITA_CATS = [
 const CAT_COLORS = {moradia:'#3d8ef0',cartao:'#f472b6',consorcio:'#a78bfa',financiamento:'#fb923c',assinatura:'#60a5fa',alimentacao:'#f0a832',transporte:'#22d3a5',saude:'#f05252',lazer:'#34d399',educacao:'#94a3b8',outro:'#6b7280',salario:'#22d3a5',freelance:'#3d8ef0',investimento:'#a78bfa'};
 function catInfo(v){ return DESPESA_CATS.find(c=>c.v===v) || RECEITA_CATS.find(c=>c.v===v) || {v,l:v||'Outro',i:'more-horizontal'}; }
 
+// Ícone de categoria pra exibição: usa a imagem customizada (enviada pelo usuário)
+// quando existe pra aquela categoria, senão cai no ícone padrão do lucide.
+function catIconHtml(categoriaKey, size){
+  size = size || 14;
+  if(categoriaIcones[categoriaKey]) return `<img src="${categoriaIcones[categoriaKey]}" style="width:${size}px;height:${size}px;border-radius:5px;object-fit:cover;vertical-align:-${Math.round(size*0.2)}px;flex-shrink:0">`;
+  return ic(catInfo(categoriaKey).i, size);
+}
+
+// Redimensiona a imagem pro quadrado "tamanho" (cover: preenche cortando o excesso,
+// sem distorcer) e recodifica em PNG - assim qualquer PNG/JPG enviado vira um
+// ícone pequeno e leve, consistente, em vez de guardar o arquivo original inteiro.
+function comprimirImagemParaIcone(file, tamanho){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const canvas = document.createElement('canvas');
+        canvas.width = tamanho; canvas.height = tamanho;
+        const ctx = canvas.getContext('2d');
+        const escala = Math.max(tamanho/img.width, tamanho/img.height);
+        const w = img.width*escala, h = img.height*escala;
+        ctx.drawImage(img, (tamanho-w)/2, (tamanho-h)/2, w, h);
+        resolve(canvas.toDataURL('image/png', 0.9));
+      };
+      img.onerror = ()=>reject(new Error('Não foi possível ler essa imagem'));
+      img.src = e.target.result;
+    };
+    reader.onerror = ()=>reject(new Error('Falha ao ler o arquivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadIconeCategoria(categoria, inputEl){
+  const file = inputEl.files[0];
+  inputEl.value = ''; // permite escolher o mesmo arquivo de novo depois, se quiser trocar
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ toast('Escolhe uma imagem (PNG ou JPG)','err'); return; }
+  try{
+    const imagem = await comprimirImagemParaIcone(file, 64);
+    await sb.from('fin_categoria_icones').upsert({categoria, imagem, atualizado_em:new Date().toISOString()});
+    await loadCategoriaIcones();
+    toast('Ícone da categoria atualizado!');
+    // re-renderiza só o que pode estar mostrando essa categoria agora, sem fechar o modal
+    if(document.getElementById('modal-cartao-detalhe').classList.contains('open')){
+      renderCartaoMesContent();
+      if(cartaoAggVisivel) renderCartaoAggChart();
+    }
+    if(document.getElementById('page-transacoes').classList.contains('active')) renderTransacoesTab();
+  }catch(err){ toast('Erro ao processar a imagem: '+err.message,'err'); }
+}
+
 // ══════════════════════════════════════════════
 //  ÍCONES (lucide) — helpers
 // ══════════════════════════════════════════════
@@ -913,7 +968,7 @@ function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
 // ══════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════
-let obrigacoes=[], transacoes=[], investimentos=[], config={}, cartoes=[], compras=[], saldosConta=[], faturaItens=[], tetos=[];
+let obrigacoes=[], transacoes=[], investimentos=[], config={}, cartoes=[], compras=[], saldosConta=[], faturaItens=[], tetos=[], categoriaIcones={};
 let mesAtual = new Date().toISOString().slice(0,7); // 'YYYY-MM'
 let charts = {};
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -922,7 +977,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 //  INIT
 // ══════════════════════════════════════════════
 (async function init(){
-  await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras(), loadSaldosConta(), loadFaturaItens(), loadTetos()]);
+  await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras(), loadSaldosConta(), loadFaturaItens(), loadTetos(), loadCategoriaIcones()]);
   document.getElementById('cfg-renda').value = config.renda_projetada || '';
   document.getElementById('cfg-pct').value = config.pct_investimento || 20;
   document.getElementById('tx-data').value = new Date().toISOString().slice(0,10);
@@ -942,6 +997,7 @@ async function loadCompras(){ const {data} = await sb.from('fin_cartao_compras')
 async function loadSaldosConta(){ const {data} = await sb.from('fin_saldo_conta').select('*').order('mes_ref'); saldosConta = data||[]; }
 async function loadFaturaItens(){ const {data} = await sb.from('fin_fatura_itens').select('*').order('criado_em'); faturaItens = data||[]; }
 async function loadTetos(){ const {data} = await sb.from('fin_tetos').select('*').order('mes_ref'); tetos = data||[]; }
+async function loadCategoriaIcones(){ const {data} = await sb.from('fin_categoria_icones').select('*').order('categoria'); categoriaIcones = {}; (data||[]).forEach(r=>categoriaIcones[r.categoria]=r.imagem); }
 async function loadConfig(){
   const {data} = await sb.from('fin_config').select('*');
   config = {};
@@ -1159,7 +1215,7 @@ function renderDashboard(){
       return `<tr>
         <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
         <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
-        <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${ic(ci.i,13)} ${ci.l}</td>
+        <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${catIconHtml(ci.v,13)} ${ci.l}</td>
         <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
         <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
         <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
@@ -1497,7 +1553,7 @@ function renderCartoesTab(){
     return `<tr>
       <td data-label="Cartão">${cartaoNome(cp.cartao_id)}</td>
       <td data-label="Descrição">${cp.descricao||'—'}</td>
-      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${ic(ci.i,13)} ${ci.l}</td>
+      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${catIconHtml(ci.v,13)} ${ci.l}</td>
       <td data-label="Parcela"><span class="parcela-tag">${cp.parcela_total>1?`${parcelaAtual}/${cp.parcela_total}`:'à vista'}</span></td>
       <td data-label="Valor Parcela" style="font-family:var(--mono)">${fmtR(cp.valor_parcela)}</td>
       <td data-label="Valor Total" style="font-family:var(--mono);color:var(--muted)">${fmtR(valorTotal)}</td>
@@ -1630,7 +1686,10 @@ function renderCartaoMesContent(){
     return `
     <div class="fatura-item-row" style="border-left:3px solid ${cor}">
       <span style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
-        <span class="fatura-item-cat-icon" style="background:${cor}22;color:${cor}">${ic(catInfo(i.categoria).i,12)}</span>
+        <label class="fatura-item-cat-icon" style="background:${cor}22;color:${cor}" title="Clique pra usar sua própria imagem nessa categoria">
+          ${catIconHtml(i.categoria,14)}
+          <input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadIconeCategoria('${i.categoria}', this)">
+        </label>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${i.descricao}</span>
         <select class="fatura-item-cat-select" onchange="atualizarFaturaItemCategoria(${i.id}, this.value)">${catOptions(i.categoria)}</select>
       </span>
@@ -1662,7 +1721,7 @@ function renderCartaoMesContent(){
     <div class="card-title" style="margin-bottom:14px">${fmtMesRef(mesRef)} <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">· <span class="fatura-item-valor" style="font-size:13px">${fmtR(valor)}</span></span></div>
     <div class="fatura-expand-grid">
       <div class="fatura-chart-panel">
-        <div class="chart-canvas-wrap" style="height:200px"><canvas id="fatura-chart-mes"></canvas></div>
+        <div class="chart-canvas-wrap" style="height:260px"><canvas id="fatura-chart-mes"></canvas></div>
         <div class="pill-legend" id="fatura-chart-mes-legend"></div>
         <div class="pill-legend-hint">${ic('mouse-pointer-click',11)} clique numa categoria pra filtrar</div>
       </div>
@@ -1973,7 +2032,7 @@ function renderTransacoesQuadros(list){
       return `<div class="quadro-item-row">
         <span style="color:var(--muted);font-family:var(--mono);font-size:11px;flex-shrink:0">${fmtData(t.data)}</span>
         <span class="quadro-item-desc">${t.descricao||'—'}</span>
-        <span class="quadro-item-cat" style="color:${CAT_COLORS[ci.v]||'var(--muted)'}">${ic(ci.i,12)} ${ci.l}</span>
+        <span class="quadro-item-cat" style="color:${CAT_COLORS[ci.v]||'var(--muted)'}">${catIconHtml(ci.v,12)} ${ci.l}</span>
         <span style="font-family:var(--mono);font-weight:700;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'};flex-shrink:0">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</span>
         <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deletarTransacao(${t.id})">${ic('trash-2',12)}</button>
       </div>`;
@@ -2039,7 +2098,7 @@ function renderTransacoesTab(){
       <td><input type="checkbox" class="tx-check" data-id="${t.id}" ${txSelecionadas.has(t.id)?'checked':''} onchange="toggleSelecionada(${t.id},this.checked)"></td>
       <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
       <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
-      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${ic(ci.i,13)} ${ci.l}</td>
+      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${catIconHtml(ci.v,13)} ${ci.l}</td>
       <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
       <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
       <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
@@ -2435,7 +2494,7 @@ function renderPillLegend(containerId, items, clicavel){
     return `<span class="pill-legend-item ${clicavel?'clicavel':''} ${ativo?'ativo':''} ${apagado?'apagado':''}"
       ${clicavel&&i.key?`onclick="filtrarPorCategoria('${i.key}')"`:''}
       title="${i.label}: ${fmtR(i.value)}${clicavel?' — clique pra filtrar':''}">
-      <span class="pill-legend-icon-badge" style="background:${i.color}22;color:${i.color}">${i.icon?ic(i.icon,13):`<span class="pill-legend-dot" style="background:${i.color}"></span>`}</span>
+      <span class="pill-legend-icon-badge" style="background:${i.color}22;color:${i.color}">${(i.key && categoriaIcones[i.key]) ? `<img src="${categoriaIcones[i.key]}" style="width:15px;height:15px;border-radius:4px;object-fit:cover">` : (i.icon?ic(i.icon,13):`<span class="pill-legend-dot" style="background:${i.color}"></span>`)}</span>
       <span class="pill-legend-label">${i.label}</span>
       <span class="pill-legend-valor">${fmtR(i.value)}</span>
       <span class="pill-legend-pct">${total>0?Math.round(i.value/total*100):0}%</span>
@@ -2469,7 +2528,7 @@ function renderDonutChart(canvasId, txList){
         datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#fff', font:{size:12,weight:'700',family:'Inter,sans-serif'}, textStrokeColor:'rgba(0,0,0,.55)', textStrokeWidth:3,
           formatter:v=>Math.round(v/total*100)+'%' } } }
   });
-  renderPillLegend(canvasId+'-legend', labels.map((l,i)=>({label:catInfo(l).l, color:colors[i], value:data[i], icon:catInfo(l).i})));
+  renderPillLegend(canvasId+'-legend', labels.map((l,i)=>({label:catInfo(l).l, color:colors[i], value:data[i], icon:catInfo(l).i, key:l})));
 }
 
 function renderPieComposicao(canvasId, obr, livre, sobra){
