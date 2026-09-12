@@ -328,6 +328,24 @@ td{padding:10px 14px;font-size:13px;}
 .search-input-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;}
 .bulk-bar{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;}
 .tx-resumo-filtro{font-size:12.5px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 14px;margin-bottom:14px;display:flex;align-items:center;gap:7px;}
+.view-toggle{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:2px;}
+.view-toggle-btn{background:transparent;border:none;color:var(--muted);padding:6px 10px;border-radius:7px;cursor:pointer;display:flex;align-items:center;}
+.view-toggle-btn:hover{color:var(--text);}
+.view-toggle-btn.active{background:var(--card);color:var(--accent);}
+.quadros-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.quadro-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .15s;}
+.quadro-card:hover{border-color:#33405c;}
+.quadro-card.aberto{grid-column:1/-1;cursor:default;}
+.quadro-card-top{display:flex;align-items:center;gap:12px;}
+.quadro-card-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.quadro-card-info{flex:1;min-width:0;}
+.quadro-card-nome{font-size:14px;font-weight:700;}
+.quadro-card-meta{font-size:11px;color:var(--muted);margin-top:1px;}
+.quadro-card-valor{font-family:var(--mono);font-size:19px;font-weight:700;flex-shrink:0;}
+.quadro-card-lista{display:flex;flex-direction:column;gap:6px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);max-height:420px;overflow-y:auto;}
+.quadro-item-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface);font-size:13px;}
+.quadro-item-desc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
+.quadro-item-cat{font-size:11px;flex-shrink:0;display:flex;align-items:center;gap:4px;}
 .range-toggle{display:flex;gap:2px;background:var(--surface);border-radius:8px;padding:2px;}
 .range-btn{background:transparent;border:none;color:var(--muted);font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif;}
 .range-btn:hover{color:var(--text);}
@@ -391,6 +409,8 @@ td{padding:10px 14px;font-size:13px;}
   .cartd-main-grid{grid-template-columns:1fr!important;}
   .cartd-mes-sidebar{position:static;}
   .cartd-mes-list{max-height:220px;}
+  .quadros-grid{grid-template-columns:1fr!important;}
+  .quadro-card.aberto{grid-column:auto!important;}
   /* tabelas viram cards empilhados — cada <td> exibe seu data-label como rótulo */
   .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap th, .table-wrap tr{display:block;}
   .table-wrap thead{position:absolute;left:-9999px;top:-9999px;}
@@ -526,6 +546,10 @@ td{padding:10px 14px;font-size:13px;}
       <option value="obrigacao">Só obrigações</option>
     </select>
     <select class="form-select" id="tx-filter-cat" onchange="renderTransacoesTab()" style="width:180px"><option value="">Todas categorias</option></select>
+    <div class="view-toggle">
+      <button class="view-toggle-btn active" id="tx-view-lista-btn" onclick="mudarVisaoTransacoes('lista')" title="Lista"><i data-lucide="list" class="lic" style="width:14px;height:14px"></i></button>
+      <button class="view-toggle-btn" id="tx-view-quadros-btn" onclick="mudarVisaoTransacoes('quadros')" title="Quadros"><i data-lucide="layout-grid" class="lic" style="width:14px;height:14px"></i></button>
+    </div>
     <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="exportarTransacoesCSV()"><i data-lucide="download" class="lic" style="width:13px;height:13px"></i> Exportar CSV</button>
   </div>
   <div id="tx-resumo-filtro"></div>
@@ -534,10 +558,11 @@ td{padding:10px 14px;font-size:13px;}
     <button class="btn btn-danger btn-sm" onclick="excluirSelecionadas()"><i data-lucide="trash-2" class="lic" style="width:13px;height:13px"></i> Excluir selecionadas</button>
     <button class="btn btn-ghost btn-sm" onclick="limparSelecao()">Cancelar</button>
   </div>
-  <div class="table-wrap">
+  <div class="table-wrap" id="tx-lista-wrap">
     <table><thead><tr><th style="width:32px"><input type="checkbox" id="tx-select-all" onchange="toggleSelecionarTodas(this.checked)"></th><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead>
     <tbody id="tx-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Sem transações neste mês</td></tr></tbody></table>
   </div>
+  <div id="tx-quadros-wrap" style="display:none"></div>
 </div>
 
 <!-- ═══════════════ PROJEÇÃO ═══════════════ -->
@@ -1126,7 +1151,7 @@ function renderDashboard(){
       return `<tr>
         <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
         <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
-        <td data-label="Categoria">${ic(ci.i)} ${ci.l}</td>
+        <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${ic(ci.i,13)} ${ci.l}</td>
         <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
         <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
         <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
@@ -1433,7 +1458,7 @@ function renderCartoesTab(){
     return `<tr>
       <td data-label="Cartão">${cartaoNome(cp.cartao_id)}</td>
       <td data-label="Descrição">${cp.descricao||'—'}</td>
-      <td data-label="Categoria">${ic(ci.i)} ${ci.l}</td>
+      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${ic(ci.i,13)} ${ci.l}</td>
       <td data-label="Parcela"><span class="parcela-tag">${cp.parcela_total>1?`${parcelaAtual}/${cp.parcela_total}`:'à vista'}</span></td>
       <td data-label="Valor Parcela" style="font-family:var(--mono)">${fmtR(cp.valor_parcela)}</td>
       <td data-label="Valor Total" style="font-family:var(--mono);color:var(--muted)">${fmtR(valorTotal)}</td>
@@ -1874,6 +1899,62 @@ async function deletarTransacao(id){
   renderAll();
 }
 let txSelecionadas = new Set();
+let txViewMode = 'lista';
+let quadrosAbertos = new Set(); // quais quadros (debito/cartao/obrigacao) estão expandidos
+
+function mudarVisaoTransacoes(modo){
+  txViewMode = modo;
+  document.getElementById('tx-view-lista-btn').classList.toggle('active', modo==='lista');
+  document.getElementById('tx-view-quadros-btn').classList.toggle('active', modo==='quadros');
+  document.getElementById('tx-lista-wrap').style.display = modo==='lista' ? '' : 'none';
+  document.getElementById('tx-quadros-wrap').style.display = modo==='quadros' ? '' : 'none';
+  document.getElementById('tx-bulk-bar').style.display = 'none'; // seleção em massa é só na lista
+  renderTransacoesTab();
+}
+
+function toggleQuadro(chave){
+  if(quadrosAbertos.has(chave)) quadrosAbertos.delete(chave); else quadrosAbertos.add(chave);
+  renderTransacoesTab();
+}
+
+// "Quadros" estilo Notion: agrupa por origem (débito/cartão/obrigação) em vez de
+// listar tudo junto. Clicar num quadro expande e mostra os lançamentos daquele grupo.
+function renderTransacoesQuadros(list){
+  const grupos = [
+    { chave:'debito', nome:'Débito e dinheiro', icone:'banknote', cor:'#22d3a5', itens:list.filter(t=>!t.cartao_id && !t.obrigacao_id) },
+    { chave:'cartao', nome:'Cartões', icone:'credit-card', cor:'#f472b6', itens:list.filter(t=>!!t.cartao_id) },
+    { chave:'obrigacao', nome:'Obrigações', icone:'link', cor:'#a78bfa', itens:list.filter(t=>!!t.obrigacao_id) },
+  ];
+  const el = document.getElementById('tx-quadros-wrap');
+  el.innerHTML = `<div class="quadros-grid">${grupos.map(g=>{
+    const total = g.itens.reduce((s,t)=>s+Number(t.valor),0);
+    const aberto = quadrosAbertos.has(g.chave);
+    const lista = !g.itens.length ? `<div class="quadro-item-row" style="font-style:italic;color:var(--muted)">Nenhum lançamento aqui</div>` : g.itens.map(t=>{
+      const ci = catInfo(t.categoria);
+      return `<div class="quadro-item-row">
+        <span style="color:var(--muted);font-family:var(--mono);font-size:11px;flex-shrink:0">${fmtData(t.data)}</span>
+        <span class="quadro-item-desc">${t.descricao||'—'}</span>
+        <span class="quadro-item-cat" style="color:${CAT_COLORS[ci.v]||'var(--muted)'}">${ic(ci.i,12)} ${ci.l}</span>
+        <span style="font-family:var(--mono);font-weight:700;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'};flex-shrink:0">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</span>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deletarTransacao(${t.id})">${ic('trash-2',12)}</button>
+      </div>`;
+    }).join('');
+    return `<div class="quadro-card ${aberto?'aberto':''}" onclick="toggleQuadro('${g.chave}')">
+      <div class="quadro-card-top">
+        <div class="quadro-card-icon" style="background:${g.cor}22;color:${g.cor}">${ic(g.icone,19)}</div>
+        <div class="quadro-card-info">
+          <div class="quadro-card-nome">${g.nome}</div>
+          <div class="quadro-card-meta">${g.itens.length} lançamento(s)</div>
+        </div>
+        <div class="quadro-card-valor" style="color:${g.cor}">${fmtR(total)}</div>
+        <i data-lucide="${aberto?'chevron-up':'chevron-down'}" class="lic" style="width:16px;height:16px;color:var(--muted)"></i>
+      </div>
+      ${aberto?`<div class="quadro-card-lista" onclick="event.stopPropagation()">${lista}</div>`:''}
+    </div>`;
+  }).join('')}</div>`;
+  refreshIcons();
+}
+
 function renderTransacoesTab(){
   const catSel = document.getElementById('tx-filter-cat');
   if(catSel.options.length<=1){
@@ -1909,6 +1990,8 @@ function renderTransacoesTab(){
     resumoEl.innerHTML = `<div class="tx-resumo-filtro">${ic('calculator',13)} ${list.length} lançamento(s) filtrado(s) · ${partes.join(' · ')}</div>`;
   } else resumoEl.innerHTML = '';
 
+  if(txViewMode==='quadros'){ renderTransacoesQuadros(list); refreshIcons(); return; }
+
   const body = document.getElementById('tx-body');
   if(!list.length){ body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Nenhuma transação encontrada</td></tr>'; refreshIcons(); atualizarBarraSelecao(); return; }
   body.innerHTML = list.map(t=>{
@@ -1917,7 +2000,7 @@ function renderTransacoesTab(){
       <td><input type="checkbox" class="tx-check" data-id="${t.id}" ${txSelecionadas.has(t.id)?'checked':''} onchange="toggleSelecionada(${t.id},this.checked)"></td>
       <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
       <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
-      <td data-label="Categoria">${ic(ci.i)} ${ci.l}</td>
+      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${ic(ci.i,13)} ${ci.l}</td>
       <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
       <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
       <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
