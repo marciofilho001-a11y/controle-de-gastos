@@ -257,7 +257,8 @@ td{padding:10px 14px;font-size:13px;}
 .pill-legend-item.ativo{background:var(--card);box-shadow:inset 2px 0 0 currentColor;}
 .pill-legend-item.apagado{opacity:.4;}
 .pill-legend-hint{font-size:10px;color:var(--muted);text-align:center;margin-top:7px;display:flex;align-items:center;justify-content:center;gap:4px;}
-.fatura-item-cat-icon{width:44px;height:44px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:transform .12s;}
+.fatura-item-cat-icon{width:44px;height:44px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:transform .12s;overflow:hidden;}
+.fatura-item-cat-icon.tem-imagem{background:#fff;padding:2px;} /* fundo branco atras da imagem custom, pra logo com transparencia nao sumir no escuro */
 .fatura-item-cat-icon:hover{transform:scale(1.12);}
 .btn-icone-restaurar{background:var(--surface);border:1px solid var(--border);color:var(--muted);width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0;}
 .btn-icone-restaurar:hover{color:var(--text);border-color:#33405c;}
@@ -931,7 +932,11 @@ function itemIconHtml(descricao, categoriaKey, size){
   return catIconHtml(categoriaKey, size);
 }
 function normalizarDescricao(d){ return (d||'').trim().toLowerCase(); }
-function imgIconHtml(src, size){ return `<img src="${src}" style="width:${size}px;height:${size}px;border-radius:5px;object-fit:cover;vertical-align:-${Math.round(size*0.2)}px;flex-shrink:0">`; }
+function temIconeCustom(descricao){ const dn = normalizarDescricao(descricao); return !!(dn && descricaoIcones[dn]); }
+// contain (não cover): mostra a imagem INTEIRA dentro do quadrado, sem cortar
+// bordas. Se a imagem não for quadrada, sobra um espacinho — melhor isso do que
+// cortar um logo/texto pela metade.
+function imgIconHtml(src, size){ return `<img src="${src}" style="width:${size}px;height:${size}px;border-radius:6px;object-fit:contain;vertical-align:-${Math.round(size*0.2)}px;flex-shrink:0">`; }
 // botãozinho de restaurar: aparece se esse item tem ícone próprio (por nome) OU
 // se está herdando um ícone antigo de categoria (do sistema anterior, por lote)
 function iconeRestaurarHtml(descricao, categoriaKey){
@@ -946,21 +951,26 @@ function encDesc(s){ return encodeURIComponent(s||''); }
 // Recorta a imagem num quadrado (cover: sem distorcer) NA RESOLUÇÃO ORIGINAL, e só
 // reduz se ela for maior que o teto - nunca aumenta uma imagem pequena, que é
 // exatamente o que borrava os ícones antes (esticar um logo de 32px pra 64px).
+// Encaixa a imagem INTEIRA num canvas quadrado (letterbox), sem cortar nada e sem
+// distorcer. A proporcao original e mantida, centralizada, com fundo transparente
+// nas sobras. Reduz de escala so quando a imagem e maior que o teto.
 function comprimirImagemParaIcone(file, tamanhoMax){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
     reader.onload = e=>{
       const img = new Image();
       img.onload = ()=>{
-        const ladoOriginal = Math.min(img.width, img.height);
-        const ladoFinal = Math.min(ladoOriginal, tamanhoMax); // nunca maior que o original
-        const offsetX = (img.width - ladoOriginal)/2, offsetY = (img.height - ladoOriginal)/2;
+        const ladoMaior = Math.max(img.width, img.height);
+        const lado = Math.min(ladoMaior, tamanhoMax); // canvas quadrado; nunca amplia
+        const escala = lado / ladoMaior;
+        const w = Math.round(img.width * escala), h = Math.round(img.height * escala);
         const canvas = document.createElement('canvas');
-        canvas.width = ladoFinal; canvas.height = ladoFinal;
+        canvas.width = lado; canvas.height = lado;
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, offsetX, offsetY, ladoOriginal, ladoOriginal, 0, 0, ladoFinal, ladoFinal);
+        // centraliza a imagem inteira, com transparencia nas bordas (nao corta)
+        ctx.drawImage(img, 0, 0, img.width, img.height, (lado-w)/2, (lado-h)/2, w, h);
         resolve(canvas.toDataURL('image/png'));
       };
       img.onerror = ()=>reject(new Error('Não foi possível ler essa imagem'));
@@ -1759,8 +1769,8 @@ function renderCartaoMesContent(){
     return `
     <div class="fatura-item-row" style="border-left:2px solid ${cor}">
       <span style="display:flex;align-items:center;gap:5px;flex:1;min-width:0">
-        <label class="fatura-item-cat-icon" style="background:${cor}22;color:${cor}" title="Clique pra usar sua própria imagem pra esse lançamento — vale pra qualquer outro com o mesmo nome também">
-          ${itemIconHtml(i.descricao, i.categoria, 32)}
+        <label class="fatura-item-cat-icon ${temIconeCustom(i.descricao)?'tem-imagem':''}" style="${temIconeCustom(i.descricao)?'':`background:${cor}22;color:${cor}`}" title="Clique pra usar sua própria imagem pra esse lançamento — vale pra qualquer outro com o mesmo nome também">
+          ${itemIconHtml(i.descricao, i.categoria, 40)}
           <input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadIconeLancamento('${encDesc(i.descricao)}', this)">
         </label>
         ${iconeRestaurarHtml(i.descricao, i.categoria)}
