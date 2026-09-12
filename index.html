@@ -327,6 +327,7 @@ td{padding:10px 14px;font-size:13px;}
 .search-input-wrap .form-input{padding-left:32px;width:100%;}
 .search-input-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;}
 .bulk-bar{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;}
+.tx-resumo-filtro{font-size:12.5px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 14px;margin-bottom:14px;display:flex;align-items:center;gap:7px;}
 .range-toggle{display:flex;gap:2px;background:var(--surface);border-radius:8px;padding:2px;}
 .range-btn{background:transparent;border:none;color:var(--muted);font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif;}
 .range-btn:hover{color:var(--text);}
@@ -518,9 +519,16 @@ td{padding:10px 14px;font-size:13px;}
       <input class="form-input" id="tx-filter-busca" placeholder="Buscar por descrição... ( / )" oninput="renderTransacoesTab()">
     </div>
     <select class="form-select" id="tx-filter-tipo" onchange="renderTransacoesTab()" style="width:160px"><option value="">Todos os tipos</option><option value="receita">Receitas</option><option value="despesa">Despesas</option></select>
+    <select class="form-select" id="tx-filter-origem" onchange="renderTransacoesTab()" style="width:190px">
+      <option value="">Toda origem</option>
+      <option value="debito">Só débito/dinheiro</option>
+      <option value="cartao">Só cartões</option>
+      <option value="obrigacao">Só obrigações</option>
+    </select>
     <select class="form-select" id="tx-filter-cat" onchange="renderTransacoesTab()" style="width:180px"><option value="">Todas categorias</option></select>
     <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="exportarTransacoesCSV()"><i data-lucide="download" class="lic" style="width:13px;height:13px"></i> Exportar CSV</button>
   </div>
+  <div id="tx-resumo-filtro"></div>
   <div class="bulk-bar" id="tx-bulk-bar" style="display:none">
     <span id="tx-bulk-count">0 selecionadas</span>
     <button class="btn btn-danger btn-sm" onclick="excluirSelecionadas()"><i data-lucide="trash-2" class="lic" style="width:13px;height:13px"></i> Excluir selecionadas</button>
@@ -1876,13 +1884,31 @@ function renderTransacoesTab(){
     });
   }
   const filtTipo = document.getElementById('tx-filter-tipo').value;
+  const filtOrigem = document.getElementById('tx-filter-origem').value;
   const filtCat = document.getElementById('tx-filter-cat').value;
   const busca = document.getElementById('tx-filter-busca').value.trim().toLowerCase();
   let list = txDoMes(mesAtual);
   if(filtTipo) list = list.filter(t=>t.tipo===filtTipo);
+  if(filtOrigem==='debito') list = list.filter(t=>!t.cartao_id && !t.obrigacao_id);
+  else if(filtOrigem==='cartao') list = list.filter(t=>!!t.cartao_id);
+  else if(filtOrigem==='obrigacao') list = list.filter(t=>!!t.obrigacao_id);
   if(filtCat) list = list.filter(t=>t.categoria===filtCat);
   if(busca) list = list.filter(t=>(t.descricao||'').toLowerCase().includes(busca));
   txListaAtual = list; // usado pelo export CSV, exporta exatamente o que está filtrado na tela
+
+  // resumo do que está filtrado na tela - só aparece quando algum filtro de
+  // origem/tipo/categoria/busca está ativo, pra não duplicar os cards do Dashboard à toa
+  const resumoEl = document.getElementById('tx-resumo-filtro');
+  const algumFiltroAtivo = filtTipo || filtOrigem || filtCat || busca;
+  if(algumFiltroAtivo && list.length){
+    const totalDespesa = list.filter(t=>t.tipo==='despesa').reduce((s,t)=>s+Number(t.valor),0);
+    const totalReceita = list.filter(t=>t.tipo==='receita').reduce((s,t)=>s+Number(t.valor),0);
+    const partes = [];
+    if(totalDespesa>0) partes.push(`<span style="color:var(--danger)">- ${fmtR(totalDespesa)}</span> em despesas`);
+    if(totalReceita>0) partes.push(`<span style="color:var(--accent)">+ ${fmtR(totalReceita)}</span> em receitas`);
+    resumoEl.innerHTML = `<div class="tx-resumo-filtro">${ic('calculator',13)} ${list.length} lançamento(s) filtrado(s) · ${partes.join(' · ')}</div>`;
+  } else resumoEl.innerHTML = '';
+
   const body = document.getElementById('tx-body');
   if(!list.length){ body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Nenhuma transação encontrada</td></tr>'; refreshIcons(); atualizarBarraSelecao(); return; }
   body.innerHTML = list.map(t=>{
