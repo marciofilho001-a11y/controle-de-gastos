@@ -15,6 +15,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script type="module">import 'https://cdn.jsdelivr.net/npm/number-flow/+esm';</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 :root{
@@ -120,6 +121,7 @@ h1,h2,h3,.section-hdr h2,.modal-title{letter-spacing:-0.03em;line-height:1.15;fo
 .stat-card-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;flex:1;}
 .stat-card-corner-icon{color:var(--muted);flex-shrink:0;}
 .stat-value{font-size:25px;font-weight:750;font-family:var(--mono);}
+number-flow{color:inherit;font:inherit;letter-spacing:inherit;}
 .stat-value.pos{color:var(--accent);}
 .stat-value.neg{color:var(--danger);}
 .stat-value.warn{color:var(--warn);}
@@ -231,6 +233,7 @@ h1,h2,h3,.section-hdr h2,.modal-title{letter-spacing:-0.03em;line-height:1.15;fo
 .obrow{display:flex;align-items:center;gap:10px;padding:12px;background:rgba(255,255,255,.032);border-radius:13px;border:1px solid var(--border-soft);transition:background .2s var(--ease-out),border-color .2s var(--ease-out),transform .2s var(--ease-out);}
 .obrow.paid{opacity:.5;}
 .obcheck{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .12s var(--ease-out),border-color .12s var(--ease-out),transform .12s var(--ease-spring);font-size:13px;}
+.obcheck:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ring);}
 .obcheck:active{transform:scale(.88);}
 .obcheck.checked{background:var(--accent);border-color:var(--accent);color:#000;}
 .obicon{width:32px;height:32px;border-radius:9px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
@@ -347,6 +350,16 @@ td{padding:12px 15px;font-size:13px;}
 .cartd-mes-row-valor{font-family:var(--mono);font-size:13px;font-weight:750;margin-left:15px;}
 .cartd-mes-row-sub{font-size:10px;color:var(--muted);margin-left:15px;}
 .cartd-mes-content{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;min-height:340px;}
+
+/* FILTROS EM POPOVER (Transações) — dropdown ancorado no botão, não mais 3
+   selects soltos quebrando linha no toolbar. Transição, não keyframes: o
+   usuário pode abrir/fechar rápido, e transição retoma do valor atual em vez
+   de reiniciar do zero. */
+.filtro-popover-wrap{position:relative;}
+.filtro-badge{background:var(--accent);color:#00110c;font-size:10px;font-weight:800;border-radius:999px;min-width:16px;height:16px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;}
+.filtro-popover{position:absolute;top:calc(100% + 8px);left:0;background:var(--glass-strong);backdrop-filter:blur(24px) saturate(1.5);-webkit-backdrop-filter:blur(24px) saturate(1.5);border:1px solid var(--border-line);border-radius:14px;padding:14px;width:230px;box-shadow:var(--elev-2);display:flex;flex-direction:column;gap:12px;z-index:50;transform-origin:top left;transform:scale(.95) translateY(-4px);opacity:0;pointer-events:none;transition:transform .18s var(--ease-out),opacity .18s var(--ease-out);}
+.filtro-popover.open{transform:scale(1) translateY(0);opacity:1;pointer-events:auto;}
+@media(prefers-reduced-motion:reduce){.filtro-popover{transition:opacity .15s ease;transform:none!important;}}
 
 /* TOOLBAR */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
@@ -665,16 +678,34 @@ td{padding:12px 15px;font-size:13px;}
   <div class="toolbar">
     <div class="search-input-wrap" style="flex:1;min-width:200px;max-width:280px">
       <i data-lucide="search" class="lic search-input-icon" style="width:14px;height:14px"></i>
-      <input class="form-input" id="tx-filter-busca" placeholder="Buscar por descrição... ( / )" oninput="renderTransacoesTab()">
+      <input class="form-input" id="tx-filter-busca" placeholder="Buscar por descrição... ( / )" oninput="onBuscaTxInput()">
     </div>
-    <select class="form-select" id="tx-filter-tipo" onchange="renderTransacoesTab()" style="width:160px"><option value="">Todos os tipos</option><option value="receita">Receitas</option><option value="despesa">Despesas</option></select>
-    <select class="form-select" id="tx-filter-origem" onchange="renderTransacoesTab()" style="width:190px">
-      <option value="">Toda origem</option>
-      <option value="debito">Só débito/dinheiro</option>
-      <option value="cartao">Só cartões</option>
-      <option value="obrigacao">Só obrigações</option>
-    </select>
-    <select class="form-select" id="tx-filter-cat" onchange="renderTransacoesTab()" style="width:180px"><option value="">Todas categorias</option></select>
+    <div class="filtro-popover-wrap">
+      <button class="btn btn-secondary" id="tx-filtros-btn" onclick="event.stopPropagation();toggleFiltrosPopover()">
+        <i data-lucide="sliders-horizontal" class="lic" style="width:14px;height:14px"></i> Filtros
+        <span class="filtro-badge" id="tx-filtros-badge" style="display:none">0</span>
+      </button>
+      <div class="filtro-popover" id="tx-filtros-popover">
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select class="form-select" id="tx-filter-tipo" onchange="renderTransacoesTab()"><option value="">Todos os tipos</option><option value="receita">Receitas</option><option value="despesa">Despesas</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Origem</label>
+          <select class="form-select" id="tx-filter-origem" onchange="renderTransacoesTab()">
+            <option value="">Toda origem</option>
+            <option value="debito">Só débito/dinheiro</option>
+            <option value="cartao">Só cartões</option>
+            <option value="obrigacao">Só obrigações</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoria</label>
+          <select class="form-select" id="tx-filter-cat" onchange="renderTransacoesTab()"><option value="">Todas categorias</option></select>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="limparFiltrosTx()" style="width:100%;justify-content:center">Limpar filtros</button>
+      </div>
+    </div>
     <div class="view-toggle">
       <button class="view-toggle-btn active" id="tx-view-lista-btn" onclick="mudarVisaoTransacoes('lista')" title="Lista"><i data-lucide="list" class="lic" style="width:14px;height:14px"></i></button>
       <button class="view-toggle-btn" id="tx-view-quadros-btn" onclick="mudarVisaoTransacoes('quadros')" title="Quadros"><i data-lucide="layout-grid" class="lic" style="width:14px;height:14px"></i></button>
@@ -1010,6 +1041,40 @@ const SB_URL = 'https://xozrxppvroqiverzonmy.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvenJ4cHB2cm9xaXZlcnpvbm15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMDg2NDUsImV4cCI6MjA5MzY4NDY0NX0.5gE3khHOusWrADdQI6I89hGJnG-qc4JeXiYURgXDGrk';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
+// Interceptação central de erro do Supabase — em vez de cada uma das ~40 chamadas
+// espalhadas pelo arquivo precisar checar {error} na mão (e a maioria não checava,
+// caindo em `data||[]` silencioso), qualquer query que resolver com `.error` já
+// aparece como toast aqui. Funciona porque select/insert/update/delete/upsert
+// retornam um builder novo (que a gente intercepta o .then), mas os filtros
+// encadeados depois (.eq/.order/.in/.limit) retornam o MESMO builder — então o
+// .then interceptado sobrevive a chain inteira, sem precisar tocar em cada call site.
+(function interceptarErrosSupabase(){
+  const origFrom = sb.from.bind(sb);
+  function envolverThen(builder, tabela){
+    if(!builder || typeof builder.then !== 'function' || builder.__erroInterceptado) return builder;
+    builder.__erroInterceptado = true;
+    const origThen = builder.then.bind(builder);
+    builder.then = function(onFulfilled, onRejected){
+      return origThen(res=>{
+        if(res && res.error){
+          console.error('[supabase]', tabela, res.error);
+          toast('Erro ao acessar dados ('+tabela+'): '+(res.error.message||'falha de conexão'), 'err');
+        }
+        return onFulfilled ? onFulfilled(res) : res;
+      }, onRejected);
+    };
+    return builder;
+  }
+  sb.from = function(tabela){
+    const qb = origFrom(tabela);
+    ['select','insert','update','upsert','delete'].forEach(metodo=>{
+      const orig = qb[metodo].bind(qb);
+      qb[metodo] = function(...args){ return envolverThen(orig(...args), tabela); };
+    });
+    return qb;
+  };
+})();
+
 // ══════════════════════════════════════════════
 //  CATEGORIAS
 // ══════════════════════════════════════════════
@@ -1171,7 +1236,14 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 //  INIT
 // ══════════════════════════════════════════════
 (async function init(){
-  await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras(), loadSaldosConta(), loadFaturaItens(), loadTetos(), loadCategoriaIcones(), loadDescricaoIcones()]);
+  try{
+    await Promise.all([loadObrigacoes(), loadTransacoes(), loadInvestimentos(), loadConfig(), loadCartoes(), loadCompras(), loadSaldosConta(), loadFaturaItens(), loadTetos(), loadCategoriaIcones(), loadDescricaoIcones()]);
+  }catch(err){
+    console.error('Falha ao carregar dados iniciais:', err);
+    document.querySelector('.main').innerHTML = `<div class="alert-banner" style="margin-top:20px">${ic('wifi-off',18)} <span><b>Não consegui carregar seus dados.</b> Verifique a conexão e recarregue a página. ${err && err.message ? '('+escHtml(err.message)+')' : ''}</span></div>`;
+    refreshIcons();
+    return;
+  }
   document.getElementById('cfg-renda').value = config.renda_projetada || '';
   document.getElementById('cfg-pct').value = config.pct_investimento || 20;
   document.getElementById('tx-data').value = new Date().toISOString().slice(0,10);
@@ -1368,15 +1440,15 @@ function renderDashboard(){
   }
   alertEl.innerHTML = bannersHtml;
 
-  document.getElementById('st-saldo').textContent = fmtR(saldo);
   document.getElementById('st-saldo').className = 'stat-value '+(saldo>=0?'pos':'neg');
+  setNumeroAnimado('st-saldo', saldo);
   document.getElementById('stcard-st-saldo').className = 'stat-card '+(saldo>=0?'stat-card--teal':'stat-card--red');
   document.getElementById('st-saldo-trend').innerHTML = fmtVariacao(saldo, saldoAnt);
-  document.getElementById('st-receitas').textContent = fmtR(receitas);
+  setNumeroAnimado('st-receitas', receitas);
   document.getElementById('st-receitas-trend').innerHTML = fmtVariacao(receitas, receitasAnt);
-  document.getElementById('st-despesas').textContent = fmtR(despesas);
+  setNumeroAnimado('st-despesas', despesas);
   document.getElementById('st-despesas-trend').innerHTML = fmtVariacao(despesas, despesasAnt, true);
-  document.getElementById('st-pendentes').textContent = fmtR(pendentes);
+  setNumeroAnimado('st-pendentes', pendentes);
 
   const totalObr = itens.reduce((s,i)=>s+i.valor,0);
   const pct = receitas>0 ? Math.min(100,(totalObr/receitas)*100) : 0;
@@ -1391,10 +1463,10 @@ function renderDashboard(){
       const ci = catInfo(i.categoria);
       const isCartao = i.tipo==='cartao';
       return `<div class="obrow ${i.paga?'paid':''}">
-        <div class="obcheck ${i.paga?'checked':''}" ${isCartao?'':`onclick="toggleObrigacaoPaga(${i.id})"`} style="${isCartao?'cursor:default':''}" title="${isCartao?'Gerenciada na aba Cartões':''}">${i.paga?ic('check',14):''}</div>
+        <div class="obcheck ${i.paga?'checked':''}" ${isCartao?'':`onclick="toggleObrigacaoPaga(${i.id})" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click();}" tabindex="0"`} role="checkbox" aria-checked="${i.paga?'true':'false'}" aria-label="${i.paga?'Marcar como não paga':'Marcar como paga'}" style="${isCartao?'cursor:default':''}" title="${isCartao?'Gerenciada na aba Cartões':''}">${i.paga?ic('check',14):''}</div>
         <div class="obicon">${ic(ci.i,16)}</div>
         <div class="obinfo">
-          <div class="obname ${i.paga?'strike':''}">${i.nome} ${isCartao?`<span class="cartao-badge">${ic('credit-card',10)} cartão</span>`:''}</div>
+          <div class="obname ${i.paga?'strike':''}">${escHtml(i.nome)} ${isCartao?`<span class="cartao-badge">${ic('credit-card',10)} cartão</span>`:''}</div>
           <div class="obmeta">Dia ${i.dia||'—'} · ${i.parcTxt}</div>
         </div>
         <div class="obvalor">${fmtR(i.valor)}</div>
@@ -1513,7 +1585,7 @@ function obrCardHtml(o, hoje, encerrada){
   return `<div class="obr-card ${encerrada?'encerrada':''}" onclick="abrirDetalheObrigacao(${o.id})">
     <div class="obr-card-hdr">
       <div class="obr-card-icon">${ic(ci.i,18)}</div>
-      <div><div class="obr-card-nome">${o.nome}</div><div class="obr-card-cat">${ci.l}</div></div>
+      <div><div class="obr-card-nome">${escHtml(o.nome)}</div><div class="obr-card-cat">${ci.l}</div></div>
     </div>
     <div class="obr-card-valor">${fmtR(o.valor)}</div>
     <div class="obr-card-meta">
@@ -1565,7 +1637,7 @@ function abrirDetalheObrigacao(id){
   const totalPago = pagos.reduce((s,l)=>s+l.valor,0);
   const valorMedio = pagos.length ? totalPago/pagos.length : Number(o.valor);
 
-  document.getElementById('obrd-titulo').innerHTML = `${ic(ci.i,16)} ${o.nome}`;
+  document.getElementById('obrd-titulo').innerHTML = `${ic(ci.i,16)} ${escHtml(o.nome)}`;
   let metaTxt = `Criada em ${fmtMesRef(mesIni)}`;
   if(st.desativadaManual) metaTxt += ' · desativada manualmente (sem data exata registrada)';
   else if(st.encerrada) metaTxt += ` · encerrada em ${fmtMesRef(mesFim)}`;
@@ -1697,7 +1769,7 @@ function renderCartoesTab(){
       return `<div class="cartao-card" onclick="abrirDetalheCartao(${c.id})">
         <div class="cartao-card-hdr">
           <div class="cartao-card-icon" style="background:${band.cor}22;color:${band.cor}">${ic(band.icone,18)}</div>
-          <div><div class="cartao-card-nome">${c.nome}</div><div class="cartao-card-venc">Vencimento dia ${c.dia_vencimento||'—'}</div></div>
+          <div><div class="cartao-card-nome">${escHtml(c.nome)}</div><div class="cartao-card-venc">Vencimento dia ${c.dia_vencimento||'—'}</div></div>
         </div>
         <div class="cartao-card-fatura-label">Fatura deste mês</div>
         <div class="cartao-card-fatura">${fmtR(fatura)}</div>
@@ -1715,12 +1787,12 @@ function renderCartoesTab(){
   }
 
   const sel = document.getElementById('compra-cartao');
-  sel.innerHTML = cartoes.filter(c=>c.ativo!==false).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('') || '<option value="">Cadastre um cartão primeiro</option>';
+  sel.innerHTML = cartoes.filter(c=>c.ativo!==false).map(c=>`<option value="${c.id}">${escHtml(c.nome)}</option>`).join('') || '<option value="">Cadastre um cartão primeiro</option>';
 
   // popula o filtro de cartão da tabela de compras (uma vez só, preservando a seleção atual)
   const filtroCartaoSel = document.getElementById('compras-filter-cartao');
   const valorAtualFiltro = filtroCartaoSel.value;
-  filtroCartaoSel.innerHTML = '<option value="">Todos os cartões</option>' + cartoes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  filtroCartaoSel.innerHTML = '<option value="">Todos os cartões</option>' + cartoes.map(c=>`<option value="${c.id}">${escHtml(c.nome)}</option>`).join('');
   filtroCartaoSel.value = valorAtualFiltro;
 
   const filtroPeriodo = document.getElementById('compras-filter-periodo').value;
@@ -1757,7 +1829,7 @@ function renderCartoesTab(){
     const parcelaAtual = Math.max(1, Math.min(cp.parcela_total, parcelaNoMes({data_inicio:cp.data_inicio}, mesAtual)));
     return `<tr>
       <td data-label="Cartão">${cartaoNome(cp.cartao_id)}</td>
-      <td data-label="Descrição">${cp.descricao||'—'}</td>
+      <td data-label="Descrição">${escHtml(cp.descricao)||'—'}</td>
       <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(cp.descricao,ci.v,17)} ${ci.l}</td>
       <td data-label="Parcela"><span class="parcela-tag">${cp.parcela_total>1?`${parcelaAtual}/${cp.parcela_total}`:'à vista'}</span></td>
       <td data-label="Valor Parcela" style="font-family:var(--mono)">${fmtR(cp.valor_parcela)}</td>
@@ -1783,7 +1855,7 @@ function abrirDetalheCartao(id){
   document.getElementById('cartd-agg-section').style.display = 'none';
   document.getElementById('cartd-agg-toggle-btn').innerHTML = `${ic('chart-pie',14)} Ver gráfico do período todo`;
   const band = bandeiraDoCartao(c.nome);
-  document.getElementById('cartd-titulo').innerHTML = `<span style="color:${band.cor}">${ic(band.icone,16)}</span> ${c.nome}`;
+  document.getElementById('cartd-titulo').innerHTML = `<span style="color:${band.cor}">${ic(band.icone,16)}</span> ${escHtml(c.nome)}`;
   document.getElementById('cartd-meta').innerHTML = `${ic('clock',12)} Vencimento dia ${c.dia_vencimento||'—'}` + (c.limite ? ` · limite ${fmtR(c.limite)}` : '');
 
   const meses = mesesDoCartao(id);
@@ -1989,7 +2061,7 @@ function renderCartaoMesContent(){
         ${iconeRestaurarHtml(i.descricao, i.categoria)}
         <span style="min-width:0;margin-left:3px">
           <span style="display:flex;align-items:center;gap:8px;min-width:0">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${i.descricao}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${escHtml(i.descricao)}</span>
             <select class="fatura-item-cat-select" onchange="atualizarFaturaItemCategoria(${i.id}, this.value)">${catOptions(i.categoria)}</select>
           </span>
           ${metaHtml}
@@ -2026,7 +2098,7 @@ function renderCartaoMesContent(){
           return `<div class="parcela-sugerida-card" onclick="adicionarSugestao('${mesRef}','${encDesc(s.descricao)}',${s.valor},'${s.categoria}',${s.proxParcela},${s.parcela_total})">
             <span class="fatura-item-cat-icon ${temIconeCustom(s.descricao)?'tem-imagem':''}" style="${temIconeCustom(s.descricao)?'':`background:${cor}22;color:${cor}`};width:34px;height:34px">${itemIconHtml(s.descricao, s.categoria, 30)}</span>
             <span style="flex:1;min-width:0">
-              <span style="display:block;color:var(--text);font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.descricao}</span>
+              <span style="display:block;color:var(--text);font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.descricao)}</span>
               <span class="fatura-item-parcela" style="margin-top:2px;display:inline-flex">${ic('layers',10)} ${s.proxParcela}/${s.parcela_total}</span>
             </span>
             <span class="fatura-item-valor" style="font-size:13px">${fmtR(s.valor)}</span>
@@ -2401,7 +2473,7 @@ function renderTransacoesQuadros(list){
       const ci = catInfo(t.categoria);
       return `<div class="quadro-item-row">
         <span style="color:var(--muted);font-family:var(--mono);font-size:11px;flex-shrink:0">${fmtData(t.data)}</span>
-        <span class="quadro-item-desc">${t.descricao||'—'}</span>
+        <span class="quadro-item-desc">${escHtml(t.descricao)||'—'}</span>
         <span class="quadro-item-cat" style="color:${CAT_COLORS[ci.v]||'var(--muted)'}">${itemIconHtml(t.descricao,ci.v,17)} ${ci.l}</span>
         <span style="font-family:var(--mono);font-weight:700;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'};flex-shrink:0">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</span>
         <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deletarTransacao(${t.id})">${ic('trash-2',12)}</button>
@@ -2423,7 +2495,38 @@ function renderTransacoesQuadros(list){
   refreshIcons();
 }
 
+// Debounce da busca — sem isso, cada tecla digitada re-renderizava a tabela
+// inteira de transações na hora; imperceptível hoje com poucas linhas, mas é
+// o tipo de coisa que fica pesada assim que o histórico acumular alguns anos.
+let _buscaTxTimer = null;
+function onBuscaTxInput(){
+  clearTimeout(_buscaTxTimer);
+  _buscaTxTimer = setTimeout(renderTransacoesTab, 180);
+}
+
+// Popover de filtros (Transações): abre/fecha, fecha ao clicar fora ou Esc,
+// badge mostra quantos filtros estão ativos.
+function toggleFiltrosPopover(){ document.getElementById('tx-filtros-popover')?.classList.toggle('open'); }
+document.addEventListener('click', e=>{
+  const wrap = document.querySelector('.filtro-popover-wrap');
+  if(wrap && !wrap.contains(e.target)) document.getElementById('tx-filtros-popover')?.classList.remove('open');
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.getElementById('tx-filtros-popover')?.classList.remove('open'); });
+function limparFiltrosTx(){
+  const t=document.getElementById('tx-filter-tipo'), o=document.getElementById('tx-filter-origem'), c=document.getElementById('tx-filter-cat');
+  if(t) t.value=''; if(o) o.value=''; if(c) c.value='';
+  renderTransacoesTab();
+}
+function atualizarBadgeFiltrosTx(){
+  const badge = document.getElementById('tx-filtros-badge');
+  if(!badge) return;
+  const n = ['tx-filter-tipo','tx-filter-origem','tx-filter-cat'].filter(id=>document.getElementById(id)?.value).length;
+  badge.textContent = n;
+  badge.style.display = n ? 'inline-flex' : 'none';
+}
+
 function renderTransacoesTab(){
+  atualizarBadgeFiltrosTx();
   const catSel = document.getElementById('tx-filter-cat');
   if(catSel.options.length<=1){
     [...DESPESA_CATS, ...RECEITA_CATS].forEach(c=>{
@@ -2467,7 +2570,7 @@ function renderTransacoesTab(){
     return `<tr>
       <td><input type="checkbox" class="tx-check" data-id="${t.id}" ${txSelecionadas.has(t.id)?'checked':''} onchange="toggleSelecionada(${t.id},this.checked)"></td>
       <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
-      <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
+      <td data-label="Descrição">${escHtml(t.descricao)||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${escHtml(cartaoNome(t.cartao_id))}</span>`:''}</td>
       <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(t.descricao,ci.v,17)} ${ci.l}</td>
       <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
       <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
@@ -2791,7 +2894,7 @@ function renderInvestimentosTab(){
     body.innerHTML = investimentos.map(i=>`<tr>
       <td data-label="Data" style="color:var(--muted)">${fmtData(i.data)}</td>
       <td data-label="Mês Ref.">${i.mes_ref}</td>
-      <td data-label="Descrição">${i.descricao||'—'}</td>
+      <td data-label="Descrição">${escHtml(i.descricao)||'—'}</td>
       <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:var(--accent)">${fmtR(i.valor)}</td>
       <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarInvestimento(${i.id})">${ic('trash-2')}</button></td>
     </tr>`).join('');
@@ -3038,6 +3141,38 @@ function renderPatrimonioChart(){
 //  HELPERS
 // ══════════════════════════════════════════════
 function fmtR(v){ return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+// NumberFlow (pick-ui-library): valores em R$ ganham transição de dígito a dígito
+// em vez de trocar o texto seco. Testa uma vez se o custom element carregou (CDN
+// pode falhar/estar bloqueado) e cacheia o resultado — se não carregar, cai pro
+// texto estático de sempre, nunca quebra o valor exibido.
+let _numFlowOk = null;
+function numFlowDisponivel(){
+  if(_numFlowOk!==null) return Promise.resolve(_numFlowOk);
+  return Promise.race([
+    customElements.whenDefined('number-flow').then(()=>true),
+    new Promise(res=>setTimeout(()=>res(false),1500))
+  ]).then(ok=>{ _numFlowOk=ok; return ok; });
+}
+async function setNumeroAnimado(id, valor){
+  const el = document.getElementById(id);
+  if(!el) return;
+  try{
+    if(!(await numFlowDisponivel())){ el.textContent = fmtR(valor); return; }
+    let nf = el.querySelector('number-flow');
+    if(!nf){
+      el.textContent = '';
+      nf = document.createElement('number-flow');
+      nf.locales = 'pt-BR';
+      nf.format = {style:'currency', currency:'BRL'};
+      nf.trend = false;
+      el.appendChild(nf);
+    }
+    nf.value = Number(valor||0);
+  }catch(err){
+    console.error('number-flow indisponível, usando texto estático:', err);
+    el.textContent = fmtR(valor);
+  }
+}
 function fmtData(d){ if(!d) return '—'; const dt = new Date(d+'T00:00:00'); return dt.toLocaleDateString('pt-BR'); }
 // Rótulo de grupo do feed de histórico: "Hoje"/"Ontem" pros 2 dias mais recentes,
 // senão "dd de mês" (sem ano — o feed já está escopado ao mês navegado).
