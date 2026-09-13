@@ -562,6 +562,34 @@ td{padding:12px 15px;font-size:13px;}
   .card,.stat-card,.chart-box,.modal,.table-wrap,.obr-card,.cartao-card,.quadro-card{border-width:1.5px;}
 }
 
+/* RELATÓRIO MENSAL */
+.rel-secao{margin-bottom:22px;}
+.rel-secao-titulo{font-size:13px;font-weight:750;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.rel-resumo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
+.rel-linha-cat{display:grid;grid-template-columns:28px 1fr 110px 110px 100px 60px;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border-soft);font-size:13px;}
+.rel-linha-cat:last-child{border-bottom:none;}
+.rel-linha-cat-hdr{font-size:10.5px;text-transform:uppercase;color:var(--muted);font-weight:700;letter-spacing:.4px;padding:0 12px 8px;border-bottom:1px solid var(--border-line);}
+
+/* Impressão / exportar PDF: usa o diálogo nativo do navegador ("Salvar como PDF"),
+   sem lib externa — nada pra quebrar. Vira preto-no-branco (papel gasta menos
+   tinta e fica legível), esconde nav/topbar/botões, mantém cores de status
+   (verde/vermelho) que são inline e têm mais prioridade que essa regra. */
+@media print{
+  body::before,body::after{display:none!important;}
+  .topbar,.nav,.rel-no-print{display:none!important;}
+  body{background:#fff!important;}
+  .page{display:none!important;}
+  .page.active{display:block!important;}
+  .main{padding:0!important;max-width:100%!important;}
+  #page-relatorio{color:#1a1a1a;}
+  #page-relatorio .card,#page-relatorio .stat-card,#page-relatorio .chart-box,#page-relatorio .table-wrap,#page-relatorio .rel-linha-cat{
+    background:#fff!important;border:1px solid #d8d8d8!important;box-shadow:none!important;backdrop-filter:none!important;}
+  #page-relatorio .stat-card::after,#page-relatorio .stat-card::before{display:none!important;}
+  #page-relatorio .muted,#page-relatorio .stat-card-label,#page-relatorio .card-title{color:#666!important;}
+  #page-relatorio h2{color:#1a1a1a!important;}
+}
+@page{ size:A4; margin:14mm; }
+
 </style>
 </head>
 <body>
@@ -591,6 +619,7 @@ td{padding:12px 15px;font-size:13px;}
   <div class="nav-tab" onclick="goTab('graficos',this)"><i data-lucide="bar-chart-3" class="lic" style="width:14px;height:14px"></i> Gráficos</div>
   <div class="nav-tab" onclick="goTab('investimentos',this)"><i data-lucide="landmark" class="lic" style="width:14px;height:14px"></i> Investimentos</div>
   <div class="nav-tab" onclick="goTab('tetos',this)"><i data-lucide="gauge" class="lic" style="width:14px;height:14px"></i> Limites</div>
+  <div class="nav-tab" onclick="goTab('relatorio',this)"><i data-lucide="file-text" class="lic" style="width:14px;height:14px"></i> Relatório</div>
 </div>
 
 <div class="main">
@@ -846,6 +875,15 @@ td{padding:12px 15px;font-size:13px;}
       <tbody id="inv-body"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhum investimento registrado</td></tr></tbody></table>
     </div>
   </div>
+</div>
+
+<!-- ═══════════════ RELATÓRIO MENSAL ═══════════════ -->
+<div class="page" id="page-relatorio">
+  <div class="section-hdr">
+    <h2>Relatório Mensal — <span id="rel-mes-label" style="color:var(--accent)"></span></h2>
+    <button class="btn btn-primary btn-sm rel-no-print" onclick="exportarRelatorioPDF()"><i data-lucide="printer" class="lic" style="width:13px;height:13px"></i> Exportar PDF</button>
+  </div>
+  <div id="rel-conteudo"></div>
 </div>
 
 </div><!-- /main -->
@@ -1316,6 +1354,7 @@ function goTab(id, el){
     if(id==='graficos') renderGraficosTab();
     if(id==='investimentos') renderInvestimentosTab();
     if(id==='tetos') renderTetosTab();
+    if(id==='relatorio') renderRelatorioTab();
   });
 }
 function openModal(id){ document.getElementById(id).classList.add('open'); }
@@ -1361,6 +1400,7 @@ function renderAll(){
   if(document.getElementById('page-graficos').classList.contains('active')) renderGraficosTab();
   if(document.getElementById('page-investimentos').classList.contains('active')) renderInvestimentosTab();
   if(document.getElementById('page-tetos').classList.contains('active')) renderTetosTab();
+  if(document.getElementById('page-relatorio').classList.contains('active')) renderRelatorioTab();
 }
 
 // ══════════════════════════════════════════════
@@ -2879,6 +2919,177 @@ function statusTeto(gasto, teto){
   return 'ok';
 }
 function corStatus(st){ return st==='critico'?'var(--danger)':st==='alerta'?'var(--warn)':'var(--accent)'; }
+
+// ══════════════════════════════════════════════
+//  RELATÓRIO MENSAL
+// ══════════════════════════════════════════════
+// Mês em que uma compra de cartão parcelada termina (equivalente a
+// mesFimObrigacao, mas pra fin_cartao_compras).
+function mesFimCompra(cp){
+  if(!cp.parcela_total || cp.parcela_total<=1) return null;
+  return addMonths(cp.data_inicio.slice(0,7), cp.parcela_total-1);
+}
+function exportarRelatorioPDF(){ window.print(); }
+
+function renderRelatorioTab(){
+  const [ano,mesNum] = mesAtual.split('-').map(Number);
+  document.getElementById('rel-mes-label').textContent = MESES[mesNum-1]+' '+ano;
+
+  // ---- Renda: previsto (config) x real (transações) ----
+  const rendaPrevista = parseFloat(config.renda_projetada)||0;
+  const rendaReal = receitasDoMes(mesAtual);
+  const diffRenda = rendaReal - rendaPrevista;
+  const stRenda = rendaPrevista>0 ? (diffRenda>=0?'ok':(diffRenda>=-rendaPrevista*0.1?'alerta':'critico')) : 'vazio';
+
+  // ---- Resumo geral: mesma convenção da aba Projeção (obrigações fixas + fatura
+  // de cartão já lançada = "previsto/comprometido"; despesasDoMes = tudo que saiu de fato) ----
+  const ativas = obrigacoesAtivasNoMes(mesAtual);
+  const despesaPrevista = ativas.reduce((s,o)=>s+Number(o.valor),0) + totalCartoesNoMes(mesAtual);
+  const despesaReal = despesasDoMes(mesAtual);
+  const saldoPrevisto = rendaPrevista - despesaPrevista;
+  const saldoReal = rendaReal - despesaReal;
+  const diffSaldo = saldoReal - saldoPrevisto;
+
+  // ---- Gastos por categoria: previsto = obrigações ativas daquela categoria;
+  // real = TODAS as despesas da categoria (débito + cartão) — sem separar por
+  // forma de pagamento aqui, isso fica no bloco seguinte, senão duplicaria valor ----
+  const despesasMes = txDoMes(mesAtual).filter(t=>t.tipo==='despesa');
+  const catsUsadas = [...new Set([...ativas.map(o=>o.categoria), ...despesasMes.map(t=>t.categoria)])];
+  const linhasCat = catsUsadas.map(catKey=>{
+    const ci = catInfo(catKey);
+    const previsto = ativas.filter(o=>o.categoria===catKey).reduce((s,o)=>s+Number(o.valor),0);
+    const real = despesasMes.filter(t=>t.categoria===catKey).reduce((s,t)=>s+Number(t.valor),0);
+    const st = statusTeto(real, previsto||null);
+    return {catKey, label:ci.l, icone:ci.i, cor:CAT_COLORS[catKey]||'#6b7280', previsto, real, diff:real-previsto, st};
+  }).filter(l=>l.previsto>0 || l.real>0).sort((a,b)=>b.real-a.real);
+
+  // ---- Forma de pagamento: débito x cada cartão ----
+  const gastoDeb = gastoDebitoNoMes(mesAtual);
+  const linhasCartao = cartoes.filter(c=>c.ativo!==false).map(c=>{
+    const fatura = faturaDoMes(c.id, mesAtual);
+    const pctLimite = c.limite ? (fatura/Number(c.limite))*100 : null;
+    return {c, fatura, pctLimite, st: c.limite ? statusTeto(fatura, Number(c.limite)) : 'vazio'};
+  });
+
+  // ---- Parcelas em andamento neste mês (obrigações parceladas + compras de cartão) ----
+  const parcelasObr = ativas.filter(o=>o.parcela_total).map(o=>({
+    nome:o.nome, parcela:parcelaNoMes(o,mesAtual), total:o.parcela_total, valor:Number(o.valor), fim:mesFimObrigacao(o), icone:catInfo(o.categoria).i, cor:CAT_COLORS[o.categoria]||'#6b7280'
+  }));
+  const parcelasCompra = transacoes.filter(t=>t.compra_id && t.mes_ref===mesAtual && t.parcela_total>1).map(t=>{
+    const cp = compras.find(x=>x.id===t.compra_id);
+    return {nome:t.descricao, parcela:t.parcela_atual, total:t.parcela_total, valor:Number(t.valor), fim: cp?mesFimCompra(cp):null, icone:'credit-card', cor:CAT_COLORS[t.categoria]||'#6b7280', cartaoLogo:(cartaoPorId(t.cartao_id)||{}).logo};
+  });
+  const todasParcelas = [...parcelasObr, ...parcelasCompra];
+
+  // ---- Horizonte futuro dinâmico: só até o último mês que ainda tem alguma
+  // obrigação ativa ou fatura de cartão prevista (pedido do usuário: nada de
+  // horizonte fixo de 3/6/12 — só enquanto existir compromisso conhecido) ----
+  const proximosBrutos = proximosMeses(24, addMonths(mesAtual,1)).map(m=>{
+    const obrM = obrigacoesAtivasNoMes(m);
+    return {mesRef:m, qtdObr:obrM.length, totalObr:obrM.reduce((s,o)=>s+Number(o.valor),0), totalCartao:totalCartoesNoMes(m)};
+  });
+  let ultimoComDados = -1;
+  proximosBrutos.forEach((l,i)=>{ if(l.qtdObr>0 || l.totalCartao>0) ultimoComDados=i; });
+  const mesesFuturos = proximosBrutos.slice(0, ultimoComDados+1);
+
+  // ================= MONTAGEM DO HTML =================
+  let html = '';
+
+  html += `<div class="rel-secao">
+    <div class="rel-secao-titulo">${ic('wallet',14)} Renda do Mês</div>
+    <div class="rel-resumo-grid">
+      <div class="stat-card"><div class="stat-card-label">RENDA PREVISTA</div><div class="stat-value neutral">${fmtR(rendaPrevista)}</div></div>
+      <div class="stat-card"><div class="stat-card-label">RENDA REAL</div><div class="stat-value pos">${fmtR(rendaReal)}</div></div>
+      <div class="stat-card"><div class="stat-card-label">DIFERENÇA</div><div class="stat-value" style="color:${corStatus(stRenda)}">${diffRenda>=0?'+':''}${fmtR(diffRenda)}</div></div>
+    </div>
+  </div>`;
+
+  html += `<div class="rel-secao">
+    <div class="rel-secao-titulo">${ic('scale',14)} Resumo Geral</div>
+    <div class="rel-resumo-grid">
+      <div class="stat-card"><div class="stat-card-label">DESPESA PREVISTA</div><div class="stat-value" style="color:var(--danger)">${fmtR(despesaPrevista)}</div></div>
+      <div class="stat-card"><div class="stat-card-label">DESPESA REAL</div><div class="stat-value" style="color:var(--danger)">${fmtR(despesaReal)}</div></div>
+      <div class="stat-card"><div class="stat-card-label">SALDO PREVISTO</div><div class="stat-value ${saldoPrevisto>=0?'pos':'neg'}">${fmtR(saldoPrevisto)}</div></div>
+      <div class="stat-card"><div class="stat-card-label">SALDO REAL</div><div class="stat-value ${saldoReal>=0?'pos':'neg'}">${fmtR(saldoReal)}</div></div>
+    </div>
+    <div class="form-hint" style="margin-top:8px">Diferença de saldo (real menos previsto): <b style="color:${diffSaldo>=0?'var(--accent)':'var(--danger)'};font-family:var(--mono)">${diffSaldo>=0?'+':''}${fmtR(diffSaldo)}</b></div>
+  </div>`;
+
+  html += `<div class="rel-secao">
+    <div class="rel-secao-titulo">${ic('shapes',14)} Gastos por Categoria — Previsto x Real</div>
+    <div class="chart-box" style="margin-bottom:12px"><div class="chart-canvas-wrap" id="rel-chart-wrap"><canvas id="chart-rel-cat"></canvas></div></div>
+    <div class="table-wrap">
+      <div class="rel-linha-cat rel-linha-cat-hdr" style="display:grid"><span></span><span>Categoria</span><span>Previsto</span><span>Real</span><span>Diferença</span><span>Status</span></div>
+      ${linhasCat.length ? linhasCat.map(l=>`<div class="rel-linha-cat">
+        <span style="color:${l.cor}">${ic(l.icone,15)}</span>
+        <span>${l.label}</span>
+        <span style="font-family:var(--mono);color:var(--muted)">${l.previsto>0?fmtR(l.previsto):'—'}</span>
+        <span style="font-family:var(--mono);font-weight:650">${fmtR(l.real)}</span>
+        <span style="font-family:var(--mono);color:${l.previsto>0?(l.diff>0?'var(--danger)':'var(--accent)'):'var(--muted)'}">${l.previsto>0?(l.diff>=0?'+':'')+fmtR(l.diff):'—'}</span>
+        <span class="teto-badge st-${l.st}">${l.st==='vazio'?'sem previsto':l.st==='ok'?'ok':l.st==='alerta'?'atenção':'estourou'}</span>
+      </div>`).join('') : `<div class="empty" style="padding:20px">${ic('inbox',24)}<p>Sem despesas registradas neste mês</p></div>`}
+    </div>
+  </div>`;
+
+  html += `<div class="rel-secao">
+    <div class="rel-secao-titulo">${ic('banknote',14)} Por Forma de Pagamento</div>
+    <div class="rel-resumo-grid">
+      <div class="stat-card stat-card--teal"><div class="stat-card-top"><div class="stat-icon-badge">${ic('banknote',16)}</div><div class="stat-card-label">DÉBITO / DINHEIRO</div></div><div class="stat-value">${fmtR(gastoDeb)}</div></div>
+      ${linhasCartao.map(l=>`<div class="stat-card"><div class="stat-card-top">${l.c.logo?`<div class="stat-icon-badge" style="background:#fff;padding:4px">${logoImgFill(l.c.logo)}</div>`:`<div class="stat-icon-badge">${ic('credit-card',16)}</div>`}<div class="stat-card-label">${escHtml(l.c.nome).toUpperCase()}</div></div><div class="stat-value" style="color:var(--danger)">${fmtR(l.fatura)}</div>${l.pctLimite!==null?`<div class="form-hint" style="margin-top:6px">${Math.round(l.pctLimite)}% do limite (${fmtR(l.c.limite)}) <span class="teto-badge st-${l.st}" style="margin-left:4px">${l.st}</span></div>`:''}</div>`).join('')}
+    </div>
+  </div>`;
+
+  html += `<div class="rel-secao">
+    <div class="rel-secao-titulo">${ic('layers',14)} Parcelas em Andamento este mês</div>
+    <div class="table-wrap">
+      ${todasParcelas.length ? todasParcelas.map(p=>`<div class="rel-linha-cat" style="grid-template-columns:28px 1fr 90px 110px 100px">
+        <span style="color:${p.cor}">${p.cartaoLogo?logoImgFill(p.cartaoLogo):ic(p.icone,15)}</span>
+        <span>${escHtml(p.nome)}</span>
+        <span style="font-family:var(--mono);color:var(--accent2)">${p.parcela}/${p.total}</span>
+        <span style="font-family:var(--mono);font-weight:650">${fmtR(p.valor)}</span>
+        <span style="color:var(--muted);font-size:12px">termina ${p.fim?fmtMesRef(p.fim):'—'}</span>
+      </div>`).join('') : `<div class="empty" style="padding:20px">${ic('inbox',24)}<p>Nenhuma parcela em andamento</p></div>`}
+    </div>
+  </div>`;
+
+  html += `<div class="rel-secao">
+    <div class="rel-secao-titulo">${ic('calendar-clock',14)} Obrigações e Parcelas Futuras</div>
+    <div class="form-hint" style="margin-bottom:10px">Mostra só os meses à frente que já têm alguma obrigação ativa ou fatura de cartão prevista — some quando não há mais nada programado.</div>
+    <div class="table-wrap">
+      ${mesesFuturos.length ? `<table><thead><tr><th>Mês</th><th>Obrigações Ativas</th><th>Total Obrigações</th><th>Faturas de Cartão</th><th>Total do Mês</th></tr></thead><tbody>
+        ${mesesFuturos.map(m=>`<tr>
+          <td data-label="Mês" style="font-weight:650">${fmtMesRef(m.mesRef)}</td>
+          <td data-label="Obrigações Ativas">${m.qtdObr}</td>
+          <td data-label="Total Obrigações" style="font-family:var(--mono);color:var(--danger)">${fmtR(m.totalObr)}</td>
+          <td data-label="Faturas de Cartão" style="font-family:var(--mono);color:var(--danger)">${fmtR(m.totalCartao)}</td>
+          <td data-label="Total do Mês" style="font-family:var(--mono);font-weight:700">${fmtR(m.totalObr+m.totalCartao)}</td>
+        </tr>`).join('')}
+      </tbody></table>` : `<div class="empty" style="padding:20px">${ic('party-popper',24)}<p>Nada programado além deste mês — sem obrigações nem parcelas em aberto no futuro</p></div>`}
+    </div>
+  </div>`;
+
+  document.getElementById('rel-conteudo').innerHTML = html;
+  refreshIcons();
+  renderRelatorioChart(linhasCat);
+}
+
+function renderRelatorioChart(linhasCat){
+  destroyChart('chart-rel-cat');
+  const ctx = document.getElementById('chart-rel-cat');
+  if(!ctx) return;
+  if(!linhasCat.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px">${ic('inbox',28)}<p>Sem dados pra comparar</p></div>`; refreshIcons(); return; }
+  const labels = linhasCat.map(l=>l.label);
+  charts['chart-rel-cat'] = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[
+      {label:'Previsto', data:linhasCat.map(l=>l.previsto), backgroundColor:'#4d9dff88', borderRadius:5},
+      {label:'Real', data:linhasCat.map(l=>l.real), backgroundColor:linhasCat.map(l=>l.cor), borderRadius:5},
+    ]},
+    options:{ ...CHART_DEFAULTS, indexAxis:'y', maintainAspectRatio:false,
+      scales:{ x:{ticks:{color:'#6b7280',callback:v=>'R$'+v},grid:{color:'#263045'}}, y:{ticks:{color:'#e8eaf0'},grid:{display:false}} },
+      plugins:{ legend:{labels:{color:'#e8eaf0'}}, tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtR(c.raw)}}, datalabels:{display:false} } }
+  });
+}
 
 // Projeção de ritmo: só faz sentido pro mês corrente (nos passados o mês já fechou,
 // no futuro ainda não começou) — extrapola o gasto até aqui pro total de dias.
