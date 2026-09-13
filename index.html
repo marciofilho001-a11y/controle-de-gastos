@@ -3123,7 +3123,7 @@ function renderRelatorioTab(){
     <div class="rel-secao-titulo">${ic('layers',14)} Parcelas em Andamento este mês</div>
     <div class="table-wrap">
       ${todasParcelas.length ? todasParcelas.map(p=>`<div class="rel-linha-cat" style="grid-template-columns:28px 1fr 110px 100px 100px">
-        <span style="color:${p.cor}">${p.cartaoLogo?logoImgFill(p.cartaoLogo):ic(p.icone,15)}</span>
+        <span style="color:${p.cor}">${p.cartaoLogo?cartaoIconeHtml({logo:p.cartaoLogo},15):ic(p.icone,15)}</span>
         <span>${escHtml(p.nome)}</span>
         <span>${segmentosParcela(p.parcela,p.total)} <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${p.parcela}/${p.total}</span></span>
         <span style="font-family:var(--mono);font-weight:650">${fmtR(p.valor)}</span>
