@@ -234,7 +234,7 @@ h1,h2,h3,.section-hdr h2,.modal-title{letter-spacing:-0.03em;line-height:1.15;fo
 .obcheck:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ring);}
 .obcheck:active{transform:scale(.88);}
 .obcheck.checked{background:var(--accent);border-color:var(--accent);color:#000;}
-.obicon{width:32px;height:32px;border-radius:9px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.obicon{width:32px;height:32px;border-radius:9px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;overflow:hidden;}
 .obinfo{flex:1;min-width:0;}
 .obname{font-size:13px;font-weight:650;}
 .obname.strike{text-decoration:line-through;color:var(--muted);}
@@ -538,7 +538,7 @@ td{padding:12px 15px;font-size:13px;}
 .hist-row:nth-child(n+6){animation-delay:100ms;}
 @keyframes hist-row-in{from{opacity:0;}to{opacity:1;}}
 @media(prefers-reduced-motion:reduce){.hist-row{animation:none;}}
-.hist-row-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.hist-row-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
 .hist-row-main{flex:1;min-width:0;}
 .hist-row-desc{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .hist-row-meta{font-size:11.5px;color:var(--muted);margin-top:1px;display:flex;align-items:center;gap:5px;}
@@ -1482,11 +1482,12 @@ function renderDashboard(){
     oblist.innerHTML = itens.map(i=>{
       const ci = catInfo(i.categoria);
       const isCartao = i.tipo==='cartao';
+      const logoCartaoOb = isCartao ? (cartaoPorId(i.id)||{}).logo : null;
       return `<div class="obrow ${i.paga?'paid':''}">
         <div class="obcheck ${i.paga?'checked':''}" ${isCartao?'':`onclick="toggleObrigacaoPaga(${i.id})" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click();}" tabindex="0"`} role="checkbox" aria-checked="${i.paga?'true':'false'}" aria-label="${i.paga?'Marcar como não paga':'Marcar como paga'}" style="${isCartao?'cursor:default':''}" title="${isCartao?'Gerenciada na aba Cartões':''}">${i.paga?ic('check',14):''}</div>
-        <div class="obicon">${ic(ci.i,16)}</div>
+        <div class="obicon" ${logoCartaoOb?'style="background:#fff;padding:4px"':''}>${logoCartaoOb ? logoImgFill(logoCartaoOb) : ic(ci.i,16)}</div>
         <div class="obinfo">
-          <div class="obname ${i.paga?'strike':''}">${escHtml(i.nome)} ${isCartao?`<span class="cartao-badge">${cartaoIconeHtml(cartaoPorId(i.id),10)} cartão</span>`:''}</div>
+          <div class="obname ${i.paga?'strike':''}">${escHtml(i.nome)} ${isCartao?`<span class="cartao-badge">cartão</span>`:''}</div>
           <div class="obmeta">Dia ${i.dia||'—'} · ${i.parcTxt}</div>
         </div>
         <div class="obvalor">${fmtR(i.valor)}</div>
@@ -1518,10 +1519,11 @@ function renderDashboard(){
       const cor = CAT_COLORS[ci.v] || 'var(--muted)';
       const corBg = cor.startsWith('#') ? cor+'22' : 'rgba(255,255,255,.08)'; // 22 = ~13% alpha em hex; var() não aceita esse sufixo
       const pos = t.tipo==='receita';
+      const logoCartaoTx = t.cartao_id ? (cartaoPorId(t.cartao_id)||{}).logo : null;
       html += `<div class="hist-row">
-        <div class="hist-row-icon" style="background:${corBg};color:${cor}">${itemIconHtml(t.descricao,ci.v,16)}</div>
+        <div class="hist-row-icon" style="${logoCartaoTx?'background:#fff;padding:5px':`background:${corBg};color:${cor}`}">${logoCartaoTx ? logoImgFill(logoCartaoTx) : itemIconHtml(t.descricao,ci.v,16)}</div>
         <div class="hist-row-main">
-          <div class="hist-row-desc">${escHtml(t.descricao)||'—'} ${t.cartao_id?`<span class="cartao-badge">${cartaoIconeHtml(cartaoPorId(t.cartao_id),10)} ${escHtml(cartaoNome(t.cartao_id))}</span>`:''}</div>
+          <div class="hist-row-desc">${escHtml(t.descricao)||'—'} ${t.cartao_id?`<span class="cartao-badge">${escHtml(cartaoNome(t.cartao_id))}</span>`:''}</div>
           <div class="hist-row-meta" style="color:${cor}">${ci.l}</div>
         </div>
         <div class="hist-row-amount ${pos?'pos':'neg'}">${pos?'+':'−'} ${fmtR(t.valor)}</div>
@@ -1797,6 +1799,19 @@ function cartaoIconeHtml(c, size){
   const band = bandeiraDoCartao(c ? c.nome : '');
   return `<span style="color:${band.cor}">${ic(band.icone,size)}</span>`;
 }
+// Ícone PRINCIPAL de uma transação: se ela veio de um cartão com logo cadastrada,
+// a logo É o ícone (não um detalhe pequeno do lado) — é a informação mais rápida
+// de reconhecer visualmente. Sem logo (ou sem cartão), cai no ícone de categoria
+// de sempre. Uso INLINE (sem container preparado) — por isso self-contained,
+// com fundo branco/raio próprios quando é logo (mesmo cartaoIconeHtml).
+function iconeTxOuLogo(t, ci, size){
+  const c = t.cartao_id ? cartaoPorId(t.cartao_id) : null;
+  if(c && c.logo) return cartaoIconeHtml(c, size);
+  return itemIconHtml(t.descricao, ci.v, size);
+}
+// Só a imagem, sem fundo/padding próprios — pra quando quem chama já tem um
+// container preparado (fundo branco, tamanho fixo), como hist-row-icon/obicon.
+function logoImgFill(logo){ return `<img src="${logo}" style="width:100%;height:100%;object-fit:contain">`; }
 function faturaDoMes(cartaoId, mesRef){
   return transacoes.filter(t=>t.cartao_id===cartaoId && t.mes_ref===mesRef && t.tipo==='despesa')
     .reduce((s,t)=>s+Number(t.valor),0);
@@ -2552,7 +2567,7 @@ function renderTransacoesQuadros(list){
       return `<div class="quadro-item-row">
         <span style="color:var(--muted);font-family:var(--mono);font-size:11px;flex-shrink:0">${fmtData(t.data)}</span>
         <span class="quadro-item-desc">${escHtml(t.descricao)||'—'}</span>
-        <span class="quadro-item-cat" style="color:${CAT_COLORS[ci.v]||'var(--muted)'}">${itemIconHtml(t.descricao,ci.v,17)} ${ci.l}</span>
+        <span class="quadro-item-cat" style="color:${CAT_COLORS[ci.v]||'var(--muted)'}">${iconeTxOuLogo(t,ci,17)} ${ci.l}</span>
         <span style="font-family:var(--mono);font-weight:700;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'};flex-shrink:0">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</span>
         <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deletarTransacao(${t.id})">${ic('trash-2',12)}</button>
       </div>`;
@@ -2649,7 +2664,7 @@ function renderTransacoesTab(){
       <td><input type="checkbox" class="tx-check" data-id="${t.id}" ${txSelecionadas.has(t.id)?'checked':''} onchange="toggleSelecionada(${t.id},this.checked)"></td>
       <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
       <td data-label="Descrição">${escHtml(t.descricao)||'—'} ${t.cartao_id?`<span class="cartao-badge">${cartaoIconeHtml(cartaoPorId(t.cartao_id),10)} ${escHtml(cartaoNome(t.cartao_id))}</span>`:''}</td>
-      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(t.descricao,ci.v,17)} ${ci.l}</td>
+      <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${iconeTxOuLogo(t,ci,17)} ${ci.l}</td>
       <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
       <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
       <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
