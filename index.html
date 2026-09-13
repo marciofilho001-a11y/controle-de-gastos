@@ -570,20 +570,33 @@ td{padding:12px 15px;font-size:13px;}
 /* Cards de categoria: altos e estreitos (não uma linha larga que estoura o
    container) — grid que reflui sozinho, cada card com sua própria barra de
    proporção real/previsto em vez de uma tabela de colunas apertadas. */
-.rel-cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
-.rel-cat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:158px;}
+.rel-cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+.rel-cat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px;min-height:194px;}
 .rel-cat-card-clicavel{cursor:pointer;transition:border-color .15s var(--ease-out),transform .15s var(--ease-out);}
 .rel-cat-card-clicavel .lic:last-child{margin-left:auto;color:var(--muted);flex-shrink:0;}
 @media(hover:hover) and (pointer:fine){.rel-cat-card-clicavel:hover{border-color:rgba(255,255,255,.22);transform:translateY(-1px);}}
-.rel-cat-card-top{display:flex;align-items:center;gap:9px;}
-.rel-cat-card-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.rel-cat-card-nome{font-size:13.5px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rel-cat-card-top{display:flex;align-items:center;gap:10px;}
+.rel-cat-card-icon{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;}
+.rel-cat-card-nome{font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .rel-cat-card-row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);}
 .rel-cat-card-row b{font-family:var(--mono);color:var(--text);font-weight:650;}
-.rel-cat-card-bar-bg{background:var(--surface);border-radius:6px;height:6px;overflow:hidden;}
-.rel-cat-card-bar-fill{height:100%;border-radius:6px;transition:width .3s var(--ease-out);}
-.rel-cat-card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:8px;border-top:1px solid var(--border-soft);}
-.rel-cat-card-diff{font-family:var(--mono);font-size:12.5px;font-weight:750;}
+/* valores lado a lado, tipografia maior — igual à referência */
+.rel-cat-card-vals{display:flex;gap:18px;}
+.rel-cat-card-val{flex:1;min-width:0;}
+.rel-cat-card-val-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rel-cat-card-val-label i{font-style:normal;text-transform:none;opacity:.75;}
+.rel-cat-card-val b{font-family:var(--mono);font-size:18px;font-weight:750;color:var(--text);display:block;}
+.rel-cat-card-bar-bg{background:var(--surface);border-radius:8px;height:11px;overflow:hidden;}
+.rel-cat-card-bar-fill{height:100%;border-radius:8px;transition:width .4s var(--ease-out);}
+/* pill de status única — ícone + texto + valor juntos, no lugar do rodapé
+   dividido em dois pedaços separados */
+.rel-cat-card-pill{display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:11px;font-size:12.5px;font-weight:650;margin-top:auto;}
+.rel-cat-card-pill .lic{flex-shrink:0;}
+.rel-cat-card-pill-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rel-cat-card-pill-valor{font-family:var(--mono);font-weight:750;flex-shrink:0;}
+.rel-cat-card-pill.st-ok{background:rgba(34,224,172,.13);color:var(--accent);}
+.rel-cat-card-pill.st-critico{background:rgba(255,82,92,.13);color:var(--danger);}
+.rel-cat-card-pill.st-vazio{background:rgba(255,255,255,.05);color:var(--muted);}
 
 /* Parcelas: chips segmentados — até 12 parcelas mostra quadradinho por
    parcela (preenchido = já paga); acima disso vira barra contínua, senão um
@@ -3114,20 +3127,28 @@ function renderRelatorioTab(){
       ${linhasCat.length ? linhasCat.map(l=>{
         const pctBarra = l.previsto>0 ? Math.min(100, l.real/l.previsto*100) : (l.real>0?100:0);
         const corBarra = l.st==='critico' ? 'var(--danger)' : (l.st==='vazio' ? 'var(--muted)' : 'var(--accent)');
+        const iconePill = l.st==='critico'?'trending-up':l.st==='ok'?'check':'minus';
         return `<div class="rel-cat-card rel-cat-card-clicavel" onclick="abrirDetalheCategoria('${l.catKey}')" title="Ver de onde veio esse gasto">
           <div class="rel-cat-card-top">
-            <span class="rel-cat-card-icon" style="background:${l.cor}22;color:${l.cor}">${ic(l.icone,16)}</span>
+            <span class="rel-cat-card-icon" style="background:${l.cor}">${ic(l.icone,17)}</span>
             <span class="rel-cat-card-nome">${l.label}</span>
             ${ic('chevron-right',14)}
           </div>
-          <div class="rel-cat-card-valores">
-            <div class="rel-cat-card-row"><span>Previsto${l.origemPrevisto?` <i style="font-style:normal;opacity:.7">(${l.origemPrevisto})</i>`:''}</span><b>${l.previsto>0?fmtR(l.previsto):'—'}</b></div>
-            <div class="rel-cat-card-row"><span>Real</span><b style="color:var(--text)">${fmtR(l.real)}</b></div>
+          <div class="rel-cat-card-vals">
+            <div class="rel-cat-card-val">
+              <span class="rel-cat-card-val-label">Previsto${l.origemPrevisto?` <i>(${l.origemPrevisto})</i>`:''}</span>
+              <b>${l.previsto>0?fmtR(l.previsto):'—'}</b>
+            </div>
+            <div class="rel-cat-card-val">
+              <span class="rel-cat-card-val-label">Real</span>
+              <b>${fmtR(l.real)}</b>
+            </div>
           </div>
           <div class="rel-cat-card-bar-bg"><div class="rel-cat-card-bar-fill" style="width:${pctBarra}%;background:${corBarra}"></div></div>
-          <div class="rel-cat-card-foot">
-            <span class="teto-badge st-${l.st}">${l.st==='vazio'?'sem previsto':l.st==='ok'?'dentro do previsto':'acima do previsto'}</span>
-            <span class="rel-cat-card-diff" style="color:${l.previsto>0?(l.diff>0?'var(--danger)':'var(--accent)'):'var(--muted)'}">${l.previsto>0?(l.diff>=0?'+':'')+fmtR(l.diff):'—'}</span>
+          <div class="rel-cat-card-pill st-${l.st}">
+            ${ic(iconePill,14)}
+            <span class="rel-cat-card-pill-text">${l.st==='vazio'?'sem previsto':l.st==='ok'?'dentro do previsto':'acima do previsto'}</span>
+            <span class="rel-cat-card-pill-valor">${l.previsto>0?(l.diff>=0?'+':'')+fmtR(l.diff):'—'}</span>
           </div>
         </div>`;
       }).join('') : `<div class="empty" style="padding:20px;grid-column:1/-1">${ic('inbox',24)}<p>Sem despesas registradas neste mês</p></div>`}
@@ -3154,7 +3175,7 @@ function renderRelatorioTab(){
     <div class="rel-secao-titulo">${ic('layers',14)} Parcelas em Andamento este mês</div>
     <div class="table-wrap">
       ${todasParcelas.length ? todasParcelas.map(p=>`<div class="rel-linha-cat" style="grid-template-columns:28px 1fr 110px 100px 100px">
-        <span style="color:${p.cor}">${p.cartaoLogo?cartaoIconeHtml({logo:p.cartaoLogo},15):ic(p.icone,15)}</span>
+        <span style="color:${p.cor}">${p.cartaoLogo?cartaoIconeHtml({logo:p.cartaoLogo},24):ic(p.icone,15)}</span>
         <span>${escHtml(p.nome)}</span>
         <span>${segmentosParcela(p.parcela,p.total)} <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${p.parcela}/${p.total}</span></span>
         <span style="font-family:var(--mono);font-weight:650">${fmtR(p.valor)}</span>
@@ -3190,15 +3211,19 @@ function renderRelatorioChart(linhasCat){
   const ctx = document.getElementById('chart-rel-cat');
   if(!ctx) return;
   if(!linhasCat.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px">${ic('inbox',28)}<p>Sem dados pra comparar</p></div>`; refreshIcons(); return; }
+  // altura proporcional ao nº de categorias — com poucas categorias, barras
+  // grossas de verdade (igual à referência); com muitas, ainda cabe tudo.
+  ctx.parentElement.style.height = Math.max(180, linhasCat.length*68) + 'px';
   const labels = linhasCat.map(l=>l.label);
   charts['chart-rel-cat'] = new Chart(ctx, {
     type:'bar',
     data:{ labels, datasets:[
-      {label:'Previsto', data:linhasCat.map(l=>l.previsto), backgroundColor:'#4d9dff88', borderRadius:5},
-      {label:'Real', data:linhasCat.map(l=>l.real), backgroundColor:linhasCat.map(l=>l.cor), borderRadius:5},
+      {label:'Previsto', data:linhasCat.map(l=>l.previsto), backgroundColor:'#4d9dffcc', borderRadius:8, barThickness:16},
+      {label:'Real', data:linhasCat.map(l=>l.real), backgroundColor:linhasCat.map(l=>l.cor), borderRadius:8, barThickness:16},
     ]},
     options:{ ...CHART_DEFAULTS, indexAxis:'y', maintainAspectRatio:false,
-      scales:{ x:{ticks:{color:'#6b7280',callback:v=>'R$'+v},grid:{color:'#263045'}}, y:{ticks:{color:'#e8eaf0'},grid:{display:false}} },
+      categoryPercentage:0.7, barPercentage:0.9,
+      scales:{ x:{ticks:{color:'#6b7280',callback:v=>'R$'+v},grid:{color:'#263045'}}, y:{ticks:{color:'#e8eaf0',font:{weight:'600'}},grid:{display:false}} },
       plugins:{ legend:{labels:{color:'#e8eaf0'}}, tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtR(c.raw)}}, datalabels:{display:false} } }
   });
 }
