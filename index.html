@@ -260,6 +260,15 @@ td{padding:10px 14px;font-size:13px;}
 .fatura-item-meta{display:flex;align-items:center;gap:2px;font-size:11px;color:var(--muted);margin-top:3px;}
 .fatura-item-meta .lic{vertical-align:-1px;}
 .fatura-item-parcela{display:inline-flex;align-items:center;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-weight:600;color:var(--accent2);font-family:var(--mono);}
+
+/* PARCELAS SUGERIDAS - card estilo Apple: material translúcido, cantos generosos */
+.parcelas-sugeridas{background:linear-gradient(160deg,rgba(61,142,240,.10),rgba(61,142,240,.03));border:1px solid rgba(61,142,240,.22);border-radius:16px;padding:14px 16px;margin-bottom:14px;backdrop-filter:blur(8px);}
+.parcelas-sugeridas-head{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--accent2);margin-bottom:12px;letter-spacing:-0.01em;}
+.parcelas-sugeridas-lista{display:flex;flex-direction:column;gap:8px;}
+.parcela-sugerida-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:9px 12px;cursor:pointer;transition:transform .18s cubic-bezier(.2,.8,.2,1),border-color .18s,box-shadow .18s;}
+.parcela-sugerida-card:hover{transform:translateY(-1px);border-color:rgba(61,142,240,.4);box-shadow:0 4px 16px rgba(0,0,0,.25);}
+.parcela-sugerida-card:active{transform:translateY(0) scale(.99);}
+.parcela-sugerida-add{width:28px;height:28px;border-radius:8px;background:var(--accent2);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .fatura-item-form .form-input{padding:6px 10px;font-size:12px;height:32px;}
 .pill-legend-item.clicavel{cursor:pointer;transition:background .12s,opacity .12s;}
 .pill-legend-item.ativo{background:var(--card);box-shadow:inset 2px 0 0 currentColor;}
@@ -1743,6 +1752,66 @@ function selecionarMesFatura(mesRef){
 let catFiltro = null; // categoria selecionada na legenda; null = mostrar tudo
 let buscaFatura = ''; // termo de busca na lista de itens da fatura
 
+// Detecta parcelamentos em andamento cuja PRÓXIMA parcela cai no mês alvo.
+// Percorre todos os itens do cartão que têm parcela_total>1 e ainda não chegaram
+// na última parcela; calcula em que mês cairia a parcela seguinte; se for o mês
+// alvo e ainda não existir um item com esse nome lá, vira sugestão.
+function sugestoesParcelasParaMes(cartaoId, mesAlvo, itensJaNoMes){
+  const nomesJaNoMes = new Set(itensJaNoMes.map(i=>normalizarDescricao(i.descricao)));
+  // pega, por nome, a parcela mais avançada já registrada em qualquer mês desse cartão
+  const porNome = {};
+  faturaItens.filter(fi=>fi.cartao_id===cartaoId && fi.parcela_total>1).forEach(fi=>{
+    const dn = normalizarDescricao(fi.descricao);
+    const atual = fi.parcela_atual || 1;
+    if(!porNome[dn] || atual > porNome[dn].parcela_atual || fi.mes_ref > porNome[dn].mes_ref){
+      // mantém a referência da parcela mais recente (maior mes_ref) pra projetar a próxima
+      if(!porNome[dn] || fi.mes_ref > porNome[dn].mes_ref) porNome[dn] = fi;
+    }
+  });
+  const sugestoes = [];
+  Object.values(porNome).forEach(fi=>{
+    const dn = normalizarDescricao(fi.descricao);
+    if(nomesJaNoMes.has(dn)) return; // já adicionado neste mês
+    const atual = fi.parcela_atual || 1;
+    if(atual >= fi.parcela_total) return; // parcelamento já terminou
+    const proxParcela = atual + 1;
+    const mesesAdiante = proxParcela - atual; // = 1
+    const mesProxima = addMonths(fi.mes_ref, mesesAdiante);
+    if(mesProxima !== mesAlvo) return; // a próxima parcela não cai neste mês
+    sugestoes.push({ descricao:fi.descricao, valor:Number(fi.valor), categoria:fi.categoria, proxParcela, parcela_total:fi.parcela_total });
+  });
+  return sugestoes;
+}
+
+async function adicionarSugestao(mesRef, descricaoEnc, valor, categoria, proxParcela, parcelaTotal){
+  const descricao = decodeURIComponent(descricaoEnc);
+  await sb.from('fin_fatura_itens').insert({
+    cartao_id:cartaoDetalheAtual, mes_ref:mesRef, descricao, valor:Number(valor), categoria,
+    parcela_atual:proxParcela, parcela_total:parcelaTotal
+  });
+  toast(`${descricao} ${proxParcela}/${parcelaTotal} adicionada!`);
+  await loadFaturaItens();
+  renderCartaoStats(); renderCartaoMesLista(); renderCartaoMesContent();
+  if(cartaoAggVisivel) renderCartaoAggChart();
+}
+
+async function adicionarTodasSugestoes(mesRef){
+  const id = cartaoDetalheAtual;
+  const todosItens = faturaItens.filter(fi=>fi.cartao_id===id && fi.mes_ref===mesRef);
+  const sugestoes = sugestoesParcelasParaMes(id, mesRef, todosItens);
+  if(!sugestoes.length) return;
+  for(const s of sugestoes){
+    await sb.from('fin_fatura_itens').insert({
+      cartao_id:id, mes_ref:mesRef, descricao:s.descricao, valor:s.valor, categoria:s.categoria,
+      parcela_atual:s.proxParcela, parcela_total:s.parcela_total
+    });
+  }
+  toast(`${sugestoes.length} parcela(s) adicionada(s)!`);
+  await loadFaturaItens();
+  renderCartaoStats(); renderCartaoMesLista(); renderCartaoMesContent();
+  if(cartaoAggVisivel) renderCartaoAggChart();
+}
+
 function renderCartaoMesContent(){
   const id = cartaoDetalheAtual;
   const mesRef = mesSelecionado;
@@ -1822,6 +1891,31 @@ function renderCartaoMesContent(){
     ? `<div class="fatura-filtro-banner" style="border-color:var(--accent2)"><span style="display:flex;align-items:center;gap:8px;color:var(--accent2)">${ic('calendar-clock',14)} Fatura de ${fmtMesRef(mesRef)} ainda não fechou — o que você adicionar aqui fica registrado como planejado, e vira o extrato real assim que a fatura chegar.</span></div>`
     : '';
 
+  // Parcelamentos em andamento que deveriam cair NESTE mês mas ainda não foram
+  // adicionados aqui - oferece adicionar com 1 clique, já com nome/valor/ícone/parcela.
+  const sugestoes = sugestoesParcelasParaMes(id, mesRef, todosItens);
+  const sugestoesHtml = sugestoes.length ? `
+    <div class="parcelas-sugeridas">
+      <div class="parcelas-sugeridas-head">
+        ${ic('sparkles',14)} <span>Parcelamentos em andamento pra ${fmtMesRef(mesRef)}</span>
+        <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="adicionarTodasSugestoes('${mesRef}')">${ic('check-check',13)} Adicionar todas</button>
+      </div>
+      <div class="parcelas-sugeridas-lista">
+        ${sugestoes.map(s=>{
+          const cor = CAT_COLORS[s.categoria] || '#6b7280';
+          return `<div class="parcela-sugerida-card" onclick="adicionarSugestao('${mesRef}','${encDesc(s.descricao)}',${s.valor},'${s.categoria}',${s.proxParcela},${s.parcela_total})">
+            <span class="fatura-item-cat-icon ${temIconeCustom(s.descricao)?'tem-imagem':''}" style="${temIconeCustom(s.descricao)?'':`background:${cor}22;color:${cor}`};width:34px;height:34px">${itemIconHtml(s.descricao, s.categoria, 30)}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;color:var(--text);font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.descricao}</span>
+              <span class="fatura-item-parcela" style="margin-top:2px;display:inline-flex">${ic('layers',10)} ${s.proxParcela}/${s.parcela_total}</span>
+            </span>
+            <span class="fatura-item-valor" style="font-size:13px">${fmtR(s.valor)}</span>
+            <span class="parcela-sugerida-add">${ic('plus',15)}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
   const filtroBanner = catFiltro ? `
     <div class="fatura-filtro-banner">
       <span style="display:flex;align-items:center;gap:8px">
@@ -1852,6 +1946,7 @@ function renderCartaoMesContent(){
       </div>
       <div>
         ${avisoPlanejando}
+        ${sugestoesHtml}
         ${filtroBanner}
         ${buscaHtml}
         ${listaItens || (buscaFatura ? '<div class="fatura-item-row" style="font-style:italic">Nenhum item encontrado com essa busca</div>' : (listaVazia || (todosItens.length ? '' : semNadaAinda)))}
