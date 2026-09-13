@@ -572,6 +572,9 @@ td{padding:12px 15px;font-size:13px;}
    proporção real/previsto em vez de uma tabela de colunas apertadas. */
 .rel-cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
 .rel-cat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:158px;}
+.rel-cat-card-clicavel{cursor:pointer;transition:border-color .15s var(--ease-out),transform .15s var(--ease-out);}
+.rel-cat-card-clicavel .lic:last-child{margin-left:auto;color:var(--muted);flex-shrink:0;}
+@media(hover:hover) and (pointer:fine){.rel-cat-card-clicavel:hover{border-color:rgba(255,255,255,.22);transform:translateY(-1px);}}
 .rel-cat-card-top{display:flex;align-items:center;gap:9px;}
 .rel-cat-card-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .rel-cat-card-nome{font-size:13.5px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -856,6 +859,10 @@ td{padding:12px 15px;font-size:13px;}
   <div id="teto-total-card"></div>
   <div class="card-title" style="margin:20px 0 10px"><i data-lucide="wallet" class="lic" style="width:14px;height:14px"></i> Por forma de pagamento</div>
   <div id="teto-baldes"></div>
+
+  <div class="card-title" style="margin:20px 0 10px"><i data-lucide="shapes" class="lic" style="width:14px;height:14px"></i> Metas por Categoria</div>
+  <div class="form-hint" style="margin-bottom:12px">Opcional — defina uma meta pra qualquer categoria (inclusive as que passam por cartão). O Relatório Mensal usa essa meta como "previsto" quando ela existe; sem meta, usa a média dos últimos meses.</div>
+  <div id="teto-cats-grid" class="rel-cat-grid"></div>
 </div>
 
 <!-- ═══════════════ INVESTIMENTOS ═══════════════ -->
@@ -1080,6 +1087,15 @@ td{padding:12px 15px;font-size:13px;}
       <button class="btn btn-secondary" onclick="closeModal('modal-cartao')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarCartao()"><i data-lucide="save" class="lic" style="width:14px;height:14px"></i> Salvar</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE DE CATEGORIA (Relatório — de onde veio esse gasto) -->
+<div class="modal-overlay" id="modal-cat-detalhe">
+  <div class="modal modal-lg">
+    <div class="modal-header"><span class="modal-title" id="cat-detalhe-titulo">Categoria</span><button class="btn btn-ghost btn-icon btn-sm" onclick="closeModal('modal-cat-detalhe')" aria-label="Fechar"><i data-lucide="x" class="lic" style="width:14px;height:14px"></i></button></div>
+    <div class="form-hint" style="margin-bottom:12px">Detalhado por origem — débito e cada cartão que teve gasto nessa categoria.</div>
+    <div id="cat-detalhe-body" style="max-height:60vh;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -2913,13 +2929,17 @@ function gastoDebitoNoMes(mesRef){
 function gastoVariavelTotalNoMes(mesRef){
   return gastoDebitoNoMes(mesRef) + totalCartoesNoMes(mesRef);
 }
-function getTeto(mesRef, escopo, cartaoId){
-  const t = tetos.find(x=>x.mes_ref===mesRef && x.escopo===escopo && (cartaoId?Number(x.cartao_id)===Number(cartaoId):!x.cartao_id));
+function getTeto(mesRef, escopo, cartaoId, categoria){
+  const t = tetos.find(x=>x.mes_ref===mesRef && x.escopo===escopo
+    && (cartaoId?Number(x.cartao_id)===Number(cartaoId):!x.cartao_id)
+    && (categoria?x.categoria===categoria:!x.categoria));
   return t ? Number(t.valor) : null;
 }
-async function salvarTeto(mesRef, escopo, cartaoId, valorStr){
+async function salvarTeto(mesRef, escopo, cartaoId, valorStr, categoria){
   const valor = parseFloat(valorStr);
-  const linha = tetos.find(x=>x.mes_ref===mesRef && x.escopo===escopo && (cartaoId?Number(x.cartao_id)===Number(cartaoId):!x.cartao_id));
+  const linha = tetos.find(x=>x.mes_ref===mesRef && x.escopo===escopo
+    && (cartaoId?Number(x.cartao_id)===Number(cartaoId):!x.cartao_id)
+    && (categoria?x.categoria===categoria:!x.categoria));
   if(isNaN(valor) || valor<=0){
     if(linha){ await sb.from('fin_tetos').delete().eq('id', linha.id); toast('Limite removido'); }
     else return;
@@ -2927,7 +2947,7 @@ async function salvarTeto(mesRef, escopo, cartaoId, valorStr){
     await sb.from('fin_tetos').update({valor}).eq('id', linha.id);
     toast('Limite salvo!');
   } else {
-    await sb.from('fin_tetos').insert({mes_ref:mesRef, escopo, cartao_id:cartaoId||null, valor});
+    await sb.from('fin_tetos').insert({mes_ref:mesRef, escopo, cartao_id:cartaoId||null, categoria:categoria||null, valor});
     toast('Limite salvo!');
   }
   await loadTetos();
@@ -2998,17 +3018,27 @@ function renderRelatorioTab(){
   const saldoReal = rendaReal - despesaReal;
   const taxaPoupanca = rendaReal>0 ? (saldoReal/rendaReal*100) : 0;
 
-  // ---- Gastos por categoria: previsto = obrigações ativas daquela categoria;
-  // real = TODAS as despesas da categoria (débito + cartão) ----
+  // ---- Gastos por categoria: "previsto" agora tem 3 níveis de fallback —
+  // 1) meta cadastrada em Limites (o usuário decidiu um valor de propósito),
+  // 2) média dos últimos 3 meses de gasto real (retrato do hábito real, não
+  //    só da conta fixa), 3) obrigação fixa da categoria como último recurso.
+  // "real" continua somando TODAS as despesas da categoria — débito + cartão —
+  // porque cada transação já carrega sua categoria de verdade, cartão nenhum
+  // some daqui. ----
   const despesasMes = txDoMes(mesAtual).filter(t=>t.tipo==='despesa');
   const catsUsadas = [...new Set([...ativas.map(o=>o.categoria), ...despesasMes.map(t=>t.categoria)])];
   const linhasCat = catsUsadas.map(catKey=>{
     const ci = catInfo(catKey);
-    const previsto = ativas.filter(o=>o.categoria===catKey).reduce((s,o)=>s+Number(o.valor),0);
+    const obrFixo = ativas.filter(o=>o.categoria===catKey).reduce((s,o)=>s+Number(o.valor),0);
+    const meta = getTeto(mesAtual,'categoria',null,catKey);
+    const media = mediaCategoriaMeses(catKey,3);
+    const previsto = meta || media || obrFixo;
+    const origemPrevisto = meta ? 'meta' : (media ? 'média' : (obrFixo?'obrigação':null));
     const real = despesasMes.filter(t=>t.categoria===catKey).reduce((s,t)=>s+Number(t.valor),0);
     const st = statusPrevisto(real, previsto);
-    return {catKey, label:ci.l, icone:ci.i, cor:CAT_COLORS[catKey]||'#6b7280', previsto, real, diff:real-previsto, st};
+    return {catKey, label:ci.l, icone:ci.i, cor:CAT_COLORS[catKey]||'#6b7280', previsto, origemPrevisto, obrFixo, real, diff:real-previsto, st};
   }).filter(l=>l.previsto>0 || l.real>0).sort((a,b)=>b.real-a.real);
+
 
   // ---- Forma de pagamento: débito x cada cartão ----
   const gastoDeb = gastoDebitoNoMes(mesAtual);
@@ -3084,13 +3114,14 @@ function renderRelatorioTab(){
       ${linhasCat.length ? linhasCat.map(l=>{
         const pctBarra = l.previsto>0 ? Math.min(100, l.real/l.previsto*100) : (l.real>0?100:0);
         const corBarra = l.st==='critico' ? 'var(--danger)' : (l.st==='vazio' ? 'var(--muted)' : 'var(--accent)');
-        return `<div class="rel-cat-card">
+        return `<div class="rel-cat-card rel-cat-card-clicavel" onclick="abrirDetalheCategoria('${l.catKey}')" title="Ver de onde veio esse gasto">
           <div class="rel-cat-card-top">
             <span class="rel-cat-card-icon" style="background:${l.cor}22;color:${l.cor}">${ic(l.icone,16)}</span>
             <span class="rel-cat-card-nome">${l.label}</span>
+            ${ic('chevron-right',14)}
           </div>
           <div class="rel-cat-card-valores">
-            <div class="rel-cat-card-row"><span>Previsto</span><b>${l.previsto>0?fmtR(l.previsto):'—'}</b></div>
+            <div class="rel-cat-card-row"><span>Previsto${l.origemPrevisto?` <i style="font-style:normal;opacity:.7">(${l.origemPrevisto})</i>`:''}</span><b>${l.previsto>0?fmtR(l.previsto):'—'}</b></div>
             <div class="rel-cat-card-row"><span>Real</span><b style="color:var(--text)">${fmtR(l.real)}</b></div>
           </div>
           <div class="rel-cat-card-bar-bg"><div class="rel-cat-card-bar-fill" style="width:${pctBarra}%;background:${corBarra}"></div></div>
@@ -3241,6 +3272,74 @@ function renderTetosTab(){
       ${teto?`<div class="teto-bar-bg" style="height:6px"><div class="teto-bar-fill" style="width:${pct}%;background:${corStatus(st)}"></div></div>`:''}
     </div>`;
   }).join('');
+
+  document.getElementById('teto-cats-grid').innerHTML = DESPESA_CATS.map(c=>{
+    const meta = getTeto(mesAtual,'categoria',null,c.v);
+    const media = mediaCategoriaMeses(c.v,3);
+    const gastoAtual = gastoCategoriaNoMes(c.v, mesAtual);
+    const cor = CAT_COLORS[c.v]||'#6b7280';
+    return `<div class="rel-cat-card">
+      <div class="rel-cat-card-top"><span class="rel-cat-card-icon" style="background:${cor}22;color:${cor}">${ic(c.i,16)}</span><span class="rel-cat-card-nome">${c.l}</span></div>
+      <div class="rel-cat-card-row"><span>Média (3m)</span><b>${media>0?fmtR(media):'—'}</b></div>
+      <div class="rel-cat-card-row"><span>Gasto atual</span><b style="color:var(--text)">${fmtR(gastoAtual)}</b></div>
+      <div style="margin-top:auto;display:flex;align-items:center;gap:6px">
+        <input class="teto-input" style="flex:1;width:auto" type="number" step="0.01" placeholder="sem meta" value="${meta||''}"
+          onchange="salvarTeto('${mesAtual}','categoria',null,this.value,'${c.v}')">
+      </div>
+    </div>`;
+  }).join('');
+  refreshIcons();
+}
+
+// Média de gasto real de uma categoria nos últimos `n` meses ANTERIORES ao mês
+// selecionado (não conta o mês atual, que ainda está em andamento) — serve de
+// "previsto" padrão pro Relatório quando não existe meta cadastrada nem
+// obrigação fixa: melhor um retrato do que o usuário realmente costuma gastar
+// do que aparentar "previsto = 0" só porque a categoria não tem conta fixa.
+function gastoCategoriaNoMes(catKey, mesRef){
+  return txDoMes(mesRef).filter(t=>t.tipo==='despesa' && t.categoria===catKey).reduce((s,t)=>s+Number(t.valor),0);
+}
+function mediaCategoriaMeses(catKey, n){
+  const valores = [];
+  for(let i=1;i<=n;i++){ const v = gastoCategoriaNoMes(catKey, addMonths(mesAtual,-i)); if(v>0) valores.push(v); }
+  return valores.length ? valores.reduce((s,v)=>s+v,0)/valores.length : 0;
+}
+
+// Detalhamento de categoria por origem: em vez de perguntar "de qual cartão
+// você quer ver", mostra todas as origens de uma vez (débito + cada cartão) —
+// mais rápido de escanear do que um assistente passo-a-passo, já que raramente
+// são mais que 4-5 fontes diferentes contribuindo pra mesma categoria.
+function abrirDetalheCategoria(catKey){
+  const ci = catInfo(catKey);
+  const txCat = txDoMes(mesAtual).filter(t=>t.tipo==='despesa' && t.categoria===catKey);
+  const porOrigem = {};
+  txCat.forEach(t=>{
+    const chave = t.cartao_id ? `cartao-${t.cartao_id}` : 'debito';
+    if(!porOrigem[chave]) porOrigem[chave] = {itens:[], total:0};
+    porOrigem[chave].itens.push(t);
+    porOrigem[chave].total += Number(t.valor);
+  });
+  const linhas = Object.entries(porOrigem).map(([chave,dados])=>{
+    if(chave==='debito') return {nome:'Débito / Dinheiro', icone:'banknote', cor:'#22d3a5', logo:null, ...dados};
+    const c = cartaoPorId(Number(chave.split('-')[1]));
+    return {nome:c?c.nome:'Cartão', icone:'credit-card', cor:'#f472b6', logo:c?c.logo:null, ...dados};
+  }).sort((a,b)=>b.total-a.total);
+
+  document.getElementById('cat-detalhe-body').innerHTML = linhas.length ? linhas.map(l=>`
+    <div class="card" style="margin-bottom:10px;padding:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        ${l.logo?`<span class="stat-icon-badge" style="width:28px;height:28px;background:#fff;padding:3px">${logoImgFill(l.logo)}</span>`:`<span class="stat-icon-badge" style="width:28px;height:28px;background:${l.cor}22;color:${l.cor}">${ic(l.icone,14)}</span>`}
+        <span style="font-weight:650;flex:1">${escHtml(l.nome)}</span>
+        <span style="font-family:var(--mono);font-weight:750;color:var(--danger)">${fmtR(l.total)}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${l.itens.map(t=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted)"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.descricao)||'—'}</span><span style="font-family:var(--mono);flex-shrink:0">${fmtR(t.valor)}</span></div>`).join('')}
+      </div>
+    </div>
+  `).join('') : `<div class="empty" style="padding:20px">${ic('inbox',24)}<p>Sem gastos nessa categoria neste mês</p></div>`;
+
+  document.getElementById('cat-detalhe-titulo').innerHTML = `${ic(ci.i,16)} ${ci.l} em ${fmtMesRef(mesAtual)}`;
+  openModal('modal-cat-detalhe');
   refreshIcons();
 }
 
