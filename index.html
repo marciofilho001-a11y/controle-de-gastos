@@ -505,6 +505,35 @@ td{padding:12px 15px;font-size:13px;}
 .teto-badge.st-critico{background:rgba(255,82,92,.16);color:var(--danger);}
 .teto-badge.st-vazio{background:var(--surface);color:var(--muted);}
 
+/* HISTÓRICO DO MÊS — feed agrupado por dia (substitui a tabela original: menos
+   colunas competindo por espaço, sem badge "Tipo" redundante com cor+sinal, ação
+   de excluir discreta por padrão — não é uma lista pra ficar excluindo toda hora) */
+.hist-feed{display:flex;flex-direction:column;}
+.hist-day-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:14px 2px 8px;}
+.hist-day-label:first-child{padding-top:2px;}
+.hist-row{display:flex;align-items:center;gap:12px;padding:9px 6px;border-radius:12px;transition:background .15s var(--ease-out);animation:hist-row-in .2s var(--ease-out) backwards;}
+.hist-row:nth-child(2){animation-delay:20ms;}
+.hist-row:nth-child(3){animation-delay:40ms;}
+.hist-row:nth-child(4){animation-delay:60ms;}
+.hist-row:nth-child(5){animation-delay:80ms;}
+.hist-row:nth-child(n+6){animation-delay:100ms;}
+@keyframes hist-row-in{from{opacity:0;}to{opacity:1;}}
+@media(prefers-reduced-motion:reduce){.hist-row{animation:none;}}
+.hist-row-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.hist-row-main{flex:1;min-width:0;}
+.hist-row-desc{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hist-row-meta{font-size:11.5px;color:var(--muted);margin-top:1px;display:flex;align-items:center;gap:5px;}
+.hist-row-amount{font-family:var(--mono);font-size:13.5px;font-weight:700;white-space:nowrap;flex-shrink:0;}
+.hist-row-amount.pos{color:var(--accent);}
+.hist-row-amount.neg{color:var(--danger);}
+.hist-row-del{background:transparent;border:none;color:var(--muted);width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;opacity:.55;transition:opacity .15s var(--ease-out),background .15s var(--ease-out),color .15s var(--ease-out);}
+@media(hover:hover) and (pointer:fine){
+  .hist-row:hover{background:rgba(255,255,255,.035);}
+  .hist-row-del{opacity:0;}
+  .hist-row:hover .hist-row-del{opacity:1;}
+  .hist-row-del:hover{background:rgba(255,82,92,.15);color:var(--danger);}
+}
+
 /* ACESSIBILIDADE — transparência e contraste reforçados quando o sistema pede */
 @media(prefers-reduced-transparency:reduce){
   .topbar,.nav,.card,.chart-box,.modal,.table-wrap,.stat-card,.teto-hero{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--bg-2)!important;}
@@ -580,10 +609,7 @@ td{padding:12px 15px;font-size:13px;}
 
   <div class="card">
     <div class="section-hdr"><h2>Histórico do Mês</h2></div>
-    <div class="table-wrap">
-      <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead>
-      <tbody id="dash-hist-body"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Sem transações</td></tr></tbody></table>
-    </div>
+    <div class="hist-feed" id="dash-hist-body"><div class="empty" style="padding:20px">Sem transações</div></div>
   </div>
 </div>
 
@@ -996,7 +1022,7 @@ const DESPESA_CATS = [
 const RECEITA_CATS = [
   {v:'salario',l:'Salário',i:'briefcase'},{v:'freelance',l:'Freelance',i:'wrench'},{v:'investimento',l:'Rendimento',i:'trending-up'},{v:'outro',l:'Outro',i:'more-horizontal'},
 ];
-const CAT_COLORS = {moradia:'#3d8ef0',cartao:'#f472b6',consorcio:'#a78bfa',financiamento:'#fb923c',assinatura:'#60a5fa',alimentacao:'#f0a832',transporte:'#22d3a5',saude:'#f05252',lazer:'#34d399',educacao:'#94a3b8',outro:'#6b7280',salario:'#22d3a5',freelance:'#3d8ef0',investimento:'#a78bfa'};
+const CAT_COLORS = {moradia:'#3d8ef0',cartao:'#f472b6',consorcio:'#a78bfa',financiamento:'#fb923c',assinatura:'#60a5fa',alimentacao:'#f0a832',transporte:'#38bdf8',saude:'#f05252',lazer:'#c084fc',educacao:'#94a3b8',outro:'#6b7280',salario:'#22d3a5',freelance:'#3d8ef0',investimento:'#a78bfa'};
 function catInfo(v){ return DESPESA_CATS.find(c=>c.v===v) || RECEITA_CATS.find(c=>c.v===v) || {v,l:v||'Outro',i:'more-horizontal'}; }
 
 // Ícone de categoria pra exibição (usado nas legendas de gráfico, que representam
@@ -1376,22 +1402,30 @@ function renderDashboard(){
     }).join('');
   }
 
-  // histórico do mês
+  // histórico do mês — feed agrupado por dia (transacoes já vem ordenado por
+  // data desc do load inicial, então dá pra agrupar em uma passada só)
   const hist = txDoMes(mesAtual);
   const hbody = document.getElementById('dash-hist-body');
-  if(!hist.length){ hbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Sem transações</td></tr>'; }
+  if(!hist.length){ hbody.innerHTML = `<div class="empty" style="padding:20px">${ic('inbox',26)}<p>Sem transações neste mês</p></div>`; }
   else {
-    hbody.innerHTML = hist.map(t=>{
+    let lastDia = null, html = '';
+    hist.forEach(t=>{
+      if(t.data !== lastDia){ html += `<div class="hist-day-label">${fmtDiaGrupo(t.data)}</div>`; lastDia = t.data; }
       const ci = catInfo(t.categoria);
-      return `<tr>
-        <td data-label="Data" style="color:var(--muted)">${fmtData(t.data)}</td>
-        <td data-label="Descrição">${t.descricao||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${cartaoNome(t.cartao_id)}</span>`:''}</td>
-        <td data-label="Categoria" style="color:${CAT_COLORS[ci.v]||'var(--muted)'};font-weight:600">${itemIconHtml(t.descricao,ci.v,17)} ${ci.l}</td>
-        <td data-label="Tipo"><span class="badge ${t.tipo==='receita'?'badge-pos':'badge-neg'}">${t.tipo==='receita'?'Receita':'Despesa'}</span></td>
-        <td data-label="Valor" style="font-family:var(--mono);font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--danger)'}">${t.tipo==='receita'?'+':'-'} ${fmtR(t.valor)}</td>
-        <td data-label=""><button class="btn btn-danger btn-sm btn-icon" onclick="deletarTransacao(${t.id})">${ic('trash-2')}</button></td>
-      </tr>`;
-    }).join('');
+      const cor = CAT_COLORS[ci.v] || 'var(--muted)';
+      const corBg = cor.startsWith('#') ? cor+'22' : 'rgba(255,255,255,.08)'; // 22 = ~13% alpha em hex; var() não aceita esse sufixo
+      const pos = t.tipo==='receita';
+      html += `<div class="hist-row">
+        <div class="hist-row-icon" style="background:${corBg};color:${cor}">${itemIconHtml(t.descricao,ci.v,16)}</div>
+        <div class="hist-row-main">
+          <div class="hist-row-desc">${escHtml(t.descricao)||'—'} ${t.cartao_id?`<span class="cartao-badge">${ic('credit-card',10)} ${escHtml(cartaoNome(t.cartao_id))}</span>`:''}</div>
+          <div class="hist-row-meta" style="color:${cor}">${ci.l}</div>
+        </div>
+        <div class="hist-row-amount ${pos?'pos':'neg'}">${pos?'+':'−'} ${fmtR(t.valor)}</div>
+        <button class="hist-row-del" onclick="deletarTransacao(${t.id})" title="Excluir" aria-label="Excluir transação">${ic('trash-2',14)}</button>
+      </div>`;
+    });
+    hbody.innerHTML = html;
   }
 
   renderDonutChart('chart-dash-donut', hist.filter(t=>t.tipo==='despesa'));
@@ -3005,6 +3039,21 @@ function renderPatrimonioChart(){
 // ══════════════════════════════════════════════
 function fmtR(v){ return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtData(d){ if(!d) return '—'; const dt = new Date(d+'T00:00:00'); return dt.toLocaleDateString('pt-BR'); }
+// Rótulo de grupo do feed de histórico: "Hoje"/"Ontem" pros 2 dias mais recentes,
+// senão "dd de mês" (sem ano — o feed já está escopado ao mês navegado).
+function fmtDiaGrupo(dataISO){
+  const hojeStr = new Date().toISOString().slice(0,10);
+  const ontemStr = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  if(dataISO===hojeStr) return 'Hoje';
+  if(dataISO===ontemStr) return 'Ontem';
+  const [,,d] = dataISO.slice(0,10).split('-');
+  const dt = new Date(dataISO+'T00:00:00');
+  return `${Number(d)} de ${MESES[dt.getMonth()].toLowerCase()}`;
+}
+// Escape básico pra qualquer texto de usuário (descrição, nome de cartão etc)
+// que vai direto num template de innerHTML — sem isso, um "<" ou "&" digitado
+// na descrição quebra o HTML da linha (ou pior, em nome de cartão/obrigação).
+function escHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function toast(msg, tipo='ok'){
   const el = document.getElementById('toast');
   el.innerHTML = ic(tipo==='ok'?'check-circle':'x-circle', 15) + ' ' + msg;
