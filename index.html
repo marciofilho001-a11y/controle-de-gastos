@@ -1228,6 +1228,7 @@ window.addEventListener('resize', updateNavIndicator);
 //  STATE
 // ══════════════════════════════════════════════
 let obrigacoes=[], transacoes=[], investimentos=[], config={}, cartoes=[], compras=[], saldosConta=[], faturaItens=[], tetos=[], categoriaIcones={}, descricaoIcones={};
+let dashCatFiltro = null; // categoria selecionada ao clicar no donut do dashboard; filtra o Histórico do Mês abaixo
 let mesAtual = new Date().toISOString().slice(0,7); // 'YYYY-MM'
 let charts = {};
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -1325,6 +1326,7 @@ function mudarMes(delta){
   const [ano,mes] = mesAtual.split('-').map(Number);
   const d = new Date(ano, mes-1+delta, 1);
   mesAtual = d.toISOString().slice(0,7);
+  dashCatFiltro = null; // troca de mês limpa o filtro de categoria do dashboard
   atualizarLabelMes();
   renderAll();
 }
@@ -1475,13 +1477,24 @@ function renderDashboard(){
   }
 
   // histórico do mês — feed agrupado por dia (transacoes já vem ordenado por
-  // data desc do load inicial, então dá pra agrupar em uma passada só)
+  // data desc do load inicial, então dá pra agrupar em uma passada só). Clicar
+  // numa fatia do donut abaixo filtra esse feed por categoria (dashCatFiltro).
   const hist = txDoMes(mesAtual);
+  const histFiltrado = dashCatFiltro ? hist.filter(t=>t.categoria===dashCatFiltro) : hist;
   const hbody = document.getElementById('dash-hist-body');
-  if(!hist.length){ hbody.innerHTML = `<div class="empty" style="padding:20px">${ic('inbox',26)}<p>Sem transações neste mês</p></div>`; }
+  let filtroBannerHtml = '';
+  if(dashCatFiltro){
+    const ciF = catInfo(dashCatFiltro);
+    const corF = CAT_COLORS[ciF.v] || '#6b7280';
+    filtroBannerHtml = `<div class="fatura-filtro-banner" style="margin-bottom:10px">
+      <span style="display:flex;align-items:center;gap:7px"><span style="color:${corF}">${ic(ciF.i,13)}</span> Filtrando por <b>${ciF.l}</b> <span style="color:var(--muted)">· ${histFiltrado.length} lançamento(s)</span></span>
+      <button class="btn btn-ghost btn-sm" onclick="filtrarDashboardPorCategoria('${dashCatFiltro}')">${ic('x',12)} limpar</button>
+    </div>`;
+  }
+  if(!histFiltrado.length){ hbody.innerHTML = filtroBannerHtml + `<div class="empty" style="padding:20px">${ic('inbox',26)}<p>${dashCatFiltro?'Sem lançamentos dessa categoria neste mês':'Sem transações neste mês'}</p></div>`; }
   else {
-    let lastDia = null, html = '';
-    hist.forEach(t=>{
+    let lastDia = null, html = filtroBannerHtml;
+    histFiltrado.forEach(t=>{
       if(t.data !== lastDia){ html += `<div class="hist-day-label">${fmtDiaGrupo(t.data)}</div>`; lastDia = t.data; }
       const ci = catInfo(t.categoria);
       const cor = CAT_COLORS[ci.v] || 'var(--muted)';
@@ -1500,7 +1513,7 @@ function renderDashboard(){
     hbody.innerHTML = html;
   }
 
-  renderDonutChart('chart-dash-donut', hist.filter(t=>t.tipo==='despesa'));
+  renderDonutChart('chart-dash-donut', hist.filter(t=>t.tipo==='despesa'), {filtroAtivo:dashCatFiltro, onClick:'filtrarDashboardPorCategoria'});
   refreshIcons();
 }
 
@@ -2956,17 +2969,24 @@ const centerTextPlugin = {
 };
 if(window.Chart) Chart.register(centerTextPlugin);
 
-// legenda em pill fora do canvas (CSS não alcança a legenda desenhada pelo Chart.js)
+// legenda em pill fora do canvas (CSS não alcança a legenda desenhada pelo Chart.js).
+// `clicavel` pode ser `true` (usa o filtro global de fatura, comportamento original)
+// ou um objeto {filtroAtivo, onClick} pra outros contextos clicáveis (ex: dashboard)
+// sem colidir com o estado de filtro da fatura.
 function renderPillLegend(containerId, items, clicavel){
   const el = document.getElementById(containerId);
   if(!el) return;
+  const cfg = (clicavel && typeof clicavel==='object') ? clicavel : null;
+  const ehClicavel = !!clicavel;
+  const filtroAtivo = cfg ? cfg.filtroAtivo : (typeof catFiltro!=='undefined' ? catFiltro : null);
+  const onClickFn = cfg ? cfg.onClick : 'filtrarPorCategoria';
   const total = items.reduce((s,i)=>s+i.value,0);
   el.innerHTML = `<div class="pill-legend-inner">${items.map(i=>{
-    const ativo = clicavel && typeof catFiltro!=='undefined' && catFiltro===i.key;
-    const apagado = clicavel && typeof catFiltro!=='undefined' && catFiltro && catFiltro!==i.key;
-    return `<span class="pill-legend-item ${clicavel?'clicavel':''} ${ativo?'ativo':''} ${apagado?'apagado':''}"
-      ${clicavel&&i.key?`onclick="filtrarPorCategoria('${i.key}')"`:''}
-      title="${i.label}: ${fmtR(i.value)}${clicavel?' — clique pra filtrar':''}">
+    const ativo = ehClicavel && filtroAtivo===i.key;
+    const apagado = ehClicavel && filtroAtivo && filtroAtivo!==i.key;
+    return `<span class="pill-legend-item ${ehClicavel?'clicavel':''} ${ativo?'ativo':''} ${apagado?'apagado':''}"
+      ${ehClicavel&&i.key?`onclick="${onClickFn}('${i.key}')"`:''}
+      title="${i.label}: ${fmtR(i.value)}${ehClicavel?' — clique pra filtrar':''}">
       <span class="pill-legend-icon-badge" style="background:${i.color}22;color:${i.color}">${(i.key && categoriaIcones[i.key]) ? `<img src="${categoriaIcones[i.key]}" style="width:15px;height:15px;border-radius:4px;object-fit:cover">` : (i.icon?ic(i.icon,13):`<span class="pill-legend-dot" style="background:${i.color}"></span>`)}</span>
       <span class="pill-legend-label">${i.label}</span>
       <span class="pill-legend-valor">${fmtR(i.value)}</span>
@@ -2976,7 +2996,7 @@ function renderPillLegend(containerId, items, clicavel){
   refreshIcons();
 }
 
-function renderDonutChart(canvasId, txList){
+function renderDonutChart(canvasId, txList, legendaClicavel){
   destroyChart(canvasId);
   const ctx = document.getElementById(canvasId);
   if(!ctx) return;
@@ -2988,10 +3008,16 @@ function renderDonutChart(canvasId, txList){
   const data = labels.map(l=>porCat[l]);
   const total = data.reduce((s,v)=>s+v,0);
   const colors = labels.map(l=>CAT_COLORS[l]||'#6b7280');
+  const clickHandler = legendaClicavel ? (evt,elements)=>{
+    if(!elements.length) return;
+    const cat = labels[elements[0].index];
+    if(legendaClicavel.onClick) window[legendaClicavel.onClick](cat);
+  } : undefined;
   charts[canvasId] = new Chart(ctx, {
     type:'doughnut',
     data:{ labels: labels.map(l=>catInfo(l).l), datasets:[{data, backgroundColor:colors, borderColor:'#1c2333', borderWidth:2}] },
-    options:{ ...CHART_DEFAULTS, cutout:'65%', maintainAspectRatio:false,
+    options:{ ...CHART_DEFAULTS, cutout:'65%', maintainAspectRatio:false, onClick:clickHandler,
+      onHover:legendaClicavel?(evt,elements)=>{ evt.native.target.style.cursor = elements.length?'pointer':'default'; }:undefined,
       plugins:{ legend:{display:false},
         tooltip:{position:'nearest', backgroundColor:'#0d1117', borderColor:'#2a3348', borderWidth:1,
           titleFont:{size:12,weight:'700',family:'Inter,sans-serif'}, bodyFont:{size:12,family:'Inter,sans-serif'},
@@ -3001,7 +3027,16 @@ function renderDonutChart(canvasId, txList){
         datalabels:{ display:c=>(c.dataset.data[c.dataIndex]/total)>=0.06, color:'#fff', font:{size:12,weight:'700',family:'Inter,sans-serif'}, textStrokeColor:'rgba(0,0,0,.55)', textStrokeWidth:3,
           formatter:v=>Math.round(v/total*100)+'%' } } }
   });
-  renderPillLegend(canvasId+'-legend', labels.map((l,i)=>({label:catInfo(l).l, color:colors[i], value:data[i], icon:catInfo(l).i, key:l})));
+  renderPillLegend(canvasId+'-legend', labels.map((l,i)=>({label:catInfo(l).l, color:colors[i], value:data[i], icon:catInfo(l).i, key:l})),
+    legendaClicavel ? {filtroAtivo:legendaClicavel.filtroAtivo, onClick:legendaClicavel.onClick} : undefined);
+}
+
+// Clique numa fatia/legenda do donut do Dashboard — filtra o feed do Histórico do
+// Mês pra só essa categoria. Clicar de novo na mesma categoria limpa (mesma
+// convenção do filtro de categoria já usado na fatura de cartão).
+function filtrarDashboardPorCategoria(cat){
+  dashCatFiltro = (dashCatFiltro===cat) ? null : cat;
+  renderDashboard();
 }
 
 function renderPieComposicao(canvasId, obr, livre, sobra){
