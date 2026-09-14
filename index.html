@@ -112,7 +112,9 @@ h1,h2,h3,.section-hdr h2,.modal-title{letter-spacing:-0.03em;line-height:1.15;fo
 .stat-card--bold.stat-card--blue{background:linear-gradient(120deg,rgba(77,157,255,.24),var(--card) 75%);}
 .stat-card--bold.stat-card--purple{background:linear-gradient(120deg,rgba(167,139,250,.24),var(--card) 75%);}
 .stat-card-top{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-.stat-icon-badge{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#000;}
+.stat-icon-badge{width:34px;height:34px;border-radius:10px;position:relative;flex-shrink:0;color:#000;}
+.stat-icon-badge > svg,.stat-icon-badge > .lic{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+.stat-icon-badge img{width:100%;height:100%;object-fit:contain;}
 .stat-card--teal .stat-icon-badge{background:linear-gradient(135deg,#1df4d8,var(--accent-active));}
 .stat-card--red .stat-icon-badge{background:linear-gradient(135deg,#ff97a1,var(--danger));}
 .stat-card--orange .stat-icon-badge{background:linear-gradient(135deg,#ffd591,var(--warn));}
@@ -576,7 +578,8 @@ td{padding:12px 15px;font-size:13px;}
 .rel-cat-card-clicavel .lic:last-child{margin-left:auto;color:var(--muted);flex-shrink:0;}
 @media(hover:hover) and (pointer:fine){.rel-cat-card-clicavel:hover{border-color:rgba(255,255,255,.22);transform:translateY(-1px);}}
 .rel-cat-card-top{display:flex;align-items:center;gap:10px;}
-.rel-cat-card-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--surface);border:1px solid var(--border-line);}
+.rel-cat-card-icon{width:40px;height:40px;border-radius:12px;position:relative;flex-shrink:0;background:var(--surface);border:1px solid var(--border-line);}
+.rel-cat-card-icon svg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px!important;height:20px!important;}
 .rel-cat-card-nome{font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .rel-cat-card-row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);}
 .rel-cat-card-row b{font-family:var(--mono);color:var(--text);font-weight:650;}
@@ -584,7 +587,7 @@ td{padding:12px 15px;font-size:13px;}
 .rel-cat-card-vals{display:flex;gap:18px;min-height:52px;}
 .rel-cat-card-val{flex:1;min-width:0;}
 .rel-cat-card-val-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.rel-cat-card-val b{font-family:var(--mono);font-size:16px;font-weight:750;color:var(--text);display:block;letter-spacing:-0.02em;white-space:nowrap;}
+.rel-cat-card-val b{font-family:var(--mono);font-size:16px;font-weight:750;color:var(--text);display:block;letter-spacing:-0.02em;white-space:nowrap;font-feature-settings:'tnum';font-variant-numeric:tabular-nums;}
 .rel-cat-card-origem{display:inline-block;margin-top:4px;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:var(--surface);border:1px solid var(--border-soft);border-radius:5px;padding:1px 5px;}
 .rel-cat-card-bar-bg{background:var(--surface);border-radius:8px;height:11px;overflow:hidden;}
 .rel-cat-card-bar-fill{height:100%;border-radius:8px;transition:width .4s var(--ease-out);}
@@ -613,7 +616,9 @@ td{padding:12px 15px;font-size:13px;}
 .rel-parcela-linha{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:12px;transition:background .15s var(--ease-out);}
 .rel-parcela-linha:not(:last-child){border-bottom:1px solid var(--border-soft);}
 @media(hover:hover) and (pointer:fine){.rel-parcela-linha:hover{background:rgba(255,255,255,.035);}}
-.rel-parcela-icon{width:40px;height:40px;border-radius:11px;background:var(--surface);border:1px solid var(--border-line);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+.rel-parcela-icon{width:40px;height:40px;border-radius:11px;background:var(--surface);border:1px solid var(--border-line);position:relative;flex-shrink:0;overflow:hidden;}
+.rel-parcela-icon > svg,.rel-parcela-icon > .lic{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+.rel-parcela-icon img{width:100%;height:100%;object-fit:contain;}
 .rel-parcela-info{flex:1;min-width:0;}
 .rel-parcela-nome{font-size:14px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .rel-parcela-fim{font-size:11.5px;color:var(--muted);margin-top:2px;}
@@ -3246,13 +3251,65 @@ function renderRelatorioTab(){
   renderRelatorioChart(linhasCat);
 }
 
+// SVG do ícone lucide recolorido → dataURL, pra desenhar no canvas do gráfico.
+function lucideSvgColorido(nome, cor){
+  const pascal = nome.split('-').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join('');
+  const def = (window.lucide && window.lucide.icons && (window.lucide.icons[pascal]||window.lucide.icons[nome]));
+  let inner = '';
+  if(Array.isArray(def)){
+    inner = def.map(ch=>{ if(!Array.isArray(ch)) return ''; const [tag,attrs]=ch; const a=Object.entries(attrs||{}).map(([k,v])=>`${k}="${v}"`).join(' '); return `<${tag} ${a}/>`; }).join('');
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${cor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+}
+function hexToRgba(hex, a){
+  if(!hex || !hex.startsWith('#')) return `rgba(139,147,163,${a})`;
+  const n = parseInt(hex.slice(1),16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
 function renderRelatorioChart(linhasCat){
   destroyChart('chart-rel-cat');
   const ctx = document.getElementById('chart-rel-cat');
   if(!ctx) return;
   if(!linhasCat.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px">${ic('inbox',28)}<p>Sem dados pra comparar</p></div>`; refreshIcons(); return; }
-  ctx.parentElement.style.height = Math.max(220, linhasCat.length*80) + 'px';
+  ctx.parentElement.style.height = Math.max(220, linhasCat.length*84) + 'px';
   ctx.parentElement.style.minHeight = '220px';
+
+  // Pré-carrega os ícones (recoloridos) como imagens pra desenhar no canvas.
+  const imgs = linhasCat.map(l=>{
+    const img = new Image();
+    img.src = 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(lucideSvgColorido(l.icone, l.cor))));
+    return img;
+  });
+
+  // Plugin: desenha um chip arredondado com o ícone da categoria à esquerda de
+  // cada par de barras (como na referência). Posicionado pelo yScale, então
+  // acompanha exatamente a linha da categoria. layout.padding.left reserva o espaço.
+  const chipPlugin = {
+    id:'catChips',
+    afterDraw(chart){
+      const {ctx:c, chartArea, scales} = chart;
+      linhasCat.forEach((l,i)=>{
+        const y = scales.y.getPixelForTick(i);
+        const size = 28, x = 4;
+        c.save();
+        const r = 8;
+        c.beginPath();
+        c.moveTo(x+r,y-size/2);
+        c.arcTo(x+size,y-size/2,x+size,y+size/2,r);
+        c.arcTo(x+size,y+size/2,x,y+size/2,r);
+        c.arcTo(x,y+size/2,x,y-size/2,r);
+        c.arcTo(x,y-size/2,x+size,y-size/2,r);
+        c.closePath();
+        c.fillStyle = hexToRgba(l.cor,0.16); c.fill();
+        c.strokeStyle = hexToRgba(l.cor,0.42); c.lineWidth=1; c.stroke();
+        const img = imgs[i];
+        if(img && img.complete && img.naturalWidth){ c.drawImage(img, x+(size-16)/2, y-8, 16, 16); }
+        c.restore();
+      });
+    }
+  };
+
   charts['chart-rel-cat'] = new Chart(ctx, {
     type:'bar',
     data:{ labels:linhasCat.map(l=>l.label), datasets:[
@@ -3260,18 +3317,22 @@ function renderRelatorioChart(linhasCat){
       {label:'Real', data:linhasCat.map(l=>l.real), backgroundColor:linhasCat.map(l=>l.cor), borderRadius:7, barThickness:14, borderSkipped:false},
     ]},
     options:{ ...CHART_DEFAULTS, indexAxis:'y', maintainAspectRatio:false,
-      animation:{duration:450, easing:'easeOutCubic'}, // curva Emil/Apple: entrada rápida, sem overshoot
+      animation:{duration:450, easing:'easeOutCubic'},
+      layout:{padding:{left:46}}, // espaço pros chips de ícone
       categoryPercentage:0.68, barPercentage:0.9,
       scales:{
         x:{ticks:{color:'#8b93a3',font:{size:11},callback:v=>'R$'+v},grid:{color:'rgba(255,255,255,.05)'},border:{display:false}},
-        y:{ticks:{color:'#ffffff',font:{weight:'600',size:13},padding:10,crossAlign:'far'},grid:{display:false},border:{display:false}}
+        y:{ticks:{color:'#ffffff',font:{weight:'600',size:13},padding:8,crossAlign:'far'},grid:{display:false},border:{display:false}}
       },
       plugins:{
         legend:{position:'top',align:'end',labels:{color:'#c7cedb',usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:16,font:{size:12}}},
         tooltip:{backgroundColor:'#0d1117',borderColor:'#2a3348',borderWidth:1,padding:10,cornerRadius:8,titleFont:{size:12,weight:'700'},bodyFont:{size:12},callbacks:{label:c=>' '+c.dataset.label+': '+fmtR(c.raw)}},
         datalabels:{display:false}
-      } }
+      } },
+    plugins:[chipPlugin]
   });
+  // redesenha quando as imagens carregarem (são async)
+  imgs.forEach(img=>{ img.onload = ()=>{ if(charts['chart-rel-cat']) charts['chart-rel-cat'].draw(); }; });
 }
 
 // Projeção de ritmo: só faz sentido pro mês corrente (nos passados o mês já fechou,
