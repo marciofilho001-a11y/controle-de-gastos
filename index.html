@@ -576,7 +576,7 @@ td{padding:12px 15px;font-size:13px;}
 .rel-cat-card-clicavel .lic:last-child{margin-left:auto;color:var(--muted);flex-shrink:0;}
 @media(hover:hover) and (pointer:fine){.rel-cat-card-clicavel:hover{border-color:rgba(255,255,255,.22);transform:translateY(-1px);}}
 .rel-cat-card-top{display:flex;align-items:center;gap:10px;}
-.rel-cat-card-icon{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;}
+.rel-cat-card-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--surface);border:1px solid var(--border-line);}
 .rel-cat-card-nome{font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .rel-cat-card-row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);}
 .rel-cat-card-row b{font-family:var(--mono);color:var(--text);font-weight:650;}
@@ -601,12 +601,30 @@ td{padding:12px 15px;font-size:13px;}
 /* Parcelas: chips segmentados — até 12 parcelas mostra quadradinho por
    parcela (preenchido = já paga); acima disso vira barra contínua, senão um
    consórcio de 48x vira 48 quadradinhos ilegíveis. */
-.rel-parcela-segs{display:inline-flex;gap:2px;vertical-align:middle;}
-.rel-parcela-seg{width:9px;height:9px;border-radius:2.5px;background:var(--border);flex-shrink:0;}
-.rel-parcela-seg.feita{background:var(--accent2);}
-.rel-parcela-barra-bg{width:70px;height:7px;background:var(--border);border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle;}
-.rel-parcela-barra-fill{height:100%;background:var(--accent2);border-radius:4px;}
+.rel-parcela-segs{display:inline-flex;gap:4px;vertical-align:middle;}
+.rel-parcela-seg{width:16px;height:16px;border-radius:4px;background:var(--surface);border:1px solid var(--border-line);flex-shrink:0;}
+.rel-parcela-seg.feita{background:var(--accent2);border-color:var(--accent2);}
+.rel-parcela-barra-bg{width:110px;height:10px;background:var(--surface);border:1px solid var(--border-soft);border-radius:5px;overflow:hidden;display:inline-block;vertical-align:middle;}
+.rel-parcela-barra-fill{height:100%;background:var(--accent2);border-radius:5px;}
 .rel-fut-hidden{display:none;}
+
+/* Linha de parcela — mais alta e legível, com ícone/logo grande à esquerda,
+   nome+fim empilhados, chips de progresso e valor. Vira coluna no mobile. */
+.rel-parcela-linha{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:12px;transition:background .15s var(--ease-out);}
+.rel-parcela-linha:not(:last-child){border-bottom:1px solid var(--border-soft);}
+@media(hover:hover) and (pointer:fine){.rel-parcela-linha:hover{background:rgba(255,255,255,.035);}}
+.rel-parcela-icon{width:40px;height:40px;border-radius:11px;background:var(--surface);border:1px solid var(--border-line);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+.rel-parcela-info{flex:1;min-width:0;}
+.rel-parcela-nome{font-size:14px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rel-parcela-fim{font-size:11.5px;color:var(--muted);margin-top:2px;}
+.rel-parcela-progresso{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.rel-parcela-frac{font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:650;}
+.rel-parcela-valor{font-family:var(--mono);font-size:14px;font-weight:750;flex-shrink:0;min-width:90px;text-align:right;}
+@media(max-width:640px){
+  .rel-parcela-linha{flex-wrap:wrap;}
+  .rel-parcela-progresso{order:3;width:100%;}
+  .rel-parcela-valor{min-width:auto;}
+}
 
 /* Impressão / exportar PDF: usa o diálogo nativo do navegador ("Salvar como PDF"),
    sem lib externa — nada pra quebrar. Vira preto-no-branco (papel gasta menos
@@ -3130,7 +3148,7 @@ function renderRelatorioTab(){
         const iconePill = l.st==='critico'?'trending-up':l.st==='ok'?'check':'minus';
         return `<div class="rel-cat-card rel-cat-card-clicavel" onclick="abrirDetalheCategoria('${l.catKey}')" title="Ver de onde veio esse gasto">
           <div class="rel-cat-card-top">
-            <span class="rel-cat-card-icon" style="background:${l.cor}">${ic(l.icone,17)}</span>
+            <span class="rel-cat-card-icon" style="color:${l.cor}">${ic(l.icone,20)}</span>
             <span class="rel-cat-card-nome">${l.label}</span>
             ${ic('chevron-right',14)}
           </div>
@@ -3173,13 +3191,15 @@ function renderRelatorioTab(){
 
   html += `<div class="rel-secao">
     <div class="rel-secao-titulo">${ic('layers',14)} Parcelas em Andamento este mês</div>
-    <div class="table-wrap">
-      ${todasParcelas.length ? todasParcelas.map(p=>`<div class="rel-linha-cat" style="grid-template-columns:28px 1fr 110px 100px 100px">
-        <span style="color:${p.cor}">${p.cartaoLogo?cartaoIconeHtml({logo:p.cartaoLogo},24):ic(p.icone,15)}</span>
-        <span>${escHtml(p.nome)}</span>
-        <span>${segmentosParcela(p.parcela,p.total)} <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${p.parcela}/${p.total}</span></span>
-        <span style="font-family:var(--mono);font-weight:650">${fmtR(p.valor)}</span>
-        <span style="color:var(--muted);font-size:12px">termina ${p.fim?fmtMesRef(p.fim):'—'}</span>
+    <div class="table-wrap" style="padding:6px">
+      ${todasParcelas.length ? todasParcelas.map(p=>`<div class="rel-parcela-linha">
+        <span class="rel-parcela-icon">${p.cartaoLogo?cartaoIconeHtml({logo:p.cartaoLogo},34):ic(p.icone,18)}</span>
+        <div class="rel-parcela-info">
+          <div class="rel-parcela-nome">${escHtml(p.nome)}</div>
+          <div class="rel-parcela-fim">termina ${p.fim?fmtMesRef(p.fim):'—'}</div>
+        </div>
+        <div class="rel-parcela-progresso">${segmentosParcela(p.parcela,p.total)} <span class="rel-parcela-frac">${p.parcela}/${p.total}</span></div>
+        <span class="rel-parcela-valor">${fmtR(p.valor)}</span>
       </div>`).join('') : `<div class="empty" style="padding:20px">${ic('inbox',24)}<p>Nenhuma parcela em andamento</p></div>`}
     </div>
   </div>`;
@@ -3213,19 +3233,83 @@ function renderRelatorioChart(linhasCat){
   if(!linhasCat.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px">${ic('inbox',28)}<p>Sem dados pra comparar</p></div>`; refreshIcons(); return; }
   // altura proporcional ao nº de categorias — com poucas categorias, barras
   // grossas de verdade (igual à referência); com muitas, ainda cabe tudo.
-  ctx.parentElement.style.height = Math.max(180, linhasCat.length*68) + 'px';
+  ctx.parentElement.style.height = Math.max(200, linhasCat.length*74) + 'px';
   const labels = linhasCat.map(l=>l.label);
+
+  // Ícone-chip à esquerda de cada categoria (como na referência): o Chart.js não
+  // desenha ícone no tick do eixo Y, então rendarizo cada ícone lucide num
+  // <img> SVG uma vez, e um plugin pinta esse img como um badge arredondado
+  // colorido alinhado ao centro vertical do par de barras daquela categoria.
+  const iconePlugin = {
+    id:'catIconChips',
+    afterDraw(chart){
+      const {ctx:c, chartArea, scales} = chart;
+      const yScale = scales.y;
+      linhasCat.forEach((l,i)=>{
+        const y = yScale.getPixelForTick(i);
+        const size = 26, x = chartArea.left - size - 14;
+        // badge arredondado
+        c.save();
+        const r = 8;
+        c.beginPath();
+        c.moveTo(x+r,y-size/2); c.arcTo(x+size,y-size/2,x+size,y+size/2,r);
+        c.arcTo(x+size,y+size/2,x,y+size/2,r); c.arcTo(x,y+size/2,x,y-size/2,r);
+        c.arcTo(x,y-size/2,x+size,y-size/2,r); c.closePath();
+        c.fillStyle = hexToRgba(l.cor,0.16); c.fill();
+        c.strokeStyle = hexToRgba(l.cor,0.4); c.lineWidth=1; c.stroke();
+        const img = chart.$catIcons && chart.$catIcons[i];
+        if(img && img.complete && img.naturalWidth){ c.drawImage(img,x+5,y-8,16,16); }
+        c.restore();
+      });
+    }
+  };
+  // pré-carrega os SVGs recoloridos na cor da categoria
+  const imgs = linhasCat.map(l=>{
+    const svg = lucideSvgColorido(l.icone, l.cor);
+    const img = new Image(); img.src = 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg)));
+    return img;
+  });
+
   charts['chart-rel-cat'] = new Chart(ctx, {
     type:'bar',
     data:{ labels, datasets:[
-      {label:'Previsto', data:linhasCat.map(l=>l.previsto), backgroundColor:'#4d9dffcc', borderRadius:8, barThickness:16},
-      {label:'Real', data:linhasCat.map(l=>l.real), backgroundColor:linhasCat.map(l=>l.cor), borderRadius:8, barThickness:16},
+      {label:'Previsto', data:linhasCat.map(l=>l.previsto), backgroundColor:'#4d9dffcc', borderRadius:8, barThickness:15},
+      {label:'Real', data:linhasCat.map(l=>l.real), backgroundColor:linhasCat.map(l=>l.cor), borderRadius:8, barThickness:15},
     ]},
     options:{ ...CHART_DEFAULTS, indexAxis:'y', maintainAspectRatio:false,
-      categoryPercentage:0.7, barPercentage:0.9,
-      scales:{ x:{ticks:{color:'#6b7280',callback:v=>'R$'+v},grid:{color:'#263045'}}, y:{ticks:{color:'#e8eaf0',font:{weight:'600'}},grid:{display:false}} },
-      plugins:{ legend:{labels:{color:'#e8eaf0'}}, tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtR(c.raw)}}, datalabels:{display:false} } }
+      layout:{padding:{left:44}}, // espaço pros chips de ícone
+      categoryPercentage:0.72, barPercentage:0.92,
+      scales:{ x:{ticks:{color:'#6b7280',callback:v=>'R$'+v},grid:{color:'#263045'}}, y:{ticks:{color:'#e8eaf0',font:{weight:'600',size:12},padding:8},grid:{display:false},border:{display:false}} },
+      plugins:{ legend:{labels:{color:'#e8eaf0',usePointStyle:true,pointStyle:'circle',padding:16}}, tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtR(c.raw)}}, datalabels:{display:false} } },
+    plugins:[iconePlugin]
   });
+  charts['chart-rel-cat'].$catIcons = imgs;
+  // redesenha quando as imagens terminarem de carregar
+  imgs.forEach(img=>{ img.onload = ()=>{ if(charts['chart-rel-cat']) charts['chart-rel-cat'].draw(); }; });
+}
+// converte "#rrggbb" + alpha em rgba() (o canvas não aceita "#rrggbb22")
+function hexToRgba(hex, a){
+  if(!hex || !hex.startsWith('#')) return `rgba(107,114,128,${a})`;
+  const n = parseInt(hex.slice(1),16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+// SVG do ícone lucide na cor pedida — reusa o iconNode que o próprio lucide já
+// carregou (window.lucide.icons), então não precisa hardcodar SVG de cada ícone.
+// No build UMD o formato de cada ícone é IconNode = [ [tag, attrs], ... ]
+// (lista de filhos direta), então iteramos sobre def diretamente.
+function lucideSvgColorido(nome, cor){
+  const pascal = nome.split('-').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join('');
+  const def = (window.lucide && window.lucide.icons && (window.lucide.icons[pascal]||window.lucide.icons[nome]));
+  let inner = '';
+  if(Array.isArray(def)){
+    inner = def.map(ch=>{
+      if(!Array.isArray(ch)) return '';
+      const [tag,attrs] = ch;
+      const a = Object.entries(attrs||{}).map(([k,v])=>`${k}="${v}"`).join(' ');
+      return `<${tag} ${a}/>`;
+    }).join('');
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${cor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
 }
 
 // Projeção de ritmo: só faz sentido pro mês corrente (nos passados o mês já fechou,
@@ -3304,7 +3388,7 @@ function renderTetosTab(){
     const gastoAtual = gastoCategoriaNoMes(c.v, mesAtual);
     const cor = CAT_COLORS[c.v]||'#6b7280';
     return `<div class="rel-cat-card">
-      <div class="rel-cat-card-top"><span class="rel-cat-card-icon" style="background:${cor}22;color:${cor}">${ic(c.i,16)}</span><span class="rel-cat-card-nome">${c.l}</span></div>
+      <div class="rel-cat-card-top"><span class="rel-cat-card-icon" style="color:${cor}">${ic(c.i,20)}</span><span class="rel-cat-card-nome">${c.l}</span></div>
       <div class="rel-cat-card-row"><span>Média (3m)</span><b>${media>0?fmtR(media):'—'}</b></div>
       <div class="rel-cat-card-row"><span>Gasto atual</span><b style="color:var(--text)">${fmtR(gastoAtual)}</b></div>
       <div style="margin-top:auto;display:flex;align-items:center;gap:6px">
