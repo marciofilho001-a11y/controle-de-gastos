@@ -119,9 +119,11 @@ h1,h2,h3,.section-hdr h2,.modal-title{letter-spacing:-0.03em;line-height:1.15;fo
 .stat-card--red .stat-icon-badge{background:linear-gradient(135deg,#ff97a1,var(--danger));}
 .stat-card--orange .stat-icon-badge{background:linear-gradient(135deg,#ffd591,var(--warn));}
 .stat-card--blue .stat-icon-badge{background:linear-gradient(135deg,#a3d0ff,var(--accent2));}
-.stat-card-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;flex:1;}
+/* Label superior dos stat-cards: text-xs, medium, atenuado, uppercase tracking-wider */
+.stat-card-label{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex:1;}
 .stat-card-corner-icon{color:var(--muted);flex-shrink:0;}
-.stat-value{font-size:25px;font-weight:750;font-family:var(--mono);}
+/* KPI de destaque (cockpit/stat-cards): text-2xl, semibold, tracking-tight, tabular */
+.stat-value{font-size:26px;font-weight:700;font-family:var(--mono);letter-spacing:-0.025em;font-feature-settings:'tnum';font-variant-numeric:tabular-nums;}
 .stat-value.pos{color:var(--accent);}
 .stat-value.neg{color:var(--danger);}
 .stat-value.warn{color:var(--warn);}
@@ -520,7 +522,7 @@ td{padding:12px 15px;font-size:13px;}
 .teto-balde-nums{font-family:var(--mono);font-size:12.5px;font-weight:650;white-space:nowrap;}
 .teto-input{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 9px;width:104px;font-family:var(--mono);font-size:12.5px;}
 .teto-input:focus{outline:none;border-color:var(--accent);}
-.teto-badge{font-size:11px;font-weight:750;padding:3px 9px;border-radius:999px;font-family:var(--mono);white-space:nowrap;}
+.teto-badge{font-size:11px;font-weight:500;padding:3px 9px;border-radius:999px;font-family:var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums;}
 .teto-badge.st-ok{background:rgba(34,224,172,.16);color:var(--accent);}
 .teto-badge.st-alerta{background:rgba(255,176,46,.16);color:var(--warn);}
 .teto-badge.st-critico{background:rgba(255,82,92,.16);color:var(--danger);}
@@ -580,15 +582,17 @@ td{padding:12px 15px;font-size:13px;}
 .rel-cat-card-top{display:flex;align-items:center;gap:10px;}
 .rel-cat-card-icon{width:40px;height:40px;border-radius:12px;position:relative;flex-shrink:0;background:var(--surface);border:1px solid var(--border-line);}
 .rel-cat-card-icon svg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px!important;height:20px!important;}
-.rel-cat-card-nome{font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rel-cat-card-nome{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.01em;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .rel-cat-card-row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);}
 .rel-cat-card-row b{font-family:var(--mono);color:var(--text);font-weight:650;}
 /* valores lado a lado, tipografia maior — igual à referência */
 .rel-cat-card-vals{display:flex;gap:18px;min-height:52px;}
 .rel-cat-card-val{flex:1;min-width:0;}
-.rel-cat-card-val-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.rel-cat-card-val b{font-family:var(--mono);font-size:16px;font-weight:750;color:var(--text);display:block;letter-spacing:-0.02em;white-space:nowrap;font-feature-settings:'tnum';font-variant-numeric:tabular-nums;}
-.rel-cat-card-origem{display:inline-block;margin-top:4px;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:var(--surface);border:1px solid var(--border-soft);border-radius:5px;padding:1px 5px;}
+/* Label superior (PREVISTO/REAL): text-xs, medium, atenuado (slate-400), uppercase tracking-wider */
+.rel-cat-card-val-label{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Valor secundário (previsto/real): text-base, semibold, tabular-nums, alto contraste */
+.rel-cat-card-val b{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--text);display:block;letter-spacing:-0.02em;white-space:nowrap;font-feature-settings:'tnum';font-variant-numeric:tabular-nums;}
+.rel-cat-card-origem{display:inline-block;margin-top:4px;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--surface);border:1px solid var(--border-soft);border-radius:5px;padding:1px 6px;}
 .rel-cat-card-bar-bg{background:var(--surface);border-radius:8px;height:11px;overflow:hidden;}
 .rel-cat-card-bar-fill{height:100%;border-radius:8px;transition:width .4s var(--ease-out);}
 /* pill de status única — ícone + texto + valor juntos, no lugar do rodapé
@@ -596,7 +600,7 @@ td{padding:12px 15px;font-size:13px;}
 .rel-cat-card-pill{display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:11px;font-size:12.5px;font-weight:650;margin-top:auto;}
 .rel-cat-card-pill .lic{flex-shrink:0;}
 .rel-cat-card-pill-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rel-cat-card-pill-valor{font-family:var(--mono);font-weight:750;flex-shrink:0;}
+.rel-cat-card-pill-valor{font-family:var(--mono);font-weight:700;flex-shrink:0;font-variant-numeric:tabular-nums;}
 .rel-cat-card-pill.st-ok{background:rgba(34,224,172,.13);color:var(--accent);}
 .rel-cat-card-pill.st-critico{background:rgba(255,82,92,.13);color:var(--danger);}
 .rel-cat-card-pill.st-vazio{background:rgba(255,255,255,.05);color:var(--muted);}
@@ -3136,17 +3140,17 @@ function renderRelatorioTab(){
     <div class="rel-resumo-grid">
       <div class="stat-card stat-card--teal">
         <div class="stat-card-label">RECEITA LÍQUIDA</div>
-        <div class="stat-value pos">${fmtR(rendaReal)}</div>
+        <div class="stat-value">${fmtR(rendaReal)}</div>
         ${rendaPrevista>0?`<div class="stat-trend ${diffRenda>=0?'up':'down'}">${diffRenda>=0?'+':''}${fmtR(diffRenda)} vs previsto</div>`:''}
       </div>
       <div class="stat-card">
         <div class="stat-card-label">CUSTOS FIXOS</div>
-        <div class="stat-value" style="color:var(--danger)">${fmtR(custosFixos)}</div>
+        <div class="stat-value">${fmtR(custosFixos)}</div>
         ${despesaReal>0?`<div class="stat-trend">${Math.round(custosFixos/despesaReal*100)}% do total gasto</div>`:''}
       </div>
       <div class="stat-card">
         <div class="stat-card-label">GASTOS VARIÁVEIS / CARTÃO</div>
-        <div class="stat-value" style="color:var(--warn)">${fmtR(gastosVariaveis)}</div>
+        <div class="stat-value">${fmtR(gastosVariaveis)}</div>
         ${despesaReal>0?`<div class="stat-trend">${Math.round(gastosVariaveis/despesaReal*100)}% do total gasto</div>`:''}
       </div>
       <div class="stat-card stat-card--teal">
@@ -3156,7 +3160,7 @@ function renderRelatorioTab(){
       </div>
       <div class="stat-card stat-card--blue">
         <div class="stat-card-label">TAXA DE POUPANÇA</div>
-        <div class="stat-value neutral">${taxaPoupanca.toFixed(1)}%</div>
+        <div class="stat-value ${taxaPoupanca>=0?'pos':'neg'}">${taxaPoupanca.toFixed(1)}%</div>
         ${config.pct_investimento?`<div class="stat-trend">meta: ${config.pct_investimento}%</div>`:''}
       </div>
     </div>
@@ -3206,7 +3210,7 @@ function renderRelatorioTab(){
         const pctPeso = Math.round(l.fatura/maxFatura*100);
         return `<div class="stat-card">
           <div class="stat-card-top">${l.c.logo?`<div class="stat-icon-badge" style="background:#fff;padding:4px">${logoImgFill(l.c.logo)}</div>`:`<div class="stat-icon-badge">${ic('credit-card',16)}</div>`}<div class="stat-card-label">${escHtml(l.c.nome).toUpperCase()}</div></div>
-          <div class="stat-value" style="color:var(--danger)">${fmtR(l.fatura)}</div>
+          <div class="stat-value">${fmtR(l.fatura)}</div>
           <div class="progress-bar-bg" style="margin-top:8px"><div class="progress-bar-fill" style="width:${pctPeso}%;background:linear-gradient(90deg,var(--accent2),var(--danger))"></div></div>
           ${l.pctLimite!==null?`<div class="form-hint" style="margin-top:6px">${Math.round(l.pctLimite)}% do limite (${fmtR(l.c.limite)}) <span class="teto-badge st-${l.st}" style="margin-left:4px">${l.st}</span></div>`:`<div class="form-hint" style="margin-top:6px">peso da fatura entre seus cartões</div>`}
         </div>`;
