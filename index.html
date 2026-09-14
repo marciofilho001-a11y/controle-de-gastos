@@ -570,8 +570,8 @@ td{padding:12px 15px;font-size:13px;}
 /* Cards de categoria: altos e estreitos (não uma linha larga que estoura o
    container) — grid que reflui sozinho, cada card com sua própria barra de
    proporção real/previsto em vez de uma tabela de colunas apertadas. */
-.rel-cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
-.rel-cat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px;min-height:194px;}
+.rel-cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;}
+.rel-cat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:13px;min-height:210px;}
 .rel-cat-card-clicavel{cursor:pointer;transition:border-color .15s var(--ease-out),transform .15s var(--ease-out);}
 .rel-cat-card-clicavel .lic:last-child{margin-left:auto;color:var(--muted);flex-shrink:0;}
 @media(hover:hover) and (pointer:fine){.rel-cat-card-clicavel:hover{border-color:rgba(255,255,255,.22);transform:translateY(-1px);}}
@@ -581,11 +581,11 @@ td{padding:12px 15px;font-size:13px;}
 .rel-cat-card-row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);}
 .rel-cat-card-row b{font-family:var(--mono);color:var(--text);font-weight:650;}
 /* valores lado a lado, tipografia maior — igual à referência */
-.rel-cat-card-vals{display:flex;gap:18px;}
+.rel-cat-card-vals{display:flex;gap:18px;min-height:52px;}
 .rel-cat-card-val{flex:1;min-width:0;}
-.rel-cat-card-val-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.rel-cat-card-val-label i{font-style:normal;text-transform:none;opacity:.75;}
-.rel-cat-card-val b{font-family:var(--mono);font-size:18px;font-weight:750;color:var(--text);display:block;}
+.rel-cat-card-val-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rel-cat-card-val b{font-family:var(--mono);font-size:16px;font-weight:750;color:var(--text);display:block;letter-spacing:-0.02em;white-space:nowrap;}
+.rel-cat-card-origem{display:inline-block;margin-top:4px;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:var(--surface);border:1px solid var(--border-soft);border-radius:5px;padding:1px 5px;}
 .rel-cat-card-bar-bg{background:var(--surface);border-radius:8px;height:11px;overflow:hidden;}
 .rel-cat-card-bar-fill{height:100%;border-radius:8px;transition:width .4s var(--ease-out);}
 /* pill de status única — ícone + texto + valor juntos, no lugar do rodapé
@@ -1337,6 +1337,25 @@ async function removerIconeLancamento(descricaoEnc, categoriaKey){
 // ══════════════════════════════════════════════
 function ic(name, size=14, cls=''){ return `<i data-lucide="${name}" class="lic ${cls}" style="width:${size}px;height:${size}px"></i>`; }
 function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
+
+// Hook só pra testes visuais headless (puppeteer) — permite injetar dados e
+// renderizar sem depender do Supabase. Inócuo em produção: nunca é chamado
+// pelo app, só existe pra eu conseguir ver o resultado antes de subir.
+window.__injetarTeste = function(d){
+  if(d.mesAtual!==undefined) mesAtual = d.mesAtual;
+  if(d.config!==undefined) config = d.config;
+  if(d.cartoes!==undefined) cartoes = d.cartoes;
+  if(d.obrigacoes!==undefined) obrigacoes = d.obrigacoes;
+  if(d.transacoes!==undefined) transacoes = d.transacoes;
+  if(d.compras!==undefined) compras = d.compras;
+  if(d.tetos!==undefined) tetos = d.tetos;
+  if(d.saldosConta!==undefined) saldosConta = d.saldosConta;
+  if(d.faturaItens!==undefined) faturaItens = d.faturaItens;
+  if(d.investimentos!==undefined) investimentos = d.investimentos;
+  if(d.categoriaIcones!==undefined) categoriaIcones = d.categoriaIcones;
+  if(d.descricaoIcones!==undefined) descricaoIcones = d.descricaoIcones;
+  atualizarLabelMes();
+};
 
 // Pill deslizante do nav (segmented control) — reposiciona por baixo da aba ativa.
 // offsetLeft/offsetWidth já são relativos à borda interna do .nav (mesmo referencial
@@ -3154,12 +3173,13 @@ function renderRelatorioTab(){
           </div>
           <div class="rel-cat-card-vals">
             <div class="rel-cat-card-val">
-              <span class="rel-cat-card-val-label">Previsto${l.origemPrevisto?` <i>(${l.origemPrevisto})</i>`:''}</span>
+              <span class="rel-cat-card-val-label">Previsto</span>
               <b>${l.previsto>0?fmtR(l.previsto):'—'}</b>
+              ${l.origemPrevisto?`<span class="rel-cat-card-origem">${l.origemPrevisto}</span>`:''}
             </div>
             <div class="rel-cat-card-val">
               <span class="rel-cat-card-val-label">Real</span>
-              <b>${fmtR(l.real)}</b>
+              <b style="color:${l.st==='critico'?'var(--danger)':l.st==='ok'?'var(--accent)':'var(--text)'}">${fmtR(l.real)}</b>
             </div>
           </div>
           <div class="rel-cat-card-bar-bg"><div class="rel-cat-card-bar-fill" style="width:${pctBarra}%;background:${corBarra}"></div></div>
@@ -3231,85 +3251,27 @@ function renderRelatorioChart(linhasCat){
   const ctx = document.getElementById('chart-rel-cat');
   if(!ctx) return;
   if(!linhasCat.length){ ctx.parentElement.innerHTML = `<div class="empty" style="padding:30px">${ic('inbox',28)}<p>Sem dados pra comparar</p></div>`; refreshIcons(); return; }
-  // altura proporcional ao nº de categorias — com poucas categorias, barras
-  // grossas de verdade (igual à referência); com muitas, ainda cabe tudo.
-  ctx.parentElement.style.height = Math.max(200, linhasCat.length*74) + 'px';
-  const labels = linhasCat.map(l=>l.label);
-
-  // Ícone-chip à esquerda de cada categoria (como na referência): o Chart.js não
-  // desenha ícone no tick do eixo Y, então rendarizo cada ícone lucide num
-  // <img> SVG uma vez, e um plugin pinta esse img como um badge arredondado
-  // colorido alinhado ao centro vertical do par de barras daquela categoria.
-  const iconePlugin = {
-    id:'catIconChips',
-    afterDraw(chart){
-      const {ctx:c, chartArea, scales} = chart;
-      const yScale = scales.y;
-      linhasCat.forEach((l,i)=>{
-        const y = yScale.getPixelForTick(i);
-        const size = 26, x = chartArea.left - size - 14;
-        // badge arredondado
-        c.save();
-        const r = 8;
-        c.beginPath();
-        c.moveTo(x+r,y-size/2); c.arcTo(x+size,y-size/2,x+size,y+size/2,r);
-        c.arcTo(x+size,y+size/2,x,y+size/2,r); c.arcTo(x,y+size/2,x,y-size/2,r);
-        c.arcTo(x,y-size/2,x+size,y-size/2,r); c.closePath();
-        c.fillStyle = hexToRgba(l.cor,0.16); c.fill();
-        c.strokeStyle = hexToRgba(l.cor,0.4); c.lineWidth=1; c.stroke();
-        const img = chart.$catIcons && chart.$catIcons[i];
-        if(img && img.complete && img.naturalWidth){ c.drawImage(img,x+5,y-8,16,16); }
-        c.restore();
-      });
-    }
-  };
-  // pré-carrega os SVGs recoloridos na cor da categoria
-  const imgs = linhasCat.map(l=>{
-    const svg = lucideSvgColorido(l.icone, l.cor);
-    const img = new Image(); img.src = 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg)));
-    return img;
-  });
-
+  ctx.parentElement.style.height = Math.max(220, linhasCat.length*80) + 'px';
+  ctx.parentElement.style.minHeight = '220px';
   charts['chart-rel-cat'] = new Chart(ctx, {
     type:'bar',
-    data:{ labels, datasets:[
-      {label:'Previsto', data:linhasCat.map(l=>l.previsto), backgroundColor:'#4d9dffcc', borderRadius:8, barThickness:15},
-      {label:'Real', data:linhasCat.map(l=>l.real), backgroundColor:linhasCat.map(l=>l.cor), borderRadius:8, barThickness:15},
+    data:{ labels:linhasCat.map(l=>l.label), datasets:[
+      {label:'Previsto', data:linhasCat.map(l=>l.previsto), backgroundColor:'#4d9dffcc', borderRadius:7, barThickness:14, borderSkipped:false},
+      {label:'Real', data:linhasCat.map(l=>l.real), backgroundColor:linhasCat.map(l=>l.cor), borderRadius:7, barThickness:14, borderSkipped:false},
     ]},
     options:{ ...CHART_DEFAULTS, indexAxis:'y', maintainAspectRatio:false,
-      layout:{padding:{left:44}}, // espaço pros chips de ícone
-      categoryPercentage:0.72, barPercentage:0.92,
-      scales:{ x:{ticks:{color:'#6b7280',callback:v=>'R$'+v},grid:{color:'#263045'}}, y:{ticks:{color:'#e8eaf0',font:{weight:'600',size:12},padding:8},grid:{display:false},border:{display:false}} },
-      plugins:{ legend:{labels:{color:'#e8eaf0',usePointStyle:true,pointStyle:'circle',padding:16}}, tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtR(c.raw)}}, datalabels:{display:false} } },
-    plugins:[iconePlugin]
+      animation:{duration:450, easing:'easeOutCubic'}, // curva Emil/Apple: entrada rápida, sem overshoot
+      categoryPercentage:0.68, barPercentage:0.9,
+      scales:{
+        x:{ticks:{color:'#8b93a3',font:{size:11},callback:v=>'R$'+v},grid:{color:'rgba(255,255,255,.05)'},border:{display:false}},
+        y:{ticks:{color:'#ffffff',font:{weight:'600',size:13},padding:10,crossAlign:'far'},grid:{display:false},border:{display:false}}
+      },
+      plugins:{
+        legend:{position:'top',align:'end',labels:{color:'#c7cedb',usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:16,font:{size:12}}},
+        tooltip:{backgroundColor:'#0d1117',borderColor:'#2a3348',borderWidth:1,padding:10,cornerRadius:8,titleFont:{size:12,weight:'700'},bodyFont:{size:12},callbacks:{label:c=>' '+c.dataset.label+': '+fmtR(c.raw)}},
+        datalabels:{display:false}
+      } }
   });
-  charts['chart-rel-cat'].$catIcons = imgs;
-  // redesenha quando as imagens terminarem de carregar
-  imgs.forEach(img=>{ img.onload = ()=>{ if(charts['chart-rel-cat']) charts['chart-rel-cat'].draw(); }; });
-}
-// converte "#rrggbb" + alpha em rgba() (o canvas não aceita "#rrggbb22")
-function hexToRgba(hex, a){
-  if(!hex || !hex.startsWith('#')) return `rgba(107,114,128,${a})`;
-  const n = parseInt(hex.slice(1),16);
-  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
-}
-// SVG do ícone lucide na cor pedida — reusa o iconNode que o próprio lucide já
-// carregou (window.lucide.icons), então não precisa hardcodar SVG de cada ícone.
-// No build UMD o formato de cada ícone é IconNode = [ [tag, attrs], ... ]
-// (lista de filhos direta), então iteramos sobre def diretamente.
-function lucideSvgColorido(nome, cor){
-  const pascal = nome.split('-').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join('');
-  const def = (window.lucide && window.lucide.icons && (window.lucide.icons[pascal]||window.lucide.icons[nome]));
-  let inner = '';
-  if(Array.isArray(def)){
-    inner = def.map(ch=>{
-      if(!Array.isArray(ch)) return '';
-      const [tag,attrs] = ch;
-      const a = Object.entries(attrs||{}).map(([k,v])=>`${k}="${v}"`).join(' ');
-      return `<${tag} ${a}/>`;
-    }).join('');
-  }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${cor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
 }
 
 // Projeção de ritmo: só faz sentido pro mês corrente (nos passados o mês já fechou,
