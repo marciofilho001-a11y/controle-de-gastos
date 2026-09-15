@@ -1236,7 +1236,7 @@ const DESPESA_CATS = [
 const RECEITA_CATS = [
   {v:'salario',l:'Salário',i:'briefcase'},{v:'freelance',l:'Freelance',i:'wrench'},{v:'investimento',l:'Rendimento',i:'trending-up'},{v:'outro',l:'Outro',i:'more-horizontal'},
 ];
-const CAT_COLORS = {moradia:'#3d8ef0',cartao:'#f472b6',consorcio:'#a78bfa',financiamento:'#fb923c',assinatura:'#60a5fa',alimentacao:'#f0a832',transporte:'#38bdf8',saude:'#f05252',lazer:'#c084fc',educacao:'#94a3b8',outro:'#6b7280',salario:'#22d3a5',freelance:'#3d8ef0',investimento:'#a78bfa'};
+const CAT_COLORS = {moradia:'#3d8ef0',cartao:'#f472b6',consorcio:'#6366f1',financiamento:'#fb923c',assinatura:'#60a5fa',alimentacao:'#f0a832',transporte:'#38bdf8',saude:'#f05252',lazer:'#22c55e',educacao:'#94a3b8',outro:'#6b7280',salario:'#22d3a5',freelance:'#3d8ef0',investimento:'#a78bfa'};
 function catInfo(v){ return DESPESA_CATS.find(c=>c.v===v) || RECEITA_CATS.find(c=>c.v===v) || {v,l:v||'Outro',i:'more-horizontal'}; }
 
 // Ícone de categoria pra exibição (usado nas legendas de gráfico, que representam
@@ -3126,7 +3126,6 @@ function renderRelatorioTab(){
   const despesaPrevista = custosFixos + totalCartoesNoMes(mesAtual); // mesma convenção da aba Projeção
   const saldoPrevisto = rendaPrevista - despesaPrevista;
   const saldoReal = rendaReal - despesaReal;
-  const taxaPoupanca = rendaReal>0 ? (saldoReal/rendaReal*100) : 0;
 
   // ---- Gastos por categoria: "previsto" agora tem 3 níveis de fallback —
   // 1) meta cadastrada em Limites (o usuário decidiu um valor de propósito),
@@ -3208,11 +3207,6 @@ function renderRelatorioTab(){
         <div class="stat-card-label">SOBRA REAL</div>
         <div class="stat-value ${saldoReal>=0?'pos':'neg'}">${fmtR(saldoReal)}</div>
         ${rendaPrevista>0?`<div class="stat-trend">previsto: ${fmtR(saldoPrevisto)}</div>`:''}
-      </div>
-      <div class="stat-card stat-card--blue">
-        <div class="stat-card-label">TAXA DE POUPANÇA</div>
-        <div class="stat-value ${taxaPoupanca>=0?'pos':'neg'}">${taxaPoupanca.toFixed(1)}%</div>
-        ${config.pct_investimento?`<div class="stat-trend">meta: ${config.pct_investimento}%</div>`:''}
       </div>
     </div>
   </div>`;
