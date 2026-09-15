@@ -12,6 +12,7 @@ import { LimitesPage } from "@/features/limites/limites-page"
 import { ProjecaoPage } from "@/features/projecao/projecao-page"
 import { GraficosPage } from "@/features/graficos/graficos-page"
 import { InvestimentosPage } from "@/features/investimentos/investimentos-page"
+import { ChatAssistente } from "@/features/chat/chat-assistente"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
 import { Loader2 } from "lucide-react"
@@ -66,6 +67,7 @@ export default function App() {
           ) : null}
         </main>
       </div>
+      {!loading && !error && <ChatAssistente mesRef={mesRef} />}
       <Toaster position="bottom-right" richColors />
     </TooltipProvider>
   )
