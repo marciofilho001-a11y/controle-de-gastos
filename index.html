@@ -120,6 +120,11 @@ h1,h2,h3,.section-hdr h2,.modal-title{letter-spacing:-0.03em;line-height:1.15;fo
 .stat-card--red .stat-icon-badge{background:linear-gradient(135deg,#ff97a1,var(--danger));}
 .stat-card--orange .stat-icon-badge{background:linear-gradient(135deg,#ffd591,var(--warn));}
 .stat-card--blue .stat-icon-badge{background:linear-gradient(135deg,#acc3f6,var(--accent2));}
+/* Slate: cards neutros do cockpit (Custos Fixos, Gastos Variáveis) — badge discreto,
+   fundo translúcido frio e ícone claro, sem borda colorida à esquerda (como na referência). */
+.stat-card--slate::before{background:transparent;}
+.stat-card--slate{background:var(--card);}
+.stat-card--slate .stat-icon-badge{background:rgba(120,140,180,.16);border:1px solid rgba(120,140,180,.22);color:#aeb8cc;}
 /* Label superior dos stat-cards: text-xs, medium, atenuado, uppercase tracking-wider */
 .stat-card-label{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex:1;}
 .stat-card-corner-icon{color:var(--muted);flex-shrink:0;}
@@ -3189,22 +3194,22 @@ function renderRelatorioTab(){
     <div class="rel-secao-titulo">${ic('circle-gauge',14)} Cockpit Financeiro</div>
     <div class="rel-resumo-grid">
       <div class="stat-card stat-card--teal">
-        <div class="stat-card-label">RECEITA LÍQUIDA</div>
+        <div class="stat-card-top"><div class="stat-icon-badge">${ic('dollar-sign',17)}</div><div class="stat-card-label">RECEITA LÍQUIDA</div></div>
         <div class="stat-value">${fmtR(rendaReal)}</div>
         ${rendaPrevista>0?`<div class="stat-trend ${diffRenda>=0?'up':'down'}">${diffRenda>=0?'+':''}${fmtR(diffRenda)} vs previsto</div>`:''}
       </div>
-      <div class="stat-card">
-        <div class="stat-card-label">CUSTOS FIXOS</div>
+      <div class="stat-card stat-card--slate">
+        <div class="stat-card-top"><div class="stat-icon-badge">${ic('calculator',17)}</div><div class="stat-card-label">CUSTOS FIXOS</div></div>
         <div class="stat-value">${fmtR(custosFixos)}</div>
         ${despesaReal>0?`<div class="stat-trend">${Math.round(custosFixos/despesaReal*100)}% do total gasto</div>`:''}
       </div>
-      <div class="stat-card">
-        <div class="stat-card-label">GASTOS VARIÁVEIS / CARTÃO</div>
+      <div class="stat-card stat-card--slate">
+        <div class="stat-card-top"><div class="stat-icon-badge">${ic('credit-card',17)}</div><div class="stat-card-label">GASTOS VARIÁVEIS / CARTÃO</div></div>
         <div class="stat-value">${fmtR(gastosVariaveis)}</div>
         ${despesaReal>0?`<div class="stat-trend">${Math.round(gastosVariaveis/despesaReal*100)}% do total gasto</div>`:''}
       </div>
       <div class="stat-card stat-card--teal">
-        <div class="stat-card-label">SOBRA REAL</div>
+        <div class="stat-card-top"><div class="stat-icon-badge">${ic('wallet',17)}</div><div class="stat-card-label">SOBRA REAL</div></div>
         <div class="stat-value ${saldoReal>=0?'pos':'neg'}">${fmtR(saldoReal)}</div>
         ${rendaPrevista>0?`<div class="stat-trend">previsto: ${fmtR(saldoPrevisto)}</div>`:''}
       </div>
@@ -3362,8 +3367,8 @@ function renderRelatorioChart(linhasCat){
   charts['chart-rel-cat'] = new Chart(ctx, {
     type:'bar',
     data:{ labels:linhasCat.map(l=>l.label), datasets:[
-      {label:'Previsto', data:linhasCat.map(l=>l.previsto), backgroundColor:'#4d9dffcc', borderRadius:7, barThickness:14, borderSkipped:false},
-      {label:'Real', data:linhasCat.map(l=>l.real), backgroundColor:linhasCat.map(l=>l.cor), borderRadius:7, barThickness:14, borderSkipped:false},
+      {label:'Previsto', data:linhasCat.map(l=>l.previsto), backgroundColor:'#4d9dff', borderRadius:7, barThickness:14, borderSkipped:false},
+      {label:'Real', data:linhasCat.map(l=>l.real), backgroundColor:'#f472b6', borderRadius:7, barThickness:14, borderSkipped:false},
     ]},
     options:{ ...CHART_DEFAULTS, indexAxis:'y', maintainAspectRatio:false,
       animation:{duration:450, easing:'easeOutCubic'},
