@@ -1,7 +1,13 @@
 import { createClient } from "@supabase/supabase-js"
 
-const url = import.meta.env.VITE_SUPABASE_URL as string
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+// A anon key do Supabase é pública por design (protegida por RLS no banco).
+// Fallback embutido garante que o app funcione no deploy sem depender de env vars
+// configuradas manualmente — o .env (git-ignored) sobrescreve em dev se presente.
+const FALLBACK_URL = "https://xozrxppvroqiverzonmy.supabase.co"
+const FALLBACK_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvenJ4cHB2cm9xaXZlcnpvbm15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMDg2NDUsImV4cCI6MjA5MzY4NDY0NX0.5gE3khHOusWrADdQI6I89hGJnG-qc4JeXiYURgXDGrk"
+
+const url = (import.meta.env.VITE_SUPABASE_URL as string) || FALLBACK_URL
+const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || FALLBACK_KEY
 
 export const supabase = createClient(url, key)
 
