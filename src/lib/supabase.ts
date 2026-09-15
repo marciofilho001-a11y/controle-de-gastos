@@ -106,3 +106,15 @@ export type Config = {
   chave: string
   valor: string | null
 }
+
+export type DescricaoIcone = {
+  descricao_norm: string
+  imagem: string
+  atualizado_em: string
+}
+
+export type CategoriaIcone = {
+  categoria: string
+  imagem: string
+  atualizado_em: string
+}

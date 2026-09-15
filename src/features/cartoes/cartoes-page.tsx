@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { CartaoDialog } from "./cartao-dialog"
 import { CompraDialog } from "./compra-dialog"
-import { FaturaDetalheDialog } from "./fatura-detalhe-dialog"
+import { FaturaDetalhe } from "./fatura-detalhe"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Cartao, type CartaoCompra } from "@/lib/supabase"
 import { catInfo, catColor } from "@/lib/categorias"
@@ -77,6 +77,10 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
 
   function cartaoNome(id: number) {
     return cartoes.find((c) => c.id === id)?.nome ?? "—"
+  }
+
+  if (detalheCartao) {
+    return <FaturaDetalhe cartao={detalheCartao} onVoltar={() => setDetalheCartao(null)} mesRefBase={mesRef} />
   }
 
   return (
@@ -261,12 +265,6 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <FaturaDetalheDialog
-        cartao={detalheCartao}
-        open={detalheCartao != null}
-        onOpenChange={(v) => !v && setDetalheCartao(null)}
-        mesRefBase={mesRef}
-      />
     </div>
   )
 }
