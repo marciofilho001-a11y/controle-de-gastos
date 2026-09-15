@@ -592,7 +592,7 @@ td{padding:12px 15px;font-size:13px;}
 /* Cards de categoria: altos e estreitos (não uma linha larga que estoura o
    container) — grid que reflui sozinho, cada card com sua própria barra de
    proporção real/previsto em vez de uma tabela de colunas apertadas. */
-.rel-cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;}
+.rel-cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;}
 .rel-cat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:13px;min-height:210px;}
 .rel-cat-card-clicavel{cursor:pointer;transition:border-color .15s var(--ease-out),transform .15s var(--ease-out);}
 .rel-cat-card-clicavel .lic:last-child{margin-left:auto;color:var(--muted);flex-shrink:0;}
@@ -615,10 +615,10 @@ td{padding:12px 15px;font-size:13px;}
 .rel-cat-card-bar-fill{height:100%;border-radius:8px;transition:width .4s var(--ease-out);}
 /* pill de status única — ícone + texto + valor juntos, no lugar do rodapé
    dividido em dois pedaços separados */
-.rel-cat-card-pill{display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:11px;font-size:12.5px;font-weight:650;margin-top:auto;}
+.rel-cat-card-pill{display:flex;align-items:center;gap:6px;padding:9px 11px;border-radius:11px;font-size:12px;font-weight:650;margin-top:auto;}
 .rel-cat-card-pill .lic{flex-shrink:0;}
-.rel-cat-card-pill-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rel-cat-card-pill-valor{font-family:var(--mono);font-weight:700;flex-shrink:0;font-variant-numeric:tabular-nums;}
+.rel-cat-card-pill-text{flex:1;min-width:0;white-space:nowrap;}
+.rel-cat-card-pill-valor{font-family:var(--mono);font-size:12px;font-weight:700;flex-shrink:0;font-variant-numeric:tabular-nums;}
 .rel-cat-card-pill.st-ok{background:rgba(53,205,128,.13);color:var(--accent);}
 .rel-cat-card-pill.st-critico{background:rgba(255,82,92,.13);color:var(--danger);}
 .rel-cat-card-pill.st-vazio{background:rgba(255,255,255,.05);color:var(--muted);}
