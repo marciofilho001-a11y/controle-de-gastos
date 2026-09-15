@@ -1,0 +1,201 @@
+import type { Obrigacao, Transacao, Cartao } from "@/lib/supabase"
+
+// Em qual parcela a obrigação está no mês de referência (1-indexed)
+export function parcelaNoMes(obr: Obrigacao, mesRef: string): number {
+  const [anoI, mesI] = obr.data_inicio.slice(0, 7).split("-").map(Number)
+  const [anoM, mesM] = mesRef.split("-").map(Number)
+  return (anoM - anoI) * 12 + (mesM - mesI) + 1
+}
+
+export function obrigacaoAtivaNoMes(obr: Obrigacao, mesRef: string): boolean {
+  if (!obr.ativa) return false
+  const parc = parcelaNoMes(obr, mesRef)
+  if (parc < 1) return false
+  if (obr.parcela_total && parc > obr.parcela_total) return false
+  return true
+}
+
+export function obrigacoesAtivasNoMes(obrigacoes: Obrigacao[], mesRef: string): Obrigacao[] {
+  return obrigacoes.filter((o) => obrigacaoAtivaNoMes(o, mesRef))
+}
+
+export function txDoMes(transacoes: Transacao[], mesRef: string): Transacao[] {
+  return transacoes.filter((t) => t.mes_ref === mesRef)
+}
+
+export function receitasDoMes(transacoes: Transacao[], mesRef: string): number {
+  return txDoMes(transacoes, mesRef)
+    .filter((t) => t.tipo === "receita")
+    .reduce((s, t) => s + Number(t.valor), 0)
+}
+
+export function despesasDoMes(transacoes: Transacao[], mesRef: string): number {
+  return txDoMes(transacoes, mesRef)
+    .filter((t) => t.tipo === "despesa")
+    .reduce((s, t) => s + Number(t.valor), 0)
+}
+
+export function obrigacaoPagaNoMes(
+  transacoes: Transacao[],
+  obrId: number,
+  mesRef: string
+): Transacao | undefined {
+  return transacoes.find((t) => t.obrigacao_id === obrId && t.mes_ref === mesRef)
+}
+
+// Fatura de um cartão num mês = soma das despesas daquele cartão nesse mês_ref
+export function faturaDoMes(transacoes: Transacao[], cartaoId: number, mesRef: string): number {
+  return transacoes
+    .filter((t) => t.cartao_id === cartaoId && t.mes_ref === mesRef && t.tipo === "despesa")
+    .reduce((s, t) => s + Number(t.valor), 0)
+}
+
+export function totalCartoesNoMes(cartoes: Cartao[], transacoes: Transacao[], mesRef: string): number {
+  return cartoes
+    .filter((c) => c.ativo !== false)
+    .reduce((s, c) => s + faturaDoMes(transacoes, c.id, mesRef), 0)
+}
+
+export function mesFimObrigacao(o: Obrigacao): string | null {
+  if (!o.parcela_total) return null
+  const [a, m] = o.data_inicio.slice(0, 7).split("-").map(Number)
+  const d = new Date(a, m - 1 + (o.parcela_total - 1), 1)
+  return d.toISOString().slice(0, 7)
+}
+
+import type { Teto } from "@/lib/supabase"
+import { addMonths } from "@/lib/format"
+
+export function gastoDebitoNoMes(transacoes: Transacao[], mesRef: string): number {
+  return txDoMes(transacoes, mesRef)
+    .filter((t) => t.tipo === "despesa" && !t.cartao_id && !t.obrigacao_id)
+    .reduce((s, t) => s + Number(t.valor), 0)
+}
+
+export function gastoVariavelTotalNoMes(
+  cartoes: Cartao[], transacoes: Transacao[], mesRef: string
+): number {
+  return gastoDebitoNoMes(transacoes, mesRef) + totalCartoesNoMes(cartoes, transacoes, mesRef)
+}
+
+export function gastoCategoriaNoMes(transacoes: Transacao[], catKey: string, mesRef: string): number {
+  return txDoMes(transacoes, mesRef)
+    .filter((t) => t.tipo === "despesa" && t.categoria === catKey)
+    .reduce((s, t) => s + Number(t.valor), 0)
+}
+
+export function getTeto(
+  tetos: Teto[], mesRef: string, escopo: string,
+  cartaoId: number | null, categoria: string | null
+): number | null {
+  const t = tetos.find(
+    (x) =>
+      x.mes_ref === mesRef && x.escopo === escopo &&
+      (cartaoId ? Number(x.cartao_id) === Number(cartaoId) : !x.cartao_id) &&
+      (categoria ? x.categoria === categoria : !x.categoria)
+  )
+  return t ? Number(t.valor) : null
+}
+
+export function mediaCategoriaMeses(
+  transacoes: Transacao[], catKey: string, mesRef: string, n: number
+): number {
+  const valores: number[] = []
+  for (let i = 1; i <= n; i++) {
+    const v = gastoCategoriaNoMes(transacoes, catKey, addMonths(mesRef, -i))
+    if (v > 0) valores.push(v)
+  }
+  return valores.length ? valores.reduce((s, v) => s + v, 0) / valores.length : 0
+}
+
+export type StatusPrevisto = "vazio" | "ok" | "critico"
+export function statusPrevisto(real: number, previsto: number): StatusPrevisto {
+  if (!previsto || previsto <= 0) return "vazio"
+  return real > previsto ? "critico" : "ok"
+}
+
+export type StatusTeto = "vazio" | "ok" | "alerta" | "critico"
+export function statusTeto(gasto: number, teto: number | null): StatusTeto {
+  if (!teto) return "vazio"
+  const pct = gasto / teto
+  if (pct > 1) return "critico"
+  if (pct >= 0.8) return "alerta"
+  return "ok"
+}
+
+// ---- Itens de obrigações do mês (obrigações + faturas de cartão unificadas) ----
+export type ItemObrigacao = {
+  tipo: "obrigacao" | "cartao"
+  id: number
+  nome: string
+  dia: number | null
+  categoria: string | null
+  valor: number
+  paga: boolean
+  parcTxt: string
+}
+
+export function itensObrigacoesDoMes(
+  obrigacoes: Obrigacao[], cartoes: Cartao[], transacoes: Transacao[], mesRef: string
+): ItemObrigacao[] {
+  const itensObr: ItemObrigacao[] = obrigacoesAtivasNoMes(obrigacoes, mesRef).map((o) => ({
+    tipo: "obrigacao",
+    id: o.id,
+    nome: o.nome,
+    dia: o.dia_vencimento,
+    categoria: o.categoria,
+    valor: Number(o.valor),
+    paga: !!obrigacaoPagaNoMes(transacoes, o.id, mesRef),
+    parcTxt: o.parcela_total ? `Parcela ${parcelaNoMes(o, mesRef)}/${o.parcela_total}` : "Recorrente",
+  }))
+  const itensCartao: ItemObrigacao[] = []
+  for (const c of cartoes.filter((c) => c.ativo !== false)) {
+    const valor = faturaDoMes(transacoes, c.id, mesRef)
+    if (valor <= 0) continue
+    itensCartao.push({
+      tipo: "cartao",
+      id: c.id,
+      nome: `Fatura ${c.nome}`,
+      dia: c.dia_vencimento,
+      categoria: "cartao",
+      valor,
+      paga: true,
+      parcTxt: "Fatura do cartão (já lançada)",
+    })
+  }
+  return [...itensObr, ...itensCartao]
+}
+
+// ---- Projeção de um mês ----
+export type ProjecaoMes = {
+  mesRef: string
+  receita: number
+  totalObr: number
+  sobra: number
+  sugestao: number
+  qtdObr: number
+  estimado: boolean
+}
+
+export function calcularProjecaoMes(
+  obrigacoes: Obrigacao[], cartoes: Cartao[], transacoes: Transacao[],
+  config: Record<string, string>, mesRef: string
+): ProjecaoMes {
+  const rendaReal = receitasDoMes(transacoes, mesRef)
+  const rendaProjetada = parseFloat(config.renda_projetada) || 0
+  const estimado = rendaReal <= 0
+  const receita = rendaReal > 0 ? rendaReal : rendaProjetada
+  const ativas = obrigacoesAtivasNoMes(obrigacoes, mesRef)
+  const totalObr = ativas.reduce((s, o) => s + Number(o.valor), 0) + totalCartoesNoMes(cartoes, transacoes, mesRef)
+  const sobra = receita - totalObr
+  const pct = parseFloat(config.pct_investimento) || 0
+  const sugestao = Math.max(0, sobra * (pct / 100))
+  return { mesRef, receita, totalObr, sobra, sugestao, qtdObr: ativas.length, estimado }
+}
+
+// variação percentual mês a mês (retorna null quando não há base)
+export function variacaoPct(atual: number, anterior: number): { pct: number; subiu: boolean } | null {
+  if (!anterior) return null
+  const pct = Math.round(((atual - anterior) / Math.abs(anterior)) * 100)
+  return { pct, subiu: pct > 0 }
+}
