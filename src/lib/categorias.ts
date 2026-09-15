@@ -13,6 +13,7 @@ import {
   Briefcase,
   Wrench,
   TrendingUp,
+  ShoppingBag,
   type LucideIcon,
 } from "lucide-react"
 
@@ -29,6 +30,7 @@ export const DESPESA_CATS: CatDef[] = [
   { v: "saude", l: "Saúde", icon: Pill },
   { v: "lazer", l: "Lazer", icon: Gamepad2 },
   { v: "educacao", l: "Educação", icon: BookOpen },
+  { v: "compras", l: "Compras", icon: ShoppingBag },
   { v: "outro", l: "Outro", icon: MoreHorizontal },
 ]
 
@@ -51,6 +53,7 @@ export const CAT_COLORS: Record<string, string> = {
   saude: "#ef4444",
   lazer: "#22c55e",
   educacao: "#94a3b8",
+  compras: "#a855f7",
   outro: "#6b7280",
   salario: "#14b8a6",
   freelance: "#3d8ef0",

@@ -29,8 +29,11 @@ const SINONIMOS: Record<string, string> = {
   livro: "educacao", livros: "educacao", escola: "educacao", material: "educacao",
   // assinatura
   assinatura: "assinatura", plano: "assinatura", mensalidade: "assinatura",
-  // compras / cartão genérico
-  compras: "outro", compra: "outro", roupa: "outro", roupas: "outro", loja: "outro",
+  // compras / vestuário
+  compras: "compras", compra: "compras", roupa: "compras", roupas: "compras", loja: "compras",
+  tenis: "compras", tênis: "compras", jaqueta: "compras", calca: "compras", calça: "compras",
+  camisa: "compras", camiseta: "compras", sapato: "compras", nike: "compras", adidas: "compras",
+  eletronico: "compras", eletrônico: "compras", celular: "compras", presente: "compras",
   // receitas
   salario: "salario", salário: "salario", pagamento: "salario", freelance: "freelance",
   freela: "freelance", rendimento: "investimento", dividendo: "investimento",
@@ -124,7 +127,11 @@ export function parseEntrada(
 ): ParseResult | null {
   const original = frase.trim()
   if (!original) return null
-  const palavras = normalizar(original).split(/\s+/)
+  // separa por espaço E por pontuação (/, -, vírgula, etc.) pra "dinheiro/débito" virar 2 tokens
+  const palavras = normalizar(original)
+    .split(/[\s/\\,;|·]+/)
+    .map((p) => p.replace(/^[-.]+|[-.]+$/g, "")) // tira hífen/ponto nas pontas
+    .filter(Boolean)
   const setPalavras = new Set(palavras)
 
   // 1) valores + parcelas
@@ -162,8 +169,10 @@ export function parseEntrada(
   let categoria = "outro"
   let categoriaOrigem: ParseResult["categoriaOrigem"] = "padrão"
 
-  // 5a) categoria dita explicitamente (nome exato de categoria na frase)
-  const catExplicita = palavras.find((p) => CATEGORIAS_VALIDAS.has(p))
+  // 5a) categoria dita explicitamente (nome exato de categoria na frase).
+  // Ignora "cartao"/"cartão" aqui: nessa frase é forma de pagamento, não a categoria pretendida
+  // (ex: "cartao nubank jaqueta compras" -> categoria = compras, não cartao).
+  const catExplicita = palavras.find((p) => CATEGORIAS_VALIDAS.has(p) && p !== "cartao" && p !== "cartão")
 
   // tokens que pertencem ao nome do cartão escolhido (pra não virarem descrição nem categoria)
   const tokensCartao = new Set(cartao ? normalizar(cartao.nome).split(/\s+/) : [])
@@ -199,8 +208,11 @@ export function parseEntrada(
       categoria = doHist
       categoriaOrigem = "histórico"
     } else {
-      // dicionário de sinônimos — ignorando palavras que fazem parte do nome do cartão
-      const sinon = palavras.filter((p) => !tokensCartao.has(p)).map((p) => SINONIMOS[p]).find(Boolean)
+      // dicionário de sinônimos — ignorando palavras do nome do cartão.
+      // pega o ÚLTIMO sinônimo da frase (o que a pessoa escreve por último costuma
+      // ser a categoria pretendida: "água academia" -> academia/saúde, não água/moradia)
+      const sinonimos = palavras.filter((p) => !tokensCartao.has(p)).map((p) => SINONIMOS[p]).filter(Boolean)
+      const sinon = sinonimos.length ? sinonimos[sinonimos.length - 1] : undefined
       if (sinon) {
         categoria = sinon
         categoriaOrigem = "dicionário"
