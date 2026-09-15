@@ -7,6 +7,8 @@ import { RelatorioPage } from "@/features/relatorio/relatorio-page"
 import { DashboardPage } from "@/features/dashboard/dashboard-page"
 import { TransacoesPage } from "@/features/transacoes/transacoes-page"
 import { ObrigacoesPage } from "@/features/obrigacoes/obrigacoes-page"
+import { CartoesPage } from "@/features/cartoes/cartoes-page"
+import { LimitesPage } from "@/features/limites/limites-page"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
 import { Loader2 } from "lucide-react"
@@ -58,6 +60,10 @@ export default function App() {
             <DashboardPage mesRef={mesRef} />
           ) : tab === "obrigacoes" ? (
             <ObrigacoesPage mesRef={mesRef} />
+          ) : tab === "cartoes" ? (
+            <CartoesPage mesRef={mesRef} />
+          ) : tab === "limites" ? (
+            <LimitesPage mesRef={mesRef} />
           ) : tab === "transacoes" ? (
             <TransacoesPage mesRef={mesRef} />
           ) : tab === "relatorio" ? (
