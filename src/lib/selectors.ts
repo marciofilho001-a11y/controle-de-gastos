@@ -199,3 +199,19 @@ export function variacaoPct(atual: number, anterior: number): { pct: number; sub
   const pct = Math.round(((atual - anterior) / Math.abs(anterior)) * 100)
   return { pct, subiu: pct > 0 }
 }
+
+// ---- Investimentos / patrimônio ----
+import type { Investimento, SaldoConta } from "@/lib/supabase"
+
+export function saldoContaDoMes(saldos: SaldoConta[], mesRef: string): number {
+  const validos = saldos.filter((s) => s.mes_ref <= mesRef).sort((a, b) => a.mes_ref.localeCompare(b.mes_ref))
+  return validos.length ? Number(validos[validos.length - 1].saldo) : 0
+}
+
+export function investidoAcumuladoAte(investimentos: Investimento[], mesRef: string): number {
+  return investimentos.filter((i) => i.mes_ref <= mesRef).reduce((s, i) => s + Number(i.valor), 0)
+}
+
+export function patrimonioDoMes(saldos: SaldoConta[], investimentos: Investimento[], mesRef: string): number {
+  return saldoContaDoMes(saldos, mesRef) + investidoAcumuladoAte(investimentos, mesRef)
+}

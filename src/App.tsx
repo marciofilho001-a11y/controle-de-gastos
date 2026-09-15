@@ -2,30 +2,19 @@ import { useEffect, useState } from "react"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Header } from "@/components/layout/header"
-import { NavBar, TABS, type TabId } from "@/components/layout/nav"
+import { NavBar, type TabId } from "@/components/layout/nav"
 import { RelatorioPage } from "@/features/relatorio/relatorio-page"
 import { DashboardPage } from "@/features/dashboard/dashboard-page"
 import { TransacoesPage } from "@/features/transacoes/transacoes-page"
 import { ObrigacoesPage } from "@/features/obrigacoes/obrigacoes-page"
 import { CartoesPage } from "@/features/cartoes/cartoes-page"
 import { LimitesPage } from "@/features/limites/limites-page"
+import { ProjecaoPage } from "@/features/projecao/projecao-page"
+import { GraficosPage } from "@/features/graficos/graficos-page"
+import { InvestimentosPage } from "@/features/investimentos/investimentos-page"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
 import { Loader2 } from "lucide-react"
-
-function Placeholder({ tab }: { tab: TabId }) {
-  const label = TABS.find((t) => t.id === tab)?.label ?? tab
-  return (
-    <div className="grid min-h-[50vh] place-items-center rounded-xl border border-dashed bg-card/40">
-      <div className="text-center">
-        <p className="font-display text-lg font-semibold">{label}</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Tela em migração para a nova versão — em breve.
-        </p>
-      </div>
-    </div>
-  )
-}
 
 export default function App() {
   const [tab, setTab] = useState<TabId>("dashboard")
@@ -64,13 +53,17 @@ export default function App() {
             <CartoesPage mesRef={mesRef} />
           ) : tab === "limites" ? (
             <LimitesPage mesRef={mesRef} />
+          ) : tab === "projecao" ? (
+            <ProjecaoPage mesRef={mesRef} />
+          ) : tab === "graficos" ? (
+            <GraficosPage mesRef={mesRef} />
+          ) : tab === "investimentos" ? (
+            <InvestimentosPage mesRef={mesRef} />
           ) : tab === "transacoes" ? (
             <TransacoesPage mesRef={mesRef} />
           ) : tab === "relatorio" ? (
             <RelatorioPage mesRef={mesRef} />
-          ) : (
-            <Placeholder tab={tab} />
-          )}
+          ) : null}
         </main>
       </div>
       <Toaster position="bottom-right" richColors />

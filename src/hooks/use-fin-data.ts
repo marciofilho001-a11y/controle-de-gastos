@@ -25,6 +25,7 @@ type FinState = {
   tetos: Teto[]
   config: Record<string, string>
   loadAll: () => Promise<void>
+  saveConfig: (chave: string, valor: string) => Promise<void>
 }
 
 export const useFinData = create<FinState>((set) => ({
@@ -39,6 +40,10 @@ export const useFinData = create<FinState>((set) => ({
   saldos: [],
   tetos: [],
   config: {},
+  saveConfig: async (chave, valor) => {
+    await supabase.from("fin_config").upsert({ chave, valor: String(valor) }, { onConflict: "chave" })
+    set((st) => ({ config: { ...st.config, [chave]: String(valor) } }))
+  },
   loadAll: async () => {
     set({ loading: true, error: null })
     try {
