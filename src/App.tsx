@@ -5,6 +5,8 @@ import { Header } from "@/components/layout/header"
 import { NavBar, TABS, type TabId } from "@/components/layout/nav"
 import { RelatorioPage } from "@/features/relatorio/relatorio-page"
 import { DashboardPage } from "@/features/dashboard/dashboard-page"
+import { TransacoesPage } from "@/features/transacoes/transacoes-page"
+import { ObrigacoesPage } from "@/features/obrigacoes/obrigacoes-page"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
 import { Loader2 } from "lucide-react"
@@ -54,6 +56,10 @@ export default function App() {
             </div>
           ) : tab === "dashboard" ? (
             <DashboardPage mesRef={mesRef} />
+          ) : tab === "obrigacoes" ? (
+            <ObrigacoesPage mesRef={mesRef} />
+          ) : tab === "transacoes" ? (
+            <TransacoesPage mesRef={mesRef} />
           ) : tab === "relatorio" ? (
             <RelatorioPage mesRef={mesRef} />
           ) : (
