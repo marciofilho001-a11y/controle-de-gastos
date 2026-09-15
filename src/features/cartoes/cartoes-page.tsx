@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { CartaoDialog } from "./cartao-dialog"
 import { CompraDialog } from "./compra-dialog"
+import { FaturaDetalheDialog } from "./fatura-detalhe-dialog"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Cartao, type CartaoCompra } from "@/lib/supabase"
 import { catInfo, catColor } from "@/lib/categorias"
@@ -28,6 +29,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
   const [delCartao, setDelCartao] = useState<Cartao | null>(null)
   const [delCompra, setDelCompra] = useState<CartaoCompra | null>(null)
   const [busy, setBusy] = useState(false)
+  const [detalheCartao, setDetalheCartao] = useState<Cartao | null>(null)
 
   const comprasFiltradas = useMemo(() => {
     if (filtroCartao === "todos") return compras
@@ -101,7 +103,8 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: i * 0.04, ease: [0.2, 0, 0, 1] }}
-                className="flex flex-col gap-3 rounded-xl border bg-card p-4"
+                className="flex cursor-pointer flex-col gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+                onClick={() => setDetalheCartao(c)}
               >
                 <div className="flex items-center gap-2.5">
                   <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted text-muted-foreground ring-1 ring-border">
@@ -130,7 +133,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                     </div>
                   </div>
                 )}
-                <div className="mt-auto flex gap-2">
+                <div className="mt-auto flex gap-2" onClick={(e) => e.stopPropagation()}>
                   <CartaoDialog
                     editar={c}
                     trigger={
@@ -257,6 +260,13 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FaturaDetalheDialog
+        cartao={detalheCartao}
+        open={detalheCartao != null}
+        onOpenChange={(v) => !v && setDetalheCartao(null)}
+        mesRefBase={mesRef}
+      />
     </div>
   )
 }

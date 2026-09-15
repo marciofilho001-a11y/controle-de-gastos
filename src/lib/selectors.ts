@@ -1,4 +1,4 @@
-import type { Obrigacao, Transacao, Cartao } from "@/lib/supabase"
+import type { Obrigacao, Transacao, Cartao, CartaoCompra } from "@/lib/supabase"
 
 // Em qual parcela a obrigação está no mês de referência (1-indexed)
 export function parcelaNoMes(obr: Obrigacao, mesRef: string): number {
@@ -214,4 +214,62 @@ export function investidoAcumuladoAte(investimentos: Investimento[], mesRef: str
 
 export function patrimonioDoMes(saldos: SaldoConta[], investimentos: Investimento[], mesRef: string): number {
   return saldoContaDoMes(saldos, mesRef) + investidoAcumuladoAte(investimentos, mesRef)
+}
+
+// ---- Detalhe de fatura de cartão (fin_fatura_itens) ----
+import type { FaturaItem } from "@/lib/supabase"
+
+export function normalizarDescricao(d: string | null): string {
+  return (d || "").trim().toLowerCase()
+}
+
+// Meses relevantes de um cartão: onde há fatura (transações), compras, ou itens detalhados,
+// mais um horizonte de alguns meses à frente pra planejar.
+export function mesesDoCartao(
+  cartaoId: number, transacoes: Transacao[], compras: CartaoCompra[],
+  faturaItens: FaturaItem[], mesRefBase: string
+): string[] {
+  const set = new Set<string>()
+  transacoes.filter((t) => t.cartao_id === cartaoId).forEach((t) => set.add(t.mes_ref))
+  compras.filter((c) => c.cartao_id === cartaoId).forEach((c) => set.add(c.data_inicio.slice(0, 7)))
+  faturaItens.filter((f) => f.cartao_id === cartaoId).forEach((f) => set.add(f.mes_ref))
+  // horizonte: 6 meses à frente de mesRefBase
+  for (let i = 0; i <= 6; i++) set.add(addMonths(mesRefBase, i))
+  return [...set].sort()
+}
+
+export type SugestaoParcela = {
+  descricao: string
+  valor: number
+  categoria: string
+  proxParcela: number
+  parcela_total: number
+}
+
+export function sugestoesParcelasParaMes(
+  faturaItens: FaturaItem[], cartaoId: number, mesAlvo: string, itensJaNoMes: FaturaItem[]
+): SugestaoParcela[] {
+  const nomesJaNoMes = new Set(itensJaNoMes.map((i) => normalizarDescricao(i.descricao)))
+  const porNome: Record<string, FaturaItem> = {}
+  faturaItens
+    .filter((fi) => fi.cartao_id === cartaoId && fi.parcela_total && fi.parcela_total > 1)
+    .forEach((fi) => {
+      const dn = normalizarDescricao(fi.descricao)
+      if (!porNome[dn] || fi.mes_ref > porNome[dn].mes_ref) porNome[dn] = fi
+    })
+  const sugestoes: SugestaoParcela[] = []
+  Object.values(porNome).forEach((fi) => {
+    const dn = normalizarDescricao(fi.descricao)
+    if (nomesJaNoMes.has(dn)) return
+    const atual = fi.parcela_atual || 1
+    if (!fi.parcela_total || atual >= fi.parcela_total) return
+    const proxParcela = atual + 1
+    const mesProxima = addMonths(fi.mes_ref, 1)
+    if (mesProxima !== mesAlvo) return
+    sugestoes.push({
+      descricao: fi.descricao, valor: Number(fi.valor), categoria: fi.categoria,
+      proxParcela, parcela_total: fi.parcela_total,
+    })
+  })
+  return sugestoes
 }
