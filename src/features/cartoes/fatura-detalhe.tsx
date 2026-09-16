@@ -41,10 +41,10 @@ export function FaturaDetalhe({
   )
 
   const mesAtivo = useMemo(() => {
+    // se o usuário escolheu um mês na lista, usa ele; senão abre no mês que está navegando
     if (mesSel && meses.includes(mesSel)) return mesSel
-    const comFatura = meses.filter((m) => faturaDoMes(transacoes, cartao.id, m) > 0)
-    return comFatura.length ? comFatura[comFatura.length - 1] : meses[meses.length - 1] || mesRefBase
-  }, [mesSel, meses, cartao, transacoes, mesRefBase])
+    return mesRefBase
+  }, [mesSel, meses, mesRefBase])
 
   const dados = useMemo(() => {
     const valorFatura = faturaDoMes(transacoes, cartao.id, mesAtivo)

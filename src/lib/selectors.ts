@@ -233,8 +233,9 @@ export function mesesDoCartao(
   transacoes.filter((t) => t.cartao_id === cartaoId).forEach((t) => set.add(t.mes_ref))
   compras.filter((c) => c.cartao_id === cartaoId).forEach((c) => set.add(c.data_inicio.slice(0, 7)))
   faturaItens.filter((f) => f.cartao_id === cartaoId).forEach((f) => set.add(f.mes_ref))
-  // horizonte: 6 meses à frente de mesRefBase
-  for (let i = 0; i <= 6; i++) set.add(addMonths(mesRefBase, i))
+  // horizonte em torno do mês navegado: 3 meses atrás até 6 à frente (garante que o mês
+  // atual sempre apareça na lista, mesmo sem lançamentos)
+  for (let i = -3; i <= 6; i++) set.add(addMonths(mesRefBase, i))
   return [...set].sort()
 }
 
