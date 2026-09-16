@@ -159,9 +159,14 @@ export function parseEntrada(
   const mencionaCartao = palavras.some((p) => PALAVRAS_CARTAO.has(p)) || numParcelas > 1
   // tokens genéricos que não servem pra identificar QUAL cartão (senão "credito" casa "Linha Crédito MP")
   const TOKENS_GENERICOS = new Set(["cartao", "credito", "linha", "mp", "de", "do", "da"])
+  const fraseColada = palavras.join("") // "picpay" casa "PIC PAY" mesmo digitado junto
   for (const c of cartoes.filter((x) => x.ativo !== false)) {
-    const tokens = normalizar(c.nome).split(/\s+/).filter((tk) => tk.length >= 3 && !TOKENS_GENERICOS.has(tk))
-    if (tokens.some((tk) => setPalavras.has(tk))) {
+    const nomeNorm = normalizar(c.nome)
+    const tokens = nomeNorm.split(/\s+/).filter((tk) => tk.length >= 3 && !TOKENS_GENERICOS.has(tk))
+    // casa se: algum token do nome está na frase, OU o nome colado (sem espaço) aparece na frase colada
+    const nomeColado = nomeNorm.replace(/\s+/g, "")
+    const casaColado = nomeColado.length >= 5 && !TOKENS_GENERICOS.has(nomeColado) && fraseColada.includes(nomeColado)
+    if (tokens.some((tk) => setPalavras.has(tk)) || casaColado) {
       cartao = c
       break
     }
@@ -186,6 +191,7 @@ export function parseEntrada(
 
   // tokens que pertencem ao nome do cartão escolhido (pra não virarem descrição nem categoria)
   const tokensCartao = new Set(cartao ? normalizar(cartao.nome).split(/\s+/) : [])
+  if (cartao) tokensCartao.add(normalizar(cartao.nome).replace(/\s+/g, "")) // nome colado (picpay)
 
   // 5b) descrição = palavras que não são número/valor/cartão/origem/categoria/sinônimo
   const stop = new Set<string>([
