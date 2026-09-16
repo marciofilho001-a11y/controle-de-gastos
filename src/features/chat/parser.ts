@@ -45,6 +45,13 @@ const PALAVRAS_DEBITO = new Set(["debito", "débito", "dinheiro", "pix", "avista
 
 const CATEGORIAS_VALIDAS = new Set([...DESPESA_CATS, ...RECEITA_CATS].map((c) => c.v))
 
+// nomes de mês → índice (0-11), com abreviações
+const MESES_NOME: Record<string, number> = {
+  janeiro: 0, jan: 0, fevereiro: 1, fev: 1, marco: 2, mar: 2, abril: 3, abr: 3,
+  maio: 4, mai: 4, junho: 5, jun: 5, julho: 6, jul: 6, agosto: 7, ago: 7,
+  setembro: 8, set: 8, outubro: 9, out: 9, novembro: 10, nov: 10, dezembro: 11, dez: 11,
+}
+
 export type Origem = "debito" | "cartao"
 
 export type ParseResult = {
@@ -58,6 +65,8 @@ export type ParseResult = {
   categoriaOrigem: "histórico" | "dicionário" | "explícita" | "padrão"
   cartao: Cartao | null
   cartaoMencionadoNaoEncontrado: string | null
+  mesRef: string | null      // 'YYYY-MM' quando o usuário citou um mês; null = usa o mês navegado
+  mesMencionado: string | null // nome do mês citado, pra mostrar no preview
   confianca: "alta" | "média" | "baixa"
   fraseOriginal: string
 }
@@ -123,7 +132,8 @@ export function parseEntrada(
   frase: string,
   cartoes: Cartao[],
   transacoes: Transacao[],
-  faturaItens: FaturaItem[]
+  faturaItens: FaturaItem[],
+  mesRefBase?: string
 ): ParseResult | null {
   const original = frase.trim()
   if (!original) return null
@@ -179,7 +189,7 @@ export function parseEntrada(
 
   // 5b) descrição = palavras que não são número/valor/cartão/origem/categoria/sinônimo
   const stop = new Set<string>([
-    ...PALAVRAS_CARTAO, ...PALAVRAS_DEBITO, ...PALAVRAS_RECEITA,
+    ...PALAVRAS_CARTAO, ...PALAVRAS_DEBITO, ...PALAVRAS_RECEITA, ...Object.keys(MESES_NOME),
     "de", "reais", "real", "no", "na", "do", "da", "com", "em", "gastei", "paguei", "mp", "linha", "recebi", "ganhei",
   ])
   const ehNumero = (p: string) => /\d/.test(p) // remove "10", "25,90", "3x", "70"
@@ -229,7 +239,23 @@ export function parseEntrada(
     descricao = label || fraseOriginalCapitalizada(original)
   }
 
-  // 6) confiança
+  // 6) mês da fatura mencionado? ("outubro", "out", "nov"...)
+  let mesRef: string | null = null
+  let mesMencionado: string | null = null
+  const base = mesRefBase || new Date().toISOString().slice(0, 7)
+  const [anoBase, mesBaseIdx] = base.split("-").map(Number)
+  for (const p of palavras) {
+    if (p in MESES_NOME && !CATEGORIAS_VALIDAS.has(p)) {
+      const mIdx = MESES_NOME[p]
+      // se o mês pedido já passou em relação ao mês base, assume o próximo ano
+      const ano = mIdx < mesBaseIdx - 1 ? anoBase + 1 : anoBase
+      mesRef = `${ano}-${String(mIdx + 1).padStart(2, "0")}`
+      mesMencionado = p
+      break
+    }
+  }
+
+  // 7) confiança
   let confianca: ParseResult["confianca"] = "alta"
   if (cartaoMencionadoNaoEncontrado) confianca = "baixa"
   else if (categoriaOrigem === "padrão") confianca = "média"
@@ -245,6 +271,8 @@ export function parseEntrada(
     categoriaOrigem,
     cartao,
     cartaoMencionadoNaoEncontrado,
+    mesRef,
+    mesMencionado,
     confianca,
     fraseOriginal: original,
   }

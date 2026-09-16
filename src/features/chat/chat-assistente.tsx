@@ -39,7 +39,7 @@ export function ChatAssistente({ mesRef }: { mesRef: string }) {
     const t = texto.trim()
     if (!t) return
     setTexto("")
-    const r = parseEntrada(t, cartoes, transacoes, faturaItens)
+    const r = parseEntrada(t, cartoes, transacoes, faturaItens, mesRef)
     if (!r) {
       setMsgs((m) => [
         ...m,
@@ -229,7 +229,7 @@ function PreviewCard({
                 {parse.origem === "cartao" ? <CreditCard className="size-3" /> : <Wallet className="size-3" />}
                 {origemLabel}
               </span>
-              {parse.origem === "cartao" && <><span>·</span><span>fatura {fmtMesRef(mesRef)}</span></>}
+              {parse.origem === "cartao" && <><span>·</span><span>fatura {fmtMesRef(parse.mesRef || mesRef)}</span></>}
             </div>
           </div>
           <button onClick={() => setEditando(true)} className="text-muted-foreground hover:text-foreground" title="Ajustar">

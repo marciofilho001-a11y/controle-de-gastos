@@ -5,16 +5,17 @@ import type { ParseResult } from "./parser"
 // Grava a entrada interpretada no Supabase, conforme origem/parcelas.
 // Retorna uma mensagem de sucesso pra mostrar no chat.
 export async function salvarEntrada(r: ParseResult, mesRefBase: string): Promise<string> {
+  const mes = r.mesRef || mesRefBase
   // ── RECEITA ou DESPESA à débito/dinheiro → 1 transação ──
   if (r.origem === "debito") {
-    const hoje = new Date().toISOString().slice(0, 10)
+    const data = r.mesRef ? r.mesRef + "-01" : new Date().toISOString().slice(0, 10)
     const { error } = await supabase.from("fin_transacoes").insert({
       tipo: r.tipo,
       descricao: r.descricao,
       valor: r.valorTotal,
       categoria: r.categoria,
-      data: hoje,
-      mes_ref: hoje.slice(0, 7),
+      data,
+      mes_ref: data.slice(0, 7),
     })
     if (error) throw error
     return `${r.tipo === "receita" ? "Receita" : "Despesa"} "${r.descricao}" de R$ ${r.valorTotal.toFixed(2)} registrada.`
@@ -27,7 +28,7 @@ export async function salvarEntrada(r: ParseResult, mesRefBase: string): Promise
   if (r.numParcelas <= 1) {
     const { error } = await supabase.from("fin_fatura_itens").insert({
       cartao_id: r.cartao.id,
-      mes_ref: mesRefBase,
+      mes_ref: mes,
       descricao: r.descricao,
       valor: r.valorParcela,
       categoria: r.categoria,
@@ -45,7 +46,7 @@ export async function salvarEntrada(r: ParseResult, mesRefBase: string): Promise
       categoria: r.categoria,
       valor_parcela: r.valorParcela,
       parcela_total: r.numParcelas,
-      data_inicio: mesRefBase + "-01",
+      data_inicio: mes + "-01",
     })
     .select()
   if (compraErr) throw compraErr
@@ -57,8 +58,8 @@ export async function salvarEntrada(r: ParseResult, mesRefBase: string): Promise
     descricao: `${r.descricao} (${i + 1}/${r.numParcelas})`,
     valor: r.valorParcela,
     categoria: r.categoria,
-    data: addMonths(mesRefBase, i) + "-01",
-    mes_ref: addMonths(mesRefBase, i),
+    data: addMonths(mes, i) + "-01",
+    mes_ref: addMonths(mes, i),
     cartao_id: cartaoId,
     compra_id: compraId,
     parcela_atual: i + 1,
