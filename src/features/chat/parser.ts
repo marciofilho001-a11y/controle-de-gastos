@@ -190,12 +190,25 @@ export function parseEntrada(
   // 5b) descrição = palavras que não são número/valor/cartão/origem/categoria/sinônimo
   const stop = new Set<string>([
     ...PALAVRAS_CARTAO, ...PALAVRAS_DEBITO, ...PALAVRAS_RECEITA, ...Object.keys(MESES_NOME),
-    "de", "reais", "real", "no", "na", "do", "da", "com", "em", "gastei", "paguei", "mp", "linha", "recebi", "ganhei",
+    "de", "reais", "real", "no", "na", "do", "da", "com", "em", "gastei", "paguei", "mp", "linha",
+    "recebi", "ganhei", "categoria", "fatura", "a", "o", "as", "os", "pra", "para", "pic", "pay",
   ])
   const ehNumero = (p: string) => /\d/.test(p) // remove "10", "25,90", "3x", "70"
+
+  // remove marcadores + a palavra que eles introduzem: "categoria comida" e "fatura outubro"
+  // (o valor deles já foi capturado em catExplicita / mesRef; aqui é só pra não sujar a descrição)
+  const semMarcadores: string[] = []
+  for (let i = 0; i < palavras.length; i++) {
+    if (palavras[i] === "categoria" || palavras[i] === "fatura") {
+      i++ // pula também a palavra seguinte
+      continue
+    }
+    semMarcadores.push(palavras[i])
+  }
+
   // sinônimos/palavras-chave descrevem bem o gasto (uber, padaria, cinema) — mantém na descrição;
   // só tira número, cartão, origem e stopwords. A categoria explícita (nome de categoria) sai.
-  let descricaoTokens = palavras.filter(
+  let descricaoTokens = semMarcadores.filter(
     (p) => !ehNumero(p) && !stop.has(p) && !CATEGORIAS_VALIDAS.has(p) && !tokensCartao.has(p)
   )
   // se sobrou mais de uma palavra, remove as puramente-sinônimo (ex: "comida" quando já virou categoria),
