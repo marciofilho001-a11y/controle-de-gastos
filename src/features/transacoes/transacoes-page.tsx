@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Search, Download, Trash2, Calculator, Loader2 } from "lucide-react"
+import { Search, Download, Trash2, Calculator, Loader2, List, LayoutGrid } from "lucide-react"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { NovaTransacaoDialog } from "./nova-transacao-dialog"
+import { TransacoesBlocos } from "./transacoes-blocos"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Transacao } from "@/lib/supabase"
 import { catInfo, catColor, DESPESA_CATS, RECEITA_CATS } from "@/lib/categorias"
@@ -25,6 +26,7 @@ import { cn } from "@/lib/utils"
 export function TransacoesPage({ mesRef }: { mesRef: string }) {
   const { transacoes, cartoes, loadAll } = useFinData()
   const [busca, setBusca] = useState("")
+  const [modo, setModo] = useState<"lista" | "blocos">("lista")
   const [filtTipo, setFiltTipo] = useState("todos")
   const [filtOrigem, setFiltOrigem] = useState("todas")
   const [filtCat, setFiltCat] = useState("todas")
@@ -146,6 +148,25 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
         {algumFiltro && (
           <Button variant="ghost" onClick={limparFiltros}>Limpar filtros</Button>
         )}
+        {/* toggle Lista / Blocos */}
+        <div className="flex items-center gap-0.5 rounded-lg border bg-secondary/50 p-0.5">
+          <button
+            onClick={() => setModo("lista")}
+            className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+              modo === "lista" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            aria-pressed={modo === "lista"}
+          >
+            <List className="size-3.5" /> Lista
+          </button>
+          <button
+            onClick={() => setModo("blocos")}
+            className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+              modo === "blocos" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            aria-pressed={modo === "blocos"}
+          >
+            <LayoutGrid className="size-3.5" /> Blocos
+          </button>
+        </div>
         <Button variant="outline" onClick={exportarCSV}>
           <Download data-icon="inline-start" /> Exportar CSV
         </Button>
@@ -165,7 +186,10 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
         </div>
       )}
 
-      {/* tabela */}
+      {/* tabela ou blocos por método */}
+      {modo === "blocos" ? (
+        <TransacoesBlocos list={list} cartoes={cartoes} onDelete={(id) => setDelId(id)} />
+      ) : (
       <div className="overflow-hidden rounded-xl border bg-card">
         <Table>
           <TableHeader>
@@ -229,6 +253,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
           </TableBody>
         </Table>
       </div>
+      )}
 
       <AlertDialog open={delId != null} onOpenChange={(o) => !o && setDelId(null)}>
         <AlertDialogContent>
