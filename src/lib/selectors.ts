@@ -51,24 +51,41 @@ export function ehFaturaCheia(t: Transacao): boolean {
   return d === "FATURA" || /^FATURA\s*\(\d+\/\d+\)$/.test(d) || /^FATURA\s+INICIO/.test(d)
 }
 
-export type FaturaTipo = "prevista" | "atual" | "vazia"
-export type FaturaInfo = { valor: number; tipo: FaturaTipo }
+export type FaturaTipo = "prevista" | "atual" | "parcial" | "vazia"
+export type FaturaInfo = {
+  valor: number        // total da fatura (o que você paga)
+  detalhado: number    // soma dos itens realmente lançados
+  indefinido: number   // parte da fatura ainda não detalhada (cheia - detalhado)
+  tipo: FaturaTipo
+}
 
-// Opção A: a fatura NUNCA soma "cheia" + itens ao mesmo tempo.
-// - tem itens detalhados  -> ATUAL  (soma só os itens)
-// - só tem a fatura cheia -> PREVISTA (o valor cheio)
-// - nada                  -> VAZIA
+// Modelo do usuário (evita duplicação):
+// - fatura cheia (ex: R$200) define o TOTAL da fatura
+// - itens detalhados (ex: R$50) são o que já foi contabilizado
+// - o resto (R$150) vira "fatura indefinida" = cheia - detalhado
+// Nunca soma cheia + itens: o total é sempre a cheia (quando existe), repartida.
+// Casos:
+//   só cheia          -> PREVISTA  (total = cheia, indefinido = cheia, detalhado = 0)
+//   cheia + itens      -> PARCIAL   (total = cheia, detalhado = itens, indefinido = cheia - itens)
+//   só itens           -> ATUAL     (total = itens, tudo detalhado)
+//   nada               -> VAZIA
 export function faturaInfoDoMes(transacoes: Transacao[], cartaoId: number, mesRef: string): FaturaInfo {
   const doCartao = transacoes.filter((t) => t.cartao_id === cartaoId && t.mes_ref === mesRef && t.tipo === "despesa")
   const itens = doCartao.filter((t) => !ehFaturaCheia(t))
-  if (itens.length > 0) {
-    return { valor: itens.reduce((s, t) => s + Number(t.valor), 0), tipo: "atual" }
-  }
   const cheias = doCartao.filter((t) => ehFaturaCheia(t))
-  if (cheias.length > 0) {
-    return { valor: cheias.reduce((s, t) => s + Number(t.valor), 0), tipo: "prevista" }
+  const detalhado = itens.reduce((s, t) => s + Number(t.valor), 0)
+  const cheia = cheias.reduce((s, t) => s + Number(t.valor), 0)
+
+  if (cheia > 0) {
+    // a fatura cheia manda no total; itens são o detalhado, resto é indefinido
+    const indefinido = Math.max(0, cheia - detalhado)
+    // se o detalhado passou da cheia, o total vira o detalhado (o cheio ficou defasado)
+    const valor = detalhado > cheia ? detalhado : cheia
+    const tipo: FaturaTipo = detalhado > 0 ? "parcial" : "prevista"
+    return { valor, detalhado, indefinido: detalhado > cheia ? 0 : indefinido, tipo }
   }
-  return { valor: 0, tipo: "vazia" }
+  if (detalhado > 0) return { valor: detalhado, detalhado, indefinido: 0, tipo: "atual" }
+  return { valor: 0, detalhado: 0, indefinido: 0, tipo: "vazia" }
 }
 
 export function faturaDoMes(transacoes: Transacao[], cartaoId: number, mesRef: string): number {

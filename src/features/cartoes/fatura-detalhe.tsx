@@ -14,7 +14,7 @@ import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Cartao, type FaturaItem } from "@/lib/supabase"
 import { DESPESA_CATS, catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesRef, mesRefAtual, fmtData } from "@/lib/format"
-import { faturaDoMes, mesesDoCartao, sugestoesParcelasParaMes } from "@/lib/selectors"
+import { faturaDoMes, faturaInfoDoMes, mesesDoCartao, sugestoesParcelasParaMes } from "@/lib/selectors"
 import { cn } from "@/lib/utils"
 
 export function FaturaDetalhe({
@@ -47,14 +47,16 @@ export function FaturaDetalhe({
   }, [mesSel, meses, mesRefBase])
 
   const dados = useMemo(() => {
-    const valorFatura = faturaDoMes(transacoes, cartao.id, mesAtivo)
+    const fatInfo = faturaInfoDoMes(transacoes, cartao.id, mesAtivo)
+    const valorFatura = fatInfo.valor
     const hoje = mesRefAtual()
     const ehFuturo = mesAtivo > hoje
     const todosItens = faturaItens.filter((fi) => fi.cartao_id === cartao.id && fi.mes_ref === mesAtivo)
     const somaItens = todosItens.reduce((s, i) => s + Number(i.valor), 0)
     const planejando = valorFatura <= 0 && ehFuturo
     const valor = planejando ? somaItens : valorFatura
-    const restante = planejando ? 0 : valorFatura - somaItens
+    // "fatura indefinida" = parte da fatura ainda não detalhada em itens
+    const restante = planejando ? 0 : fatInfo.indefinido
 
     let itens = catFiltro ? todosItens.filter((i) => i.categoria === catFiltro) : todosItens
     const b = busca.trim().toLowerCase()
@@ -301,7 +303,7 @@ export function FaturaDetalhe({
                 )}
                 {!dados.planejando && !catFiltro && dados.restante > 0.005 && (
                   <div className="flex items-center justify-between rounded-lg border-l-[3px] border-muted-foreground/40 bg-card px-3 py-2.5 text-sm">
-                    <span className="text-muted-foreground">Não detalhado</span>
+                    <span className="text-muted-foreground">Fatura indefinida</span>
                     <span className="tnum text-muted-foreground">{fmtR(dados.restante)}</span>
                   </div>
                 )}

@@ -129,8 +129,23 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                     {fatInfo.tipo === "atual" && (
                       <span className="rounded-full bg-success/15 px-2 py-px text-[0.6rem] font-semibold uppercase tracking-wide text-success">atual</span>
                     )}
+                    {fatInfo.tipo === "parcial" && (
+                      <span className="rounded-full bg-primary/15 px-2 py-px text-[0.6rem] font-semibold uppercase tracking-wide text-primary">parcial</span>
+                    )}
                   </div>
                   <p className="tnum text-xl font-semibold text-destructive">{fmtR(fatura)}</p>
+                  {fatInfo.tipo === "parcial" && (
+                    <div className="mt-1 flex flex-col gap-0.5 text-[0.7rem]">
+                      <span className="flex justify-between text-muted-foreground">
+                        <span className="text-success">✓ detalhado</span>
+                        <span className="tnum">{fmtR(fatInfo.detalhado)}</span>
+                      </span>
+                      <span className="flex justify-between text-muted-foreground">
+                        <span>◌ fatura indefinida</span>
+                        <span className="tnum">{fmtR(fatInfo.indefinido)}</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {usoLimite !== null && (
                   <div>
