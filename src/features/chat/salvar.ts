@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { addMonths } from "@/lib/format"
+import { addMonths, fmtMesRef } from "@/lib/format"
 import type { ParseResult } from "./parser"
 
 // Grava a entrada interpretada no Supabase, conforme origem/parcelas.
@@ -24,17 +24,31 @@ export async function salvarEntrada(r: ParseResult, mesRefBase: string): Promise
   // ── DESPESA no CARTÃO ──
   if (!r.cartao) throw new Error("Cartão não identificado")
 
-  // à vista no cartão → item na fatura do mês base
+  // à vista no cartão → cria a transação (que SOMA na fatura a pagar) + o item detalhado
   if (r.numParcelas <= 1) {
-    const { error } = await supabase.from("fin_fatura_itens").insert({
-      cartao_id: r.cartao.id,
+    const cartaoId = r.cartao.id
+    // 1) transação: é ela que entra no valor a pagar da fatura (faturaDoMes soma de fin_transacoes)
+    const { data: txData, error: txErr } = await supabase.from("fin_transacoes").insert({
+      tipo: "despesa",
+      descricao: r.descricao,
+      valor: r.valorParcela,
+      categoria: r.categoria,
+      data: mes + "-01",
+      mes_ref: mes,
+      cartao_id: cartaoId,
+    }).select()
+    if (txErr) throw txErr
+    // 2) item detalhado da fatura (o que aparece na tela de detalhe do cartão)
+    const { error: itErr } = await supabase.from("fin_fatura_itens").insert({
+      cartao_id: cartaoId,
       mes_ref: mes,
       descricao: r.descricao,
       valor: r.valorParcela,
       categoria: r.categoria,
     })
-    if (error) throw error
-    return `"${r.descricao}" (R$ ${r.valorParcela.toFixed(2)}) lançada na fatura do ${r.cartao.nome}.`
+    if (itErr) throw itErr
+    void txData
+    return `"${r.descricao}" (R$ ${r.valorParcela.toFixed(2)}) lançada na fatura do ${r.cartao.nome} — ${fmtMesRef(mes)}.`
   }
 
   // parcelado → registra a compra + gera 1 transação por parcela (igual ao "Nova Compra")
