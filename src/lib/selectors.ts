@@ -44,10 +44,35 @@ export function obrigacaoPagaNoMes(
 }
 
 // Fatura de um cartão num mês = soma das despesas daquele cartão nesse mês_ref
+// Detecta se uma transação de cartão é uma "fatura cheia" lançada manualmente
+// (valor total do mês, descrição "FATURA" ou "FATURA (x/y)") vs. um item/compra detalhada.
+export function ehFaturaCheia(t: Transacao): boolean {
+  const d = (t.descricao || "").trim().toUpperCase()
+  return d === "FATURA" || /^FATURA\s*\(\d+\/\d+\)$/.test(d) || /^FATURA\s+INICIO/.test(d)
+}
+
+export type FaturaTipo = "prevista" | "atual" | "vazia"
+export type FaturaInfo = { valor: number; tipo: FaturaTipo }
+
+// Opção A: a fatura NUNCA soma "cheia" + itens ao mesmo tempo.
+// - tem itens detalhados  -> ATUAL  (soma só os itens)
+// - só tem a fatura cheia -> PREVISTA (o valor cheio)
+// - nada                  -> VAZIA
+export function faturaInfoDoMes(transacoes: Transacao[], cartaoId: number, mesRef: string): FaturaInfo {
+  const doCartao = transacoes.filter((t) => t.cartao_id === cartaoId && t.mes_ref === mesRef && t.tipo === "despesa")
+  const itens = doCartao.filter((t) => !ehFaturaCheia(t))
+  if (itens.length > 0) {
+    return { valor: itens.reduce((s, t) => s + Number(t.valor), 0), tipo: "atual" }
+  }
+  const cheias = doCartao.filter((t) => ehFaturaCheia(t))
+  if (cheias.length > 0) {
+    return { valor: cheias.reduce((s, t) => s + Number(t.valor), 0), tipo: "prevista" }
+  }
+  return { valor: 0, tipo: "vazia" }
+}
+
 export function faturaDoMes(transacoes: Transacao[], cartaoId: number, mesRef: string): number {
-  return transacoes
-    .filter((t) => t.cartao_id === cartaoId && t.mes_ref === mesRef && t.tipo === "despesa")
-    .reduce((s, t) => s + Number(t.valor), 0)
+  return faturaInfoDoMes(transacoes, cartaoId, mesRef).valor
 }
 
 export function totalCartoesNoMes(cartoes: Cartao[], transacoes: Transacao[], mesRef: string): number {

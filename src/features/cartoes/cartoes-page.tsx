@@ -19,7 +19,7 @@ import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Cartao, type CartaoCompra } from "@/lib/supabase"
 import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesCurto } from "@/lib/format"
-import { faturaDoMes } from "@/lib/selectors"
+import { faturaInfoDoMes } from "@/lib/selectors"
 import { motion } from "motion/react"
 import { cn } from "@/lib/utils"
 
@@ -99,7 +99,8 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
       ) : (
         <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
           {cartoes.map((c, i) => {
-            const fatura = faturaDoMes(transacoes, c.id, mesRef)
+            const fatInfo = faturaInfoDoMes(transacoes, c.id, mesRef)
+            const fatura = fatInfo.valor
             const usoLimite = c.limite ? Math.min(100, (fatura / Number(c.limite)) * 100) : null
             return (
               <motion.div
@@ -120,7 +121,15 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                   </div>
                 </div>
                 <div>
-                  <p className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">Fatura deste mês</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">Fatura deste mês</p>
+                    {fatInfo.tipo === "prevista" && (
+                      <span className="rounded-full bg-warning/15 px-2 py-px text-[0.6rem] font-semibold uppercase tracking-wide text-warning">prevista</span>
+                    )}
+                    {fatInfo.tipo === "atual" && (
+                      <span className="rounded-full bg-success/15 px-2 py-px text-[0.6rem] font-semibold uppercase tracking-wide text-success">atual</span>
+                    )}
+                  </div>
                   <p className="tnum text-xl font-semibold text-destructive">{fmtR(fatura)}</p>
                 </div>
                 {usoLimite !== null && (
