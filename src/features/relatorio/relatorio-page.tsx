@@ -3,8 +3,9 @@ import { DollarSign, Calculator, CreditCard, Wallet, CircleGauge, Shapes, Bankno
 import { StatCard } from "@/components/stat-card"
 import { ChartPrevistoReal, type LinhaCat } from "./chart-previsto-real"
 import { CatCard, type CatLinha } from "./cat-card"
+import { FormaPagamentoBreakdown } from "./forma-pagamento"
 import { useFinData } from "@/hooks/use-fin-data"
-import { catColor } from "@/lib/categorias"
+import { catColor, catInfo } from "@/lib/categorias"
 import { fmtMesLongo, fmtR } from "@/lib/format"
 import {
   obrigacoesAtivasNoMes, receitasDoMes, despesasDoMes,
@@ -119,48 +120,10 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
         </div>
       </section>
 
-      {/* Por forma de pagamento */}
+      {/* Por forma de pagamento — drill-down interativo */}
       <section>
         <SectionTitle icon={Banknote}>Por Forma de Pagamento</SectionTitle>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          <div className="rounded-xl border bg-card p-4">
-            <div className="mb-2 flex items-center gap-2.5">
-              <span className="grid size-9 place-items-center rounded-[0.65rem] bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
-                <Banknote className="size-[1.05rem]" />
-              </span>
-              <span className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">
-                Débito / Dinheiro
-              </span>
-            </div>
-            <span className="tnum block text-xl font-semibold">{fmtR(calc.gastoDeb)}</span>
-          </div>
-          {calc.linhasCartao.map((l) => {
-            const pctPeso = Math.round((l.fatura / calc.maxFatura) * 100)
-            return (
-              <div key={l.c.id} className="rounded-xl border bg-card p-4">
-                <div className="mb-2 flex items-center gap-2.5">
-                  <span className="grid size-9 place-items-center overflow-hidden rounded-[0.65rem] bg-muted text-muted-foreground ring-1 ring-border">
-                    {l.c.logo ? (
-                      <img src={l.c.logo} alt="" className="size-full object-contain p-1" />
-                    ) : (
-                      <CreditCard className="size-[1.05rem]" />
-                    )}
-                  </span>
-                  <span className="truncate text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">
-                    {l.c.nome}
-                  </span>
-                </div>
-                <span className="tnum block text-xl font-semibold">{fmtR(l.fatura)}</span>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-series-previsto to-series-real"
-                    style={{ width: `${pctPeso}%` }}
-                  />
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        <FormaPagamentoBreakdown transacoes={transacoes} cartoes={cartoes} mesRef={mesRef} />
       </section>
     </div>
   )
@@ -185,11 +148,5 @@ function Legend({ color, label }: { color: string; label: string }) {
 }
 
 function labelCat(catKey: string): string {
-  const map: Record<string, string> = {
-    moradia: "Moradia", cartao: "Cartão", consorcio: "Consórcio", financiamento: "Financiamento",
-    assinatura: "Assinatura", alimentacao: "Alimentação", transporte: "Transporte", saude: "Saúde",
-    lazer: "Lazer", educacao: "Educação", outro: "Outro", salario: "Salário",
-    freelance: "Freelance", investimento: "Rendimento",
-  }
-  return map[catKey] || catKey
+  return catInfo(catKey).l
 }

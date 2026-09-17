@@ -337,7 +337,7 @@ export function despesasExibicaoDoMes(transacoes: Transacao[], mesRef: string): 
     const itens = doCartao.filter((t) => !ehFaturaCheia(t))
     const cheias = doCartao.filter((t) => ehFaturaCheia(t))
     if (itens.length > 0) {
-      // mostra os itens; esconde a fatura cheia; injeta indefinido se sobrar
+      // mostra os itens; esconde a fatura cheia; injeta o "a detalhar" se sobrar
       out.push(...itens)
       const info = faturaInfoDoMes(transacoes, cid, mesRef)
       if (info.indefinido > 0.005 && cheias.length > 0) {
@@ -345,16 +345,44 @@ export function despesasExibicaoDoMes(transacoes: Transacao[], mesRef: string): 
         out.push({
           ...base,
           id: -cid * 100000, // id negativo = linha virtual, não deletável
-          descricao: "Fatura indefinida",
+          descricao: "Faturas a detalhar",
           valor: info.indefinido,
-          categoria: "cartao",
+          categoria: "fatura_indefinida",
           _virtual: true,
         })
       }
     } else {
-      // sem itens: mostra a fatura cheia normal
-      out.push(...cheias)
+      // sem itens: a fatura cheia inteira vira "a detalhar" (não é categoria real)
+      for (const ch of cheias) {
+        out.push({ ...ch, categoria: "fatura_indefinida" })
+      }
     }
   }
   return out
+}
+
+// Breakdown de gastos por categoria dentro de UM método de pagamento (débito ou 1 cartão).
+// Usa a lista sem duplicação: pra cartão, os itens detalhados + a "fatura indefinida" virtual.
+export type CatBreak = { catKey: string; label: string; valor: number }
+
+export function breakdownPorCategoria(
+  linhas: LinhaExibicao[]
+): CatBreak[] {
+  const m = new Map<string, number>()
+  for (const t of linhas) {
+    const k = t.categoria || "outro"
+    m.set(k, (m.get(k) || 0) + Number(t.valor))
+  }
+  return [...m.entries()]
+    .map(([catKey, valor]) => ({ catKey, valor, label: catKey }))
+    .sort((a, b) => b.valor - a.valor)
+}
+
+// Retorna, pra um método, as linhas de exibição (sem duplicação) daquele método.
+export function linhasDoMetodo(
+  transacoes: Transacao[], mesRef: string, metodo: "debito" | { cartaoId: number }
+): LinhaExibicao[] {
+  const todas = despesasExibicaoDoMes(transacoes, mesRef)
+  if (metodo === "debito") return todas.filter((t) => !t.cartao_id)
+  return todas.filter((t) => t.cartao_id === metodo.cartaoId)
 }

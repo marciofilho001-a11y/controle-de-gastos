@@ -34,7 +34,7 @@
   --cat-moradia: #3d8ef0; --cat-cartao: #ec4899; --cat-consorcio: #6366f1;
   --cat-financiamento: #fb923c; --cat-assinatura: #60a5fa; --cat-alimentacao: #eab308;
   --cat-transporte: #38bdf8; --cat-saude: #ef4444; --cat-lazer: #22c55e;
-  --cat-educacao: #94a3b8; --cat-compras: #a855f7; --cat-outro: #6b7280; --cat-salario: #14b8a6;
+  --cat-educacao: #94a3b8; --cat-compras: #a855f7; --cat-fatura_indefinida: #8b93a7; --cat-outro: #6b7280; --cat-salario: #14b8a6;
   --cat-freelance: #3d8ef0; --cat-investimento: #a78bfa;
   --sidebar: oklch(0.99 0.003 240);
   --sidebar-foreground: oklch(0.21 0.02 250);
