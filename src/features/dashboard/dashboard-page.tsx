@@ -1,16 +1,17 @@
 import { useMemo, useState } from "react"
 import {
-  Wallet, ArrowDownLeft, ArrowUpRight, Clock, Scale, Check, Inbox, PieChart,
+  ArrowUp, ArrowDown, TrendingUp, Clock, Scale, Check, Inbox, PieChart, ChevronRight,
 } from "lucide-react"
 import { motion } from "motion/react"
 import { toast } from "sonner"
 import { StatCard } from "@/components/stat-card"
 import { CategoryDonut, type DonutSlice } from "./category-donut"
+import { LancamentosFiltravel } from "./lancamentos-filtravel"
 import { TrendPill } from "./trend-pill"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase } from "@/lib/supabase"
 import { catInfo, catColor } from "@/lib/categorias"
-import { fmtR, fmtData, addMonths } from "@/lib/format"
+import { fmtR, addMonths } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import {
   receitasDoMes, despesasDoMes, txDoMes, itensObrigacoesDoMes, despesasExibicaoDoMes,
@@ -19,6 +20,7 @@ import {
 export function DashboardPage({ mesRef }: { mesRef: string }) {
   const { obrigacoes, cartoes, transacoes, descricaoIcones, loadAll } = useFinData()
   const [busyObr, setBusyObr] = useState<number | null>(null)
+  const [verTodasCats, setVerTodasCats] = useState(false)
 
   const d = useMemo(() => {
     const receitas = receitasDoMes(transacoes, mesRef)
@@ -56,7 +58,20 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
     }
     const dias = [...grupos.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1))
 
-    return { receitas, despesas, saldo, receitasAnt, despesasAnt, saldoAnt, itens, pendentes, totalObr, pctComprometido, slices, despesas_total: despesas, dias }
+    // sparkline do saldo: saldo acumulado dos últimos 6 meses (até o mês atual)
+    const sparkSaldo: { mes: string; saldo: number }[] = []
+    for (let i = 5; i >= 0; i--) {
+      const m = addMonths(mesRef, -i)
+      sparkSaldo.push({ mes: m, saldo: receitasDoMes(transacoes, m) - despesasDoMes(transacoes, m) })
+    }
+
+    // lista de lançamentos do mês (pra seção filtrável) — receitas + despesas sem duplicação
+    const lancamentos = hist.slice().sort((a, b) => (a.data < b.data ? 1 : -1))
+
+    // total de lançamentos do mês
+    const totalLanc = lancamentos.length
+
+    return { receitas, despesas, saldo, receitasAnt, despesasAnt, saldoAnt, itens, pendentes, totalObr, pctComprometido, slices, despesas_total: despesas, dias, sparkSaldo, lancamentos, totalLanc }
   }, [obrigacoes, cartoes, transacoes, mesRef])
 
   async function toggleObrigacao(item: (typeof d.itens)[number]) {
@@ -98,17 +113,18 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
       {/* KPIs */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Saldo do Mês" value={d.saldo} icon={Wallet} tone={d.saldo >= 0 ? "teal" : "danger"} index={0}
+          label="Saldo do Mês" value={d.saldo} icon={TrendingUp} tone={d.saldo >= 0 ? "teal" : "danger"} index={0}
           valueClassName={d.saldo >= 0 ? "text-success" : "text-destructive"}
           trend={<TrendPill atual={d.saldo} anterior={d.saldoAnt} mesRef={mesRef} />}
+          spark={d.sparkSaldo.map((s) => s.saldo)}
         />
         <StatCard
-          label="Receitas" value={d.receitas} icon={ArrowDownLeft} tone="teal" index={1}
+          label="Receitas" value={d.receitas} icon={ArrowUp} tone="teal" index={1}
           valueClassName="text-success"
           trend={<TrendPill atual={d.receitas} anterior={d.receitasAnt} mesRef={mesRef} />}
         />
         <StatCard
-          label="Despesas" value={d.despesas} icon={ArrowUpRight} tone="danger" index={2}
+          label="Despesas" value={d.despesas} icon={ArrowDown} tone="danger" index={2}
           valueClassName="text-destructive"
           trend={<TrendPill atual={d.despesas} anterior={d.despesasAnt} mesRef={mesRef} invertido />}
         />
@@ -121,26 +137,43 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
       {/* Donut + Obrigações do mês */}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border bg-card p-5">
-          <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             <PieChart className="size-3.5" /> Gastos por Categoria
           </div>
-          <CategoryDonut slices={d.slices} centerLabel="Total de gastos" centerValue={d.despesas} />
-          <div className="mt-3 flex flex-col gap-1.5">
-            {d.slices.slice(0, 4).map((s) => {
-              const info = catInfo(s.catKey)
-              const Icon = info.icon
-              const pct = d.despesas > 0 ? Math.round((s.value / d.despesas) * 100) : 0
-              return (
-                <div key={s.catKey} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
-                  <span className="grid size-7 place-items-center rounded-lg" style={{ background: `${catColor(s.catKey)}1f`, color: catColor(s.catKey) }}>
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="flex-1 text-sm font-medium">{s.label}</span>
-                  <span className="tnum text-sm">{fmtR(s.value)}</span>
-                  <span className="tnum w-9 text-right text-xs text-muted-foreground">{pct}%</span>
-                </div>
-              )
-            })}
+          <div className="grid gap-4 sm:grid-cols-[minmax(150px,200px)_1fr] sm:items-center">
+            <CategoryDonut slices={d.slices} centerLabel="Despesas" centerValue={d.despesas} />
+            <div className="flex flex-col gap-1">
+              {(verTodasCats ? d.slices : d.slices.slice(0, 6)).map((s, i) => {
+                const info = catInfo(s.catKey)
+                const Icon = info.icon
+                const pct = d.despesas > 0 ? Math.round((s.value / d.despesas) * 100) : 0
+                return (
+                  <motion.div
+                    key={s.catKey}
+                    initial={{ opacity: 0, x: 6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.24, delay: i * 0.025, ease: [0.23, 1, 0.32, 1] }}
+                    className="flex items-center gap-2.5 rounded-lg px-1.5 py-1"
+                  >
+                    <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: `${catColor(s.catKey)}1f`, color: catColor(s.catKey) }}>
+                      <Icon className="size-3.5" />
+                    </span>
+                    <span className="flex-1 truncate text-sm">{s.label}</span>
+                    <span className="tnum text-sm font-medium">{fmtR(s.value)}</span>
+                    <span className="tnum w-9 text-right text-xs text-muted-foreground">{pct}%</span>
+                  </motion.div>
+                )
+              })}
+              {d.slices.length > 6 && (
+                <button
+                  onClick={() => setVerTodasCats((v) => !v)}
+                  className="mt-1 flex items-center justify-center gap-1 rounded-lg border py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  {verTodasCats ? "Ver menos" : `Ver todas as categorias (${d.slices.length})`}
+                  <ChevronRight className={cn("size-3.5 transition-transform", verTodasCats && "rotate-90")} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -212,56 +245,8 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
         </div>
       </div>
 
-      {/* Histórico do mês */}
-      <div className="rounded-xl border bg-card p-5">
-        <h3 className="mb-4 font-display text-lg font-semibold">Histórico do Mês</h3>
-        {d.dias.length === 0 ? (
-          <Empty>Nenhum lançamento neste mês</Empty>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {d.dias.map(([data, txs]) => (
-              <div key={data}>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {fmtData(data)}
-                </p>
-                <div className="flex flex-col gap-1">
-                  {txs.map((t) => {
-                    const info = catInfo(t.categoria)
-                    const Icon = info.icon
-                    const receita = t.tipo === "receita"
-                    // cartão da transação (pra mostrar o logo real em vez do ícone genérico)
-                    const cartaoTx = t.cartao_id ? cartoes.find((c) => c.id === t.cartao_id) : null
-                    // ícone custom salvo pra esse nome de lançamento (fin_descricao_icones)
-                    const iconeCustom = descricaoIcones[(t.descricao || "").trim().toLowerCase()]
-                    const imagem = iconeCustom || cartaoTx?.logo || null
-                    return (
-                      <div key={t.id} className="flex items-center gap-3 rounded-lg px-2 py-2">
-                        <span
-                          className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg"
-                          style={imagem ? { background: "var(--muted)" } : { background: `${catColor(t.categoria)}1f`, color: catColor(t.categoria) }}
-                        >
-                          {imagem ? <img src={imagem} alt="" className="size-full object-contain p-0.5" /> : <Icon className="size-4" />}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {t.descricao || info.l}
-                            {cartaoTx && <span className="ml-1.5 text-[0.7rem] text-muted-foreground">· {cartaoTx.nome}</span>}
-                          </p>
-                          <p className="text-xs" style={{ color: catColor(t.categoria) }}>{info.l}</p>
-                        </div>
-                        <span className={cn("tnum text-sm font-semibold", receita ? "text-success" : "text-destructive")}>
-                          {receita ? "+ " : "− "}
-                          {fmtR(Number(t.valor))}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Lançamentos filtráveis (carrossel / grade) */}
+      <LancamentosFiltravel lancamentos={d.lancamentos} cartoes={cartoes} descricaoIcones={descricaoIcones} />
     </div>
   )
 }
