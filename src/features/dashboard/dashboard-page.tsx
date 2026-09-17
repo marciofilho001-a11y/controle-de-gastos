@@ -17,7 +17,7 @@ import {
 } from "@/lib/selectors"
 
 export function DashboardPage({ mesRef }: { mesRef: string }) {
-  const { obrigacoes, cartoes, transacoes, loadAll } = useFinData()
+  const { obrigacoes, cartoes, transacoes, descricaoIcones, loadAll } = useFinData()
   const [busyObr, setBusyObr] = useState<number | null>(null)
 
   const d = useMemo(() => {
@@ -227,16 +227,24 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
                     const info = catInfo(t.categoria)
                     const Icon = info.icon
                     const receita = t.tipo === "receita"
+                    // cartão da transação (pra mostrar o logo real em vez do ícone genérico)
+                    const cartaoTx = t.cartao_id ? cartoes.find((c) => c.id === t.cartao_id) : null
+                    // ícone custom salvo pra esse nome de lançamento (fin_descricao_icones)
+                    const iconeCustom = descricaoIcones[(t.descricao || "").trim().toLowerCase()]
+                    const imagem = iconeCustom || cartaoTx?.logo || null
                     return (
                       <div key={t.id} className="flex items-center gap-3 rounded-lg px-2 py-2">
                         <span
-                          className="grid size-8 shrink-0 place-items-center rounded-lg"
-                          style={{ background: `${catColor(t.categoria)}1f`, color: catColor(t.categoria) }}
+                          className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg"
+                          style={imagem ? { background: "var(--muted)" } : { background: `${catColor(t.categoria)}1f`, color: catColor(t.categoria) }}
                         >
-                          <Icon className="size-4" />
+                          {imagem ? <img src={imagem} alt="" className="size-full object-contain p-0.5" /> : <Icon className="size-4" />}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{t.descricao || info.l}</p>
+                          <p className="truncate text-sm font-medium">
+                            {t.descricao || info.l}
+                            {cartaoTx && <span className="ml-1.5 text-[0.7rem] text-muted-foreground">· {cartaoTx.nome}</span>}
+                          </p>
                           <p className="text-xs" style={{ color: catColor(t.categoria) }}>{info.l}</p>
                         </div>
                         <span className={cn("tnum text-sm font-semibold", receita ? "text-success" : "text-destructive")}>
