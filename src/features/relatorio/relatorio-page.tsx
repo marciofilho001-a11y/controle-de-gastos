@@ -7,9 +7,9 @@ import { useFinData } from "@/hooks/use-fin-data"
 import { catColor } from "@/lib/categorias"
 import { fmtMesLongo, fmtR } from "@/lib/format"
 import {
-  obrigacoesAtivasNoMes, receitasDoMes, despesasDoMes, txDoMes,
+  obrigacoesAtivasNoMes, receitasDoMes, despesasDoMes,
   gastoVariavelTotalNoMes, totalCartoesNoMes, gastoDebitoNoMes, faturaDoMes,
-  getTeto, mediaCategoriaMeses, statusPrevisto,
+  getTeto, mediaCategoriaMeses, statusPrevisto, despesasExibicaoDoMes,
 } from "@/lib/selectors"
 
 export function RelatorioPage({ mesRef }: { mesRef: string }) {
@@ -27,7 +27,8 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
     const saldoPrevisto = rendaPrevista - despesaPrevista
     const saldoReal = rendaReal - despesaReal
 
-    const despesasMes = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "despesa")
+    // lista de despesas SEM duplicação de cartão (mesma base do Dashboard)
+    const despesasMes = despesasExibicaoDoMes(transacoes, mesRef)
     const catsUsadas = [
       ...new Set([...ativas.map((o) => o.categoria), ...despesasMes.map((t) => t.categoria)]),
     ].filter(Boolean) as string[]
@@ -39,7 +40,7 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
         const media = mediaCategoriaMeses(transacoes, catKey, mesRef, 3)
         const previsto = meta || media || obrFixo
         const origemPrevisto = meta ? "meta" : media ? "média" : obrFixo ? "obrigação" : null
-        const real = despesasMes.filter((t) => t.categoria === catKey).reduce((s, t) => s + Number(t.valor), 0)
+        const real = despesasMes.filter((t) => (t.categoria || "outro") === catKey).reduce((s, t) => s + Number(t.valor), 0)
         const st = statusPrevisto(real, previsto)
         return { catKey, label: labelCat(catKey), previsto, origemPrevisto, real, diff: real - previsto, st, cor: catColor(catKey) }
       })
@@ -54,7 +55,7 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
 
     return {
       rendaReal, diffRenda, rendaPrevista, custosFixos, gastosVariaveis, despesaReal,
-      saldoReal, saldoPrevisto, linhasCat, gastoDeb, linhasCartao, maxFatura,
+      saldoReal, saldoPrevisto, linhasCat, gastoDeb, linhasCartao, maxFatura, despesasMes,
     }
   }, [obrigacoes, transacoes, cartoes, tetos, config, mesRef])
 
@@ -113,7 +114,7 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
         </div>
         <div className="mt-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {catCards.map((l, i) => (
-            <CatCard key={l.catKey} linha={l} index={i} />
+            <CatCard key={l.catKey} linha={l} index={i} transacoes={calc.despesasMes} cartoes={cartoes} />
           ))}
         </div>
       </section>
