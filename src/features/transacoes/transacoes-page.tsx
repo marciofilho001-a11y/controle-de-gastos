@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Search, Download, Trash2, Calculator, Loader2, List, LayoutGrid } from "lucide-react"
+import { Search, Download, Trash2, Calculator, Loader2, List, LayoutGrid, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,7 @@ import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Transacao } from "@/lib/supabase"
 import { catInfo, catColor, DESPESA_CATS, RECEITA_CATS } from "@/lib/categorias"
 import { fmtR, fmtData } from "@/lib/format"
-import { txDoMes } from "@/lib/selectors"
+import { txDoMes, despesasExibicaoDoMes, type LinhaExibicao } from "@/lib/selectors"
 import { cn } from "@/lib/utils"
 
 export function TransacoesPage({ mesRef }: { mesRef: string }) {
@@ -38,15 +38,19 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
   )
 
   const list = useMemo(() => {
-    let l = txDoMes(transacoes, mesRef)
+    // base sem duplicação de cartão: itens reais + linha virtual "Faturas a detalhar",
+    // e as receitas do mês. Mesma base do Dashboard/Relatório — totais batem.
+    const receitas = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "receita")
+    const despesas = despesasExibicaoDoMes(transacoes, mesRef)
+    let l: LinhaExibicao[] = [...receitas, ...despesas]
     if (filtTipo !== "todos") l = l.filter((t) => t.tipo === filtTipo)
     if (filtOrigem === "debito") l = l.filter((t) => !t.cartao_id && !t.obrigacao_id)
     else if (filtOrigem === "cartao") l = l.filter((t) => !!t.cartao_id)
     else if (filtOrigem === "obrigacao") l = l.filter((t) => !!t.obrigacao_id)
-    if (filtCat !== "todas") l = l.filter((t) => t.categoria === filtCat)
+    if (filtCat !== "todas") l = l.filter((t) => (t.categoria || "outro") === filtCat)
     const b = busca.trim().toLowerCase()
     if (b) l = l.filter((t) => (t.descricao || "").toLowerCase().includes(b))
-    return l
+    return l.sort((a, b2) => (a.data < b2.data ? 1 : -1))
   }, [transacoes, mesRef, filtTipo, filtOrigem, filtCat, busca])
 
   const algumFiltro = filtTipo !== "todos" || filtOrigem !== "todas" || filtCat !== "todas" || !!busca.trim()
@@ -242,9 +246,15 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                       {receita ? "+ " : "− "}{fmtR(Number(t.valor))}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => setDelId(t.id)}>
-                        <Trash2 className="size-4" />
-                      </Button>
+                      {t.id > 0 ? (
+                        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => setDelId(t.id)}>
+                          <Trash2 className="size-4" />
+                        </Button>
+                      ) : (
+                        <span className="grid size-8 place-items-center" title="Valor calculado — detalhe na aba Cartões">
+                          <Lock className="size-3.5 text-muted-foreground/50" />
+                        </span>
+                      )}
                     </TableCell>
                   </TableRow>
                 )

@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { Banknote, CreditCard, Link as LinkIcon, ChevronDown, Trash2 } from "lucide-react"
-import type { Transacao, Cartao } from "@/lib/supabase"
+import { Banknote, CreditCard, Link as LinkIcon, ChevronDown, Trash2, TrendingUp } from "lucide-react"
+import type { Cartao } from "@/lib/supabase"
+import type { LinhaExibicao } from "@/lib/selectors"
 import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtData } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -11,7 +12,7 @@ type Grupo = {
   nome: string
   icon: typeof Banknote
   cor: string
-  itens: Transacao[]
+  itens: LinhaExibicao[]
 }
 
 // spring crítico (apple-design): sem overshoot, response ~0.35
@@ -22,15 +23,16 @@ export function TransacoesBlocos({
   cartoes,
   onDelete,
 }: {
-  list: Transacao[]
+  list: LinhaExibicao[]
   cartoes: Cartao[]
   onDelete: (id: number) => void
 }) {
   const grupos: Grupo[] = [
-    { chave: "debito", nome: "Débito e dinheiro", icon: Banknote, cor: "#22d3a5", itens: list.filter((t) => !t.cartao_id && !t.obrigacao_id) },
-    { chave: "cartao", nome: "Cartões", icon: CreditCard, cor: "#f472b6", itens: list.filter((t) => !!t.cartao_id) },
-    { chave: "obrigacao", nome: "Obrigações", icon: LinkIcon, cor: "#a78bfa", itens: list.filter((t) => !!t.obrigacao_id) },
-  ]
+    { chave: "receita", nome: "Receitas", icon: TrendingUp, cor: "#22d3a5", itens: list.filter((t) => t.tipo === "receita") },
+    { chave: "debito", nome: "Débito e dinheiro", icon: Banknote, cor: "#38bdf8", itens: list.filter((t) => t.tipo === "despesa" && !t.cartao_id && !t.obrigacao_id) },
+    { chave: "cartao", nome: "Cartões", icon: CreditCard, cor: "#f472b6", itens: list.filter((t) => t.tipo === "despesa" && !!t.cartao_id) },
+    { chave: "obrigacao", nome: "Obrigações", icon: LinkIcon, cor: "#a78bfa", itens: list.filter((t) => t.tipo === "despesa" && !!t.obrigacao_id) },
+  ].filter((g) => g.itens.length > 0)
   // por padrão abre o primeiro grupo que tem itens
   const primeiroComItens = grupos.find((g) => g.itens.length)?.chave
   const [abertos, setAbertos] = useState<Set<string>>(new Set(primeiroComItens ? [primeiroComItens] : []))
@@ -48,7 +50,7 @@ export function TransacoesBlocos({
   }
 
   return (
-    <div className="grid gap-3 lg:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {grupos.map((g) => {
         const total = g.itens.reduce((s, t) => s + Number(t.valor), 0)
         const aberto = abertos.has(g.chave)
@@ -113,13 +115,15 @@ export function TransacoesBlocos({
                             <span className={cn("tnum shrink-0 text-sm font-semibold", receita ? "text-success" : "text-destructive")}>
                               {receita ? "+ " : "− "}{fmtR(Number(t.valor))}
                             </span>
-                            <button
-                              onClick={() => onDelete(t.id)}
-                              className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                              aria-label="Excluir"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </button>
+                            {t.id > 0 && (
+                              <button
+                                onClick={() => onDelete(t.id)}
+                                className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                                aria-label="Excluir"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            )}
                           </div>
                         )
                       })
