@@ -13,7 +13,7 @@ import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtData, addMonths } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import {
-  receitasDoMes, despesasDoMes, txDoMes, itensObrigacoesDoMes,
+  receitasDoMes, despesasDoMes, txDoMes, itensObrigacoesDoMes, despesasExibicaoDoMes,
 } from "@/lib/selectors"
 
 export function DashboardPage({ mesRef }: { mesRef: string }) {
@@ -33,8 +33,8 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
     const totalObr = itens.reduce((s, i) => s + i.valor, 0)
     const pctComprometido = receitas > 0 ? Math.min(100, (totalObr / receitas) * 100) : 0
 
-    // donut de gastos por categoria (despesas do mês)
-    const despMes = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "despesa")
+    // donut de gastos por categoria (despesas do mês, SEM duplicação de cartão)
+    const despMes = despesasExibicaoDoMes(transacoes, mesRef)
     const porCat = new Map<string, number>()
     for (const t of despMes) {
       const k = t.categoria || "outro"
@@ -44,7 +44,9 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
       .map(([catKey, value]) => ({ catKey, label: catInfo(catKey).l, value }))
       .sort((a, b) => b.value - a.value)
 
-    const hist = txDoMes(transacoes, mesRef)
+    // histórico: receitas (cru) + despesas sem duplicação
+    const receitasMes = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "receita")
+    const hist = [...receitasMes, ...despMes]
     // agrupa por dia
     const grupos = new Map<string, typeof hist>()
     for (const t of hist) {

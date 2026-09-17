@@ -30,9 +30,13 @@ export function receitasDoMes(transacoes: Transacao[], mesRef: string): number {
 }
 
 export function despesasDoMes(transacoes: Transacao[], mesRef: string): number {
-  return txDoMes(transacoes, mesRef)
-    .filter((t) => t.tipo === "despesa")
-    .reduce((s, t) => s + Number(t.valor), 0)
+  const doMes = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "despesa")
+  // despesas que NÃO são de cartão somam direto (débito, obrigações)
+  const foraCartao = doMes.filter((t) => !t.cartao_id).reduce((s, t) => s + Number(t.valor), 0)
+  // despesas de cartão: somadas via faturaInfoDoMes (que reparte cheia/itens, sem duplicar)
+  const cartaoIds = [...new Set(doMes.filter((t) => t.cartao_id).map((t) => t.cartao_id as number))]
+  const deCartao = cartaoIds.reduce((s, cid) => s + faturaInfoDoMes(transacoes, cid, mesRef).valor, 0)
+  return foraCartao + deCartao
 }
 
 export function obrigacaoPagaNoMes(
@@ -315,4 +319,42 @@ export function sugestoesParcelasParaMes(
     })
   })
   return sugestoes
+}
+
+// Lista de despesas do mês SEM duplicação de cartão, pronta pra exibir (histórico, donut).
+// Regra: pra cada cartão, se tem itens detalhados, esconde a "fatura cheia" e, se a cheia
+// for maior que os itens, injeta uma linha virtual "Fatura indefinida" com o restante.
+export type LinhaExibicao = Transacao & { _virtual?: boolean }
+
+export function despesasExibicaoDoMes(transacoes: Transacao[], mesRef: string): LinhaExibicao[] {
+  const doMes = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "despesa")
+  const foraCartao = doMes.filter((t) => !t.cartao_id)
+  const cartaoIds = [...new Set(doMes.filter((t) => t.cartao_id).map((t) => t.cartao_id as number))]
+  const out: LinhaExibicao[] = [...foraCartao]
+
+  for (const cid of cartaoIds) {
+    const doCartao = doMes.filter((t) => t.cartao_id === cid)
+    const itens = doCartao.filter((t) => !ehFaturaCheia(t))
+    const cheias = doCartao.filter((t) => ehFaturaCheia(t))
+    if (itens.length > 0) {
+      // mostra os itens; esconde a fatura cheia; injeta indefinido se sobrar
+      out.push(...itens)
+      const info = faturaInfoDoMes(transacoes, cid, mesRef)
+      if (info.indefinido > 0.005 && cheias.length > 0) {
+        const base = cheias[0]
+        out.push({
+          ...base,
+          id: -cid * 100000, // id negativo = linha virtual, não deletável
+          descricao: "Fatura indefinida",
+          valor: info.indefinido,
+          categoria: "cartao",
+          _virtual: true,
+        })
+      }
+    } else {
+      // sem itens: mostra a fatura cheia normal
+      out.push(...cheias)
+    }
+  }
+  return out
 }

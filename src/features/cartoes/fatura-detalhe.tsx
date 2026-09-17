@@ -11,10 +11,10 @@ import {
 import { CategoryDonut, type DonutSlice } from "@/features/dashboard/category-donut"
 import { ItemIcon } from "./item-icon"
 import { useFinData } from "@/hooks/use-fin-data"
-import { supabase, type Cartao, type FaturaItem } from "@/lib/supabase"
+import { supabase, type Cartao, type Transacao } from "@/lib/supabase"
 import { DESPESA_CATS, catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesRef, mesRefAtual, fmtData } from "@/lib/format"
-import { faturaDoMes, faturaInfoDoMes, mesesDoCartao, sugestoesParcelasParaMes } from "@/lib/selectors"
+import { faturaDoMes, faturaInfoDoMes, ehFaturaCheia, mesesDoCartao, sugestoesParcelasParaMes } from "@/lib/selectors"
 import { cn } from "@/lib/utils"
 
 export function FaturaDetalhe({
@@ -51,7 +51,10 @@ export function FaturaDetalhe({
     const valorFatura = fatInfo.valor
     const hoje = mesRefAtual()
     const ehFuturo = mesAtivo > hoje
-    const todosItens = faturaItens.filter((fi) => fi.cartao_id === cartao.id && fi.mes_ref === mesAtivo)
+    // FONTE ÚNICA: os itens do detalhe vêm das transações do cartão (menos a "fatura cheia")
+    const todosItens = transacoes.filter(
+      (t) => t.cartao_id === cartao.id && t.mes_ref === mesAtivo && t.tipo === "despesa" && !ehFaturaCheia(t)
+    )
     const somaItens = todosItens.reduce((s, i) => s + Number(i.valor), 0)
     const planejando = valorFatura <= 0 && ehFuturo
     const valor = planejando ? somaItens : valorFatura
@@ -71,7 +74,7 @@ export function FaturaDetalhe({
       .map(([catKey, value]) => ({ catKey, label: catInfo(catKey).l, value }))
       .sort((a, b) => b.value - a.value)
 
-    const sugestoes = sugestoesParcelasParaMes(faturaItens, cartao.id, mesAtivo, todosItens)
+    const sugestoes = sugestoesParcelasParaMes(faturaItens, cartao.id, mesAtivo, todosItens as any)
     return { valorFatura, ehFuturo, todosItens, somaItens, planejando, valor, restante, itens, slices, sugestoes }
   }, [cartao, transacoes, faturaItens, mesAtivo, catFiltro, busca])
 
@@ -83,8 +86,9 @@ export function FaturaDetalhe({
     }
     setBusy(true)
     try {
-      const { error } = await supabase.from("fin_fatura_itens").insert({
-        cartao_id: cartao.id, mes_ref: mesAtivo, descricao: novoDesc.trim(), valor: v, categoria: novoCat,
+      const { error } = await supabase.from("fin_transacoes").insert({
+        tipo: "despesa", cartao_id: cartao.id, mes_ref: mesAtivo,
+        data: mesAtivo + "-01", descricao: novoDesc.trim(), valor: v, categoria: novoCat,
       })
       if (error) throw error
       toast.success("Item adicionado!")
@@ -100,7 +104,7 @@ export function FaturaDetalhe({
   async function delItem(id: number) {
     setBusy(true)
     try {
-      const { error } = await supabase.from("fin_fatura_itens").delete().eq("id", id)
+      const { error } = await supabase.from("fin_transacoes").delete().eq("id", id)
       if (error) throw error
       toast.success("Item removido")
       await loadAll()
@@ -113,7 +117,7 @@ export function FaturaDetalhe({
 
   async function mudarCategoria(id: number, categoria: string) {
     try {
-      const { error } = await supabase.from("fin_fatura_itens").update({ categoria }).eq("id", id)
+      const { error } = await supabase.from("fin_transacoes").update({ categoria }).eq("id", id)
       if (error) throw error
       await loadAll()
     } catch (e) {
@@ -124,8 +128,9 @@ export function FaturaDetalhe({
   async function addSugestao(s: { descricao: string; valor: number; categoria: string; proxParcela: number; parcela_total: number }) {
     setBusy(true)
     try {
-      const { error } = await supabase.from("fin_fatura_itens").insert({
-        cartao_id: cartao.id, mes_ref: mesAtivo, descricao: s.descricao, valor: s.valor,
+      const { error } = await supabase.from("fin_transacoes").insert({
+        tipo: "despesa", cartao_id: cartao.id, mes_ref: mesAtivo, data: mesAtivo + "-01",
+        descricao: s.descricao, valor: s.valor,
         categoria: s.categoria, parcela_atual: s.proxParcela, parcela_total: s.parcela_total,
       })
       if (error) throw error
@@ -143,10 +148,11 @@ export function FaturaDetalhe({
     setBusy(true)
     try {
       const linhas = dados.sugestoes.map((s) => ({
-        cartao_id: cartao.id, mes_ref: mesAtivo, descricao: s.descricao, valor: s.valor,
+        tipo: "despesa", cartao_id: cartao.id, mes_ref: mesAtivo, data: mesAtivo + "-01",
+        descricao: s.descricao, valor: s.valor,
         categoria: s.categoria, parcela_atual: s.proxParcela, parcela_total: s.parcela_total,
       }))
-      const { error } = await supabase.from("fin_fatura_itens").insert(linhas)
+      const { error } = await supabase.from("fin_transacoes").insert(linhas)
       if (error) throw error
       toast.success(`${linhas.length} parcela(s) adicionada(s)!`)
       await loadAll()
@@ -336,19 +342,20 @@ export function FaturaDetalhe({
 function ItemRow({
   item, onDelete, onCategoria, busy,
 }: {
-  item: FaturaItem
+  item: Transacao
   onDelete: () => void
   onCategoria: (c: string) => void
   busy: boolean
 }) {
   const cor = catColor(item.categoria)
+  const dataCompra = item.data // transação usa 'data'
   return (
     <div className="flex items-center gap-2.5 rounded-lg border-l-2 bg-card px-3 py-2.5" style={{ borderLeftColor: cor }}>
-      <ItemIcon descricao={item.descricao} categoria={item.categoria} size={40} />
+      <ItemIcon descricao={item.descricao || ""} categoria={item.categoria || "outro"} size={40} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{item.descricao}</span>
-          <Select value={item.categoria} onValueChange={onCategoria}>
+          <Select value={item.categoria || "outro"} onValueChange={onCategoria}>
             <SelectTrigger className="h-6 w-auto gap-1 border-none bg-transparent px-1.5 text-xs text-muted-foreground shadow-none"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectGroup>
@@ -357,9 +364,9 @@ function ItemRow({
             </SelectContent>
           </Select>
         </div>
-        {(item.data_compra || (item.parcela_total && item.parcela_total > 1)) && (
+        {(dataCompra || (item.parcela_total && item.parcela_total > 1)) && (
           <div className="flex items-center gap-2 text-[0.7rem] text-muted-foreground">
-            {item.data_compra && <span>{fmtData(item.data_compra)}</span>}
+            {dataCompra && <span>{fmtData(dataCompra)}</span>}
             {item.parcela_total && item.parcela_total > 1 && (
               <span className="flex items-center gap-0.5"><Layers className="size-2.5" /> {item.parcela_atual || 1}/{item.parcela_total}</span>
             )}
