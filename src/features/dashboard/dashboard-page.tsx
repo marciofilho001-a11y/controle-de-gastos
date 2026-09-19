@@ -140,7 +140,7 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
           <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             <PieChart className="size-3.5" /> Gastos por Categoria
           </div>
-          <div className="grid gap-4 sm:grid-cols-[minmax(150px,200px)_1fr] sm:items-center">
+          <div className="grid gap-5 sm:grid-cols-[minmax(190px,230px)_1fr] sm:items-center">
             <CategoryDonut slices={d.slices} centerLabel="Despesas" centerValue={d.despesas} />
             <div className="flex flex-col gap-1">
               {(verTodasCats ? d.slices : d.slices.slice(0, 6)).map((s, i) => {

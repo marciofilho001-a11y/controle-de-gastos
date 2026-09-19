@@ -1,22 +1,9 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
+import { useState } from "react"
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 import { catColor, catInfo } from "@/lib/categorias"
 import { fmtR } from "@/lib/format"
 
 export type DonutSlice = { catKey: string; label: string; value: number }
-
-function DonutTooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null
-  const p = payload[0]
-  return (
-    <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
-      <p className="flex items-center gap-2">
-        <span className="size-2 rounded-full" style={{ background: p.payload.fill }} />
-        <span className="font-medium">{p.payload.label}</span>
-      </p>
-      <p className="tnum mt-0.5 text-muted-foreground">{fmtR(p.value)}</p>
-    </div>
-  )
-}
 
 export function CategoryDonut({
   slices,
@@ -27,13 +14,28 @@ export function CategoryDonut({
   centerLabel: string
   centerValue: number
 }) {
+  const [hover, setHover] = useState<number | null>(null)
+
   if (!slices.length) {
     return (
-      <div className="grid h-64 place-items-center text-sm text-muted-foreground">Sem dados</div>
+      <div className="mx-auto grid aspect-square w-full max-w-[220px] place-items-center rounded-full border border-dashed text-sm text-muted-foreground">
+        Sem dados
+      </div>
     )
   }
+
+  const ativo = hover != null ? slices[hover] : null
+  const label = ativo ? ativo.label : centerLabel
+  const valor = ativo ? ativo.value : centerValue
+  const sub = ativo
+    ? `${centerValue > 0 ? Math.round((ativo.value / centerValue) * 100) : 0}% do total`
+    : "Total"
+
   return (
-    <div className="relative h-64">
+    <div
+      className="relative mx-auto aspect-square w-full max-w-[220px]"
+      onMouseLeave={() => setHover(null)}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -42,23 +44,40 @@ export function CategoryDonut({
             nameKey="label"
             cx="50%"
             cy="50%"
-            innerRadius="62%"
-            outerRadius="88%"
-            paddingAngle={2}
+            innerRadius="66%"
+            outerRadius="94%"
+            paddingAngle={2.5}
+            cornerRadius={5}
             stroke="var(--card)"
             strokeWidth={2}
+            startAngle={90}
+            endAngle={-270}
+            onMouseEnter={(_: any, i: number) => setHover(i)}
+            isAnimationActive
+            animationDuration={650}
           >
-            {slices.map((s) => (
-              <Cell key={s.catKey} fill={catColor(s.catKey)} />
+            {slices.map((s, i) => (
+              <Cell
+                key={s.catKey}
+                fill={catColor(s.catKey)}
+                fillOpacity={hover == null || hover === i ? 1 : 0.28}
+                style={{ transition: "fill-opacity 0.2s ease", outline: "none" }}
+              />
             ))}
           </Pie>
-          <Tooltip content={<DonutTooltip />} />
         </PieChart>
       </ResponsiveContainer>
+
+      {/* texto central — troca no hover, nunca sobrepõe */}
       <div className="pointer-events-none absolute inset-0 grid place-items-center">
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground">{centerLabel}</p>
-          <p className="tnum mt-0.5 text-lg font-semibold">{fmtR(centerValue)}</p>
+        <div className="flex max-w-[62%] flex-col items-center text-center leading-none">
+          <span className="mb-1.5 truncate text-[0.68rem] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </span>
+          <span className="tnum text-[clamp(1.05rem,4.4vw,1.45rem)] font-semibold text-foreground">
+            {fmtR(valor)}
+          </span>
+          <span className="mt-1 text-[0.68rem] text-muted-foreground">{sub}</span>
         </div>
       </div>
     </div>
