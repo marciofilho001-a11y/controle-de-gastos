@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Plus, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -10,22 +10,38 @@ import { Label } from "@/components/ui/label"
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { supabase } from "@/lib/supabase"
+import { supabase, type CartaoCompra } from "@/lib/supabase"
 import { DESPESA_CATS } from "@/lib/categorias"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
 
-export function CompraDialog() {
+export function CompraDialog({ editar, trigger }: { editar?: CartaoCompra; trigger?: React.ReactNode }) {
   const { cartoes, loadAll } = useFinData()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const cartoesAtivos = cartoes.filter((c) => c.ativo !== false)
-  const [cartaoId, setCartaoId] = useState(cartoesAtivos[0]?.id ? String(cartoesAtivos[0].id) : "")
+  const [cartaoId, setCartaoId] = useState("")
   const [descricao, setDescricao] = useState("")
   const [categoria, setCategoria] = useState("outro")
   const [valorParcela, setValorParcela] = useState("")
   const [numParcelas, setNumParcelas] = useState("1")
   const [mesInicio, setMesInicio] = useState(mesRefAtual())
+
+  useEffect(() => {
+    if (!open) return
+    if (editar) {
+      setCartaoId(String(editar.cartao_id))
+      setDescricao(editar.descricao || "")
+      setCategoria(editar.categoria || "outro")
+      setValorParcela(String(editar.valor_parcela))
+      setNumParcelas(String(editar.parcela_total || 1))
+      setMesInicio(editar.data_inicio.slice(0, 7))
+    } else {
+      setCartaoId(cartoesAtivos[0]?.id ? String(cartoesAtivos[0].id) : "")
+      setDescricao(""); setCategoria("outro"); setValorParcela(""); setNumParcelas("1"); setMesInicio(mesRefAtual())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editar])
 
   async function salvar() {
     const cid = parseInt(cartaoId)
@@ -37,15 +53,31 @@ export function CompraDialog() {
     }
     setSaving(true)
     try {
-      const { data: compraData, error: compraErr } = await supabase
-        .from("fin_cartao_compras")
-        .insert({
-          cartao_id: cid, descricao: descricao.trim(), categoria,
-          valor_parcela: vp, parcela_total: np, data_inicio: mesInicio + "-01",
-        })
-        .select()
-      if (compraErr) throw compraErr
-      const compraId = compraData![0].id
+      let compraId: number
+      if (editar) {
+        const { error: upErr } = await supabase
+          .from("fin_cartao_compras")
+          .update({
+            cartao_id: cid, descricao: descricao.trim(), categoria,
+            valor_parcela: vp, parcela_total: np, data_inicio: mesInicio + "-01",
+          })
+          .eq("id", editar.id)
+        if (upErr) throw upErr
+        compraId = editar.id
+        // remove as parcelas antigas antes de regenerar
+        const { error: delErr } = await supabase.from("fin_transacoes").delete().eq("compra_id", compraId)
+        if (delErr) throw delErr
+      } else {
+        const { data: compraData, error: compraErr } = await supabase
+          .from("fin_cartao_compras")
+          .insert({
+            cartao_id: cid, descricao: descricao.trim(), categoria,
+            valor_parcela: vp, parcela_total: np, data_inicio: mesInicio + "-01",
+          })
+          .select()
+        if (compraErr) throw compraErr
+        compraId = compraData![0].id
+      }
 
       const linhas = Array.from({ length: np }, (_, i) => ({
         tipo: "despesa",
@@ -62,12 +94,11 @@ export function CompraDialog() {
       const { error: txErr } = await supabase.from("fin_transacoes").insert(linhas)
       if (txErr) throw txErr
 
-      toast.success(`Compra lançada — ${np} parcela(s) gerada(s)!`)
+      toast.success(editar ? "Compra atualizada!" : `Compra lançada — ${np} parcela(s) gerada(s)!`)
       setOpen(false)
-      setDescricao(""); setValorParcela(""); setNumParcelas("1")
       await loadAll()
     } catch (e) {
-      toast.error("Erro ao lançar compra", { description: e instanceof Error ? e.message : "" })
+      toast.error("Erro ao salvar compra", { description: e instanceof Error ? e.message : "" })
     } finally {
       setSaving(false)
     }
@@ -76,13 +107,15 @@ export function CompraDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={cartoesAtivos.length === 0}>
-          <Plus data-icon="inline-start" /> Nova Compra / Parcelamento
-        </Button>
+        {trigger ?? (
+          <Button disabled={cartoesAtivos.length === 0}>
+            <Plus data-icon="inline-start" /> Nova Compra / Parcelamento
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nova Compra / Parcelamento</DialogTitle>
+          <DialogTitle>{editar ? "Editar Compra / Parcelamento" : "Nova Compra / Parcelamento"}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-2">
           <div className="flex flex-col gap-1.5">
@@ -133,7 +166,12 @@ export function CompraDialog() {
           </div>
           {parseInt(numParcelas) > 1 && parseFloat(valorParcela) > 0 && (
             <p className="rounded-lg bg-secondary px-3 py-2 text-xs text-muted-foreground">
-              Serão geradas {numParcelas} parcelas de R$ {parseFloat(valorParcela).toFixed(2)} — total R$ {(parseFloat(valorParcela) * parseInt(numParcelas)).toFixed(2)}, uma por mês a partir do mês escolhido.
+              Serão {editar ? "regeneradas" : "geradas"} {numParcelas} parcelas de R$ {parseFloat(valorParcela).toFixed(2)} — total R$ {(parseFloat(valorParcela) * parseInt(numParcelas)).toFixed(2)}, uma por mês a partir do mês escolhido.
+            </p>
+          )}
+          {editar && (
+            <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+              Ao salvar, as parcelas antigas desta compra são substituídas pelas novas.
             </p>
           )}
         </div>
@@ -143,7 +181,7 @@ export function CompraDialog() {
           </DialogClose>
           <Button onClick={salvar} disabled={saving}>
             {saving && <Loader2 data-icon="inline-start" className="animate-spin" />}
-            Lançar
+            {editar ? "Salvar" : "Lançar"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { CartaoDialog } from "./cartao-dialog"
 import { CompraDialog } from "./compra-dialog"
+import { FaturaPrevistaDialog } from "./fatura-prevista-dialog"
 import { FaturaDetalhe } from "./fatura-detalhe"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Cartao, type CartaoCompra } from "@/lib/supabase"
@@ -132,6 +133,17 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                     {fatInfo.tipo === "parcial" && (
                       <span className="rounded-full bg-primary/15 px-2 py-px text-[0.6rem] font-semibold uppercase tracking-wide text-primary">parcial</span>
                     )}
+                    <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
+                      <FaturaPrevistaDialog
+                        cartao={c}
+                        mesRef={mesRef}
+                        trigger={
+                          <Button variant="ghost" size="icon" className="size-6 text-muted-foreground hover:text-primary" aria-label="Editar fatura prevista">
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        }
+                      />
+                    </span>
                   </div>
                   <p className="tnum text-xl font-semibold text-destructive">{fmtR(fatura)}</p>
                   {fatInfo.tipo === "parcial" && (
@@ -212,7 +224,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                 <TableHead className="text-right">Valor parcela</TableHead>
                 <TableHead className="text-right">Valor total</TableHead>
                 <TableHead>Início</TableHead>
-                <TableHead className="w-10" />
+                <TableHead className="w-20 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -241,9 +253,19 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                       <TableCell className="tnum text-right text-muted-foreground">{fmtR(total)}</TableCell>
                       <TableCell className="text-muted-foreground">{fmtMesCurto(cp.data_inicio.slice(0, 7))}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => setDelCompra(cp)}>
-                          <Trash2 className="size-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-0.5">
+                          <CompraDialog
+                            editar={cp}
+                            trigger={
+                              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-primary" aria-label="Editar compra">
+                                <Pencil className="size-4" />
+                              </Button>
+                            }
+                          />
+                          <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => setDelCompra(cp)} aria-label="Remover compra">
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
