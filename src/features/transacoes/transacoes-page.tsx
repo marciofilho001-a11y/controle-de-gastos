@@ -16,10 +16,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import { NovaTransacaoDialog } from "./nova-transacao-dialog"
 import { TransacoesBlocos } from "./transacoes-blocos"
+import { PageHeader } from "@/components/page-header"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Transacao } from "@/lib/supabase"
 import { catInfo, catColor, DESPESA_CATS, RECEITA_CATS } from "@/lib/categorias"
-import { fmtR, fmtData } from "@/lib/format"
+import { fmtR, fmtData, fmtMesCurto } from "@/lib/format"
 import { txDoMes, despesasExibicaoDoMes, type LinhaExibicao } from "@/lib/selectors"
 import { cn } from "@/lib/utils"
 
@@ -101,10 +102,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-2xl font-semibold">Transações</h2>
-        <NovaTransacaoDialog />
-      </div>
+      <PageHeader title="Transações" accent={fmtMesCurto(mesRef)} description="Todos os lançamentos do mês, por forma de pagamento." actions={<NovaTransacaoDialog />} />
 
       {/* barra de busca + filtros */}
       <div className="flex flex-wrap items-center gap-2">

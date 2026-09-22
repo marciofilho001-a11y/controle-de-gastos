@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
+  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
 } from "recharts"
 import { PartyPopper, Settings2, TrendingUp } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -8,28 +8,18 @@ import { Label } from "@/components/ui/label"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
+import { PageHeader, SectionTitle } from "@/components/page-header"
 import { useFinData } from "@/hooks/use-fin-data"
 import { fmtR, fmtMesCurto, proximosMeses } from "@/lib/format"
 import { calcularProjecaoMes } from "@/lib/selectors"
+import {
+  useChartColors, fmtAxis, axisProps, gridProps, ChartTooltip, ChartLegend, CHART_ANIM,
+} from "@/lib/chart-theme"
 import { cn } from "@/lib/utils"
-
-function ChartTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
-      <p className="mb-1 font-semibold">{label}</p>
-      {payload.map((p: any) => (
-        <p key={p.dataKey} className="flex items-center gap-2 text-muted-foreground">
-          <span className="size-2 rounded-full" style={{ background: p.color }} />
-          {p.name}: <span className="tnum font-medium text-foreground">{fmtR(p.value)}</span>
-        </p>
-      ))}
-    </div>
-  )
-}
 
 export function ProjecaoPage({ mesRef }: { mesRef: string }) {
   const { obrigacoes, cartoes, transacoes, config, saveConfig } = useFinData()
+  const c = useChartColors()
 
   const dados = useMemo(() => {
     const meses = proximosMeses(12, mesRef)
@@ -41,60 +31,81 @@ export function ProjecaoPage({ mesRef }: { mesRef: string }) {
     Receita: Math.round(d.receita),
     Obrigações: Math.round(d.totalObr),
     Sobra: Math.round(d.sobra),
-    estimado: d.estimado,
   }))
 
   return (
     <div className="flex flex-col gap-6">
-      <h2 className="font-display text-2xl font-semibold">Projeção Financeira — Próximos 12 Meses</h2>
+      <PageHeader
+        title="Projeção Financeira"
+        accent="próximos 12 meses"
+        description="Receita, obrigações e sobra estimadas mês a mês a partir do mês navegado."
+      />
 
       {/* Parâmetros */}
-      <div className="rounded-xl border bg-card p-5">
-        <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          <Settings2 className="size-3.5" /> Parâmetros da Projeção
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="p-renda">Renda mensal projetada (R$)</Label>
-            <Input
-              id="p-renda" type="number" step="0.01" defaultValue={config.renda_projetada ?? ""}
-              className="tnum" placeholder="0,00"
-              onBlur={(e) => saveConfig("renda_projetada", e.target.value)}
-            />
-            <span className="text-xs text-muted-foreground">Usada para meses futuros sem renda lançada ainda</span>
+      <section>
+        <SectionTitle icon={Settings2}>Parâmetros da Projeção</SectionTitle>
+        <div className="rounded-xl border bg-card p-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="p-renda">Renda mensal projetada (R$)</Label>
+              <Input
+                id="p-renda" type="number" step="0.01" defaultValue={config.renda_projetada ?? ""}
+                className="tnum" placeholder="0,00"
+                onBlur={(e) => saveConfig("renda_projetada", e.target.value)}
+              />
+              <span className="text-xs text-muted-foreground">Usada para meses futuros sem renda lançada ainda</span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="p-pct">% da sobra sugerido p/ investir</Label>
+              <Input
+                id="p-pct" type="number" step="1" defaultValue={config.pct_investimento ?? "20"}
+                className="tnum" placeholder="20"
+                onBlur={(e) => saveConfig("pct_investimento", e.target.value)}
+              />
+              <span className="text-xs text-muted-foreground">Ex: 20 = investir 20% do que sobrar todo mês</span>
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="p-pct">% da sobra sugerido p/ investir</Label>
-            <Input
-              id="p-pct" type="number" step="1" defaultValue={config.pct_investimento ?? "20"}
-              className="tnum" placeholder="20"
-              onBlur={(e) => saveConfig("pct_investimento", e.target.value)}
-            />
-            <span className="text-xs text-muted-foreground">Ex: 20 = investir 20% do que sobrar todo mês</span>
-          </div>
         </div>
-      </div>
+      </section>
 
       {/* Gráfico */}
-      <div className="rounded-xl border bg-card p-5">
-        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          <TrendingUp className="size-3.5" /> Evolução Projetada
+      <section>
+        <SectionTitle
+          icon={TrendingUp}
+          right={<ChartLegend items={[
+            { color: c.receita, label: "Receita" },
+            { color: c.despesa, label: "Obrigações" },
+            { color: c.primary, label: "Sobra" },
+          ]} />}
+        >
+          Evolução Projetada
+        </SectionTitle>
+        <div className="rounded-xl border bg-card p-5">
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="projSobra" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={c.primary} stopOpacity={0.28} />
+                    <stop offset="100%" stopColor={c.primary} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} {...gridProps(c)} />
+                <XAxis dataKey="mes" {...axisProps(c)} />
+                <YAxis tickFormatter={fmtAxis} {...axisProps(c)} width={70} />
+                <Tooltip content={<ChartTooltip />} cursor={{ stroke: c.grid }} />
+                <Area
+                  type="monotone" dataKey="Sobra" stroke="none" fill="url(#projSobra)"
+                  animationDuration={CHART_ANIM} legendType="none" tooltipType="none"
+                />
+                <Line type="monotone" dataKey="Receita" stroke={c.receita} strokeWidth={2} strokeDasharray="5 4" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} animationDuration={CHART_ANIM} />
+                <Line type="monotone" dataKey="Obrigações" stroke={c.despesa} strokeWidth={2.25} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} animationDuration={CHART_ANIM} />
+                <Line type="monotone" dataKey="Sobra" stroke={c.primary} strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} animationDuration={CHART_ANIM} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-              <CartesianGrid stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={(v) => "R$" + v} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} width={64} />
-              <Tooltip content={<ChartTooltip />} />
-              <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-              <Line type="monotone" dataKey="Receita" stroke="var(--series-previsto)" strokeWidth={2.5} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="Obrigações" stroke="var(--series-real)" strokeWidth={2.5} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="Sobra" stroke="var(--primary)" strokeWidth={2.5} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      </section>
 
       {/* Tabela */}
       <div className="overflow-hidden rounded-xl border bg-card">

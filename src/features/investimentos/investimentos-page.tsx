@@ -20,14 +20,19 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { PageHeader, SectionTitle } from "@/components/page-header"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase } from "@/lib/supabase"
 import { fmtR, fmtData, fmtMesRef, fmtMesCurto, proximosMeses, addMonths } from "@/lib/format"
 import {
   patrimonioDoMes, saldoContaDoMes, investidoAcumuladoAte, calcularProjecaoMes,
 } from "@/lib/selectors"
+import {
+  useChartColors, fmtAxis, axisProps, gridProps, ChartTooltip, CHART_ANIM,
+} from "@/lib/chart-theme"
 
 export function InvestimentosPage({ mesRef }: { mesRef: string }) {
+  const cores = useChartColors()
   const { obrigacoes, cartoes, transacoes, config, investimentos, saldos, loadAll } = useFinData()
   const [saldoInput, setSaldoInput] = useState("")
   const [savingSaldo, setSavingSaldo] = useState(false)
@@ -91,18 +96,16 @@ export function InvestimentosPage({ mesRef }: { mesRef: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-2xl font-semibold">Investimentos</h2>
-        <NovoInvestimentoDialog />
-      </div>
+      <PageHeader
+        title="Investimentos"
+        description="Patrimônio, aportes e quanto separar este mês."
+        actions={<NovoInvestimentoDialog />}
+      />
 
       {/* saldo em conta */}
-      <div className="rounded-xl border bg-card p-5">
-        <div className="mb-1 flex items-center justify-between">
-          <span className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">
-            Saldo em conta — {fmtMesRef(mesRef)}
-          </span>
-        </div>
+      <section>
+        <SectionTitle icon={Landmark}>Saldo em conta — {fmtMesRef(mesRef)}</SectionTitle>
+        <div className="rounded-xl border bg-card p-5">
         <p className="mb-3 text-xs text-muted-foreground">
           Snapshot manual do saldo da(s) sua(s) conta(s). Meses sem lançamento repetem o último valor, pro gráfico de patrimônio não quebrar.
         </p>
@@ -124,7 +127,8 @@ export function InvestimentosPage({ mesRef }: { mesRef: string }) {
             <span className="pb-2 text-xs text-muted-foreground">Último informado: {fmtR(d.saldoUltimo)}</span>
           )}
         </div>
-      </div>
+        </div>
+      </section>
 
       {/* KPIs */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -138,36 +142,32 @@ export function InvestimentosPage({ mesRef }: { mesRef: string }) {
       </div>
 
       {/* gráfico patrimônio */}
-      <div className="rounded-xl border bg-card p-5">
-        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          <TrendingUp className="size-3.5" /> Patrimônio ao Longo do Tempo
+      <section>
+        <SectionTitle icon={TrendingUp}>Patrimônio ao Longo do Tempo</SectionTitle>
+        <div className="rounded-xl border bg-card p-5">
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={d.serie} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="patrGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={cores.primary} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={cores.primary} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} {...gridProps(cores)} />
+                <XAxis dataKey="mes" {...axisProps(cores)} />
+                <YAxis tickFormatter={fmtAxis} {...axisProps(cores)} width={76} />
+                <Tooltip content={<ChartTooltip />} cursor={{ stroke: cores.grid }} />
+                <Area
+                  type="monotone" dataKey="Patrimônio" stroke={cores.primary} strokeWidth={2.5}
+                  fill="url(#patrGrad)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }}
+                  animationDuration={CHART_ANIM}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={d.serie} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-              <defs>
-                <linearGradient id="patrGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.4} />
-                  <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={(v) => "R$" + v} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} width={64} />
-              <Tooltip content={({ active, payload, label }: any) => {
-                if (!active || !payload?.length) return null
-                return (
-                  <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
-                    <p className="mb-1 font-semibold">{label}</p>
-                    <p className="tnum text-muted-foreground">{fmtR(payload[0].value)}</p>
-                  </div>
-                )
-              }} />
-              <Area type="monotone" dataKey="Patrimônio" stroke="var(--primary)" strokeWidth={2.5} fill="url(#patrGrad)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      </section>
 
       {/* histórico de aportes */}
       <div className="overflow-hidden rounded-xl border bg-card">

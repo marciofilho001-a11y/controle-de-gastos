@@ -4,7 +4,6 @@ import {
   CreditCard,
   ArrowLeftRight,
   TrendingUp,
-  BarChart3,
   Landmark,
   Gauge,
   FileText,
@@ -14,7 +13,7 @@ import { cn } from "@/lib/utils"
 
 export type TabId =
   | "dashboard" | "obrigacoes" | "cartoes" | "transacoes"
-  | "projecao" | "graficos" | "investimentos" | "limites" | "relatorio"
+  | "projecao" | "investimentos" | "limites" | "relatorio"
 
 export const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -22,7 +21,6 @@ export const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "cartoes", label: "Cartões", icon: CreditCard },
   { id: "transacoes", label: "Transações", icon: ArrowLeftRight },
   { id: "projecao", label: "Projeção", icon: TrendingUp },
-  { id: "graficos", label: "Gráficos", icon: BarChart3 },
   { id: "investimentos", label: "Investimentos", icon: Landmark },
   { id: "limites", label: "Limites", icon: Gauge },
   { id: "relatorio", label: "Relatório", icon: FileText },

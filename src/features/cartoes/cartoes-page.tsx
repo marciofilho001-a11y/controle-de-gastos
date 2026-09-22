@@ -12,6 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { PageHeader } from "@/components/page-header"
 import { CartaoDialog } from "./cartao-dialog"
 import { CompraDialog } from "./compra-dialog"
 import { FaturaPrevistaDialog } from "./fatura-prevista-dialog"
@@ -86,13 +87,12 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-2xl font-semibold">Cartões de Crédito</h2>
-        <div className="flex gap-2">
-          <CartaoDialog />
-          <CompraDialog />
-        </div>
-      </div>
+      <PageHeader
+        title="Cartões de Crédito"
+        accent={fmtMesCurto(mesRef)}
+        description="Fatura de cada cartão no mês navegado, compras e parcelamentos."
+        actions={<><CartaoDialog /><CompraDialog /></>}
+      />
 
       {/* Grid de cartões */}
       {cartoes.length === 0 ? (

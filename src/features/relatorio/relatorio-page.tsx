@@ -1,12 +1,15 @@
 import { useMemo } from "react"
 import { DollarSign, Calculator, CreditCard, Wallet, CircleGauge, Shapes, Banknote } from "lucide-react"
 import { StatCard } from "@/components/stat-card"
+import { PageHeader, SectionTitle } from "@/components/page-header"
 import { ChartPrevistoReal, type LinhaCat } from "./chart-previsto-real"
+import { HistoricoChart } from "./historico-chart"
 import { CatCard, type CatLinha } from "./cat-card"
 import { FormaPagamentoBreakdown } from "./forma-pagamento"
 import { useFinData } from "@/hooks/use-fin-data"
 import { catColor, catInfo } from "@/lib/categorias"
 import { fmtMesLongo, fmtR } from "@/lib/format"
+import { useChartColors, ChartLegend } from "@/lib/chart-theme"
 import {
   obrigacoesAtivasNoMes, receitasDoMes, despesasDoMes,
   gastoVariavelTotalNoMes, totalCartoesNoMes, gastoDebitoNoMes, faturaDoMes,
@@ -15,6 +18,7 @@ import {
 
 export function RelatorioPage({ mesRef }: { mesRef: string }) {
   const { obrigacoes, transacoes, cartoes, tetos, config } = useFinData()
+  const cores = useChartColors()
 
   const calc = useMemo(() => {
     const rendaPrevista = parseFloat(config.renda_projetada) || 0
@@ -67,11 +71,11 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-2xl font-semibold">
-          Relatório Mensal <span className="text-primary">— {fmtMesLongo(mesRef)}</span>
-        </h2>
-      </div>
+      <PageHeader
+        title="Relatório Mensal"
+        accent={fmtMesLongo(mesRef)}
+        description="Previsto x real por categoria, histórico e composição por forma de pagamento."
+      />
 
       {/* Cockpit Financeiro */}
       <section>
@@ -105,12 +109,13 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
 
       {/* Gastos por categoria — Previsto x Real */}
       <section>
-        <SectionTitle icon={Shapes}>Gastos por Categoria — Previsto x Real</SectionTitle>
+        <SectionTitle
+          icon={Shapes}
+          right={<ChartLegend items={[{ color: cores.previsto, label: "Previsto" }, { color: cores.real, label: "Real" }]} />}
+        >
+          Gastos por Categoria — Previsto x Real
+        </SectionTitle>
         <div className="rounded-xl border bg-card p-5">
-          <div className="mb-2 flex items-center justify-end gap-4 text-xs">
-            <Legend color="var(--series-previsto)" label="Previsto" />
-            <Legend color="var(--series-real)" label="Real" />
-          </div>
           <ChartPrevistoReal linhas={chartData} />
         </div>
         <div className="mt-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -120,30 +125,15 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
         </div>
       </section>
 
+      {/* Histórico receitas x despesas (vindo da antiga aba Gráficos) */}
+      <HistoricoChart transacoes={transacoes} mesRef={mesRef} />
+
       {/* Por forma de pagamento — drill-down interativo */}
       <section>
         <SectionTitle icon={Banknote}>Por Forma de Pagamento</SectionTitle>
         <FormaPagamentoBreakdown transacoes={transacoes} cartoes={cartoes} mesRef={mesRef} />
       </section>
     </div>
-  )
-}
-
-function SectionTitle({ icon: Icon, children }: { icon: any; children: React.ReactNode }) {
-  return (
-    <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-      <Icon className="size-3.5" />
-      {children}
-    </h3>
-  )
-}
-
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="flex items-center gap-1.5 text-muted-foreground">
-      <span className="size-2.5 rounded-full" style={{ background: color }} />
-      {label}
-    </span>
   )
 }
 

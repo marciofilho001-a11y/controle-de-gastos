@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { PageHeader } from "@/components/page-header"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase } from "@/lib/supabase"
 import { DESPESA_CATS, catColor } from "@/lib/categorias"
@@ -94,18 +95,17 @@ export function LimitesPage({ mesRef }: { mesRef: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-2xl font-semibold">
-          Limites de Gasto <span className="text-primary">— {fmtMesRef(mesRef)}</span>
-        </h2>
-        <Button variant="outline" onClick={copiarMesAnterior} disabled={copiando}>
-          {copiando ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Copy data-icon="inline-start" />}
-          Copiar do mês anterior
-        </Button>
-      </div>
-      <p className="-mt-3 text-sm text-muted-foreground">
-        Só gasto variável entra aqui — obrigações fixas (consórcio, parcelas) ficam de fora, pro limite medir o que você controla no mês.
-      </p>
+      <PageHeader
+        title="Limites de Gasto"
+        accent={fmtMesRef(mesRef)}
+        description="Só gasto variável entra aqui — obrigações fixas (consórcio, parcelas) ficam de fora, pro limite medir o que você controla no mês."
+        actions={
+          <Button variant="outline" onClick={copiarMesAnterior} disabled={copiando}>
+            {copiando ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Copy data-icon="inline-start" />}
+            Copiar do mês anterior
+          </Button>
+        }
+      />
 
       {/* Limite total */}
       <div className="rounded-xl border bg-card p-5">
@@ -179,7 +179,7 @@ export function LimitesPage({ mesRef }: { mesRef: string }) {
           Opcional — o Relatório usa a meta como "previsto" quando ela existe; sem meta, usa a média dos últimos meses.
         </p>
         <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-          {DESPESA_CATS.filter((c) => c.v !== "cartao" && c.v !== "outro").map((c) => {
+          {DESPESA_CATS.filter((c) => c.v !== "cartao" && c.v !== "outro" && c.v !== "fatura_indefinida").map((c) => {
             const meta = getTeto(tetos, mesRef, "categoria", null, c.v)
             const gastoAtual = gastoCategoriaNoMes(transacoes, c.v, mesRef)
             const media = mediaCategoriaMeses(transacoes, c.v, mesRef, 3)

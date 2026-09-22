@@ -10,7 +10,6 @@ import { ObrigacoesPage } from "@/features/obrigacoes/obrigacoes-page"
 import { CartoesPage } from "@/features/cartoes/cartoes-page"
 import { LimitesPage } from "@/features/limites/limites-page"
 import { ProjecaoPage } from "@/features/projecao/projecao-page"
-import { GraficosPage } from "@/features/graficos/graficos-page"
 import { InvestimentosPage } from "@/features/investimentos/investimentos-page"
 import { ChatAssistente } from "@/features/chat/chat-assistente"
 import { useFinData } from "@/hooks/use-fin-data"
@@ -34,7 +33,7 @@ export default function App() {
           <NavBar active={tab} onChange={setTab} />
         </div>
 
-        <main className="mt-6">
+        <main className="mt-6 pb-24">
           {loading ? (
             <div className="grid min-h-[50vh] place-items-center">
               <Loader2 className="size-6 animate-spin text-primary" />
@@ -56,8 +55,6 @@ export default function App() {
             <LimitesPage mesRef={mesRef} />
           ) : tab === "projecao" ? (
             <ProjecaoPage mesRef={mesRef} />
-          ) : tab === "graficos" ? (
-            <GraficosPage mesRef={mesRef} />
           ) : tab === "investimentos" ? (
             <InvestimentosPage mesRef={mesRef} />
           ) : tab === "transacoes" ? (
