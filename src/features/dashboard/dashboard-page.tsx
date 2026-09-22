@@ -6,6 +6,7 @@ import { motion } from "motion/react"
 import { toast } from "sonner"
 import { StatCard } from "@/components/stat-card"
 import { CategoryDonut, type DonutSlice } from "./category-donut"
+import { PanoramaResumo } from "@/features/relatorio/panorama"
 import { LancamentosFiltravel } from "./lancamentos-filtravel"
 import { TrendPill } from "./trend-pill"
 import { useFinData } from "@/hooks/use-fin-data"
@@ -133,6 +134,9 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
           valueClassName="text-warning"
         />
       </div>
+
+      {/* Panorama do mês — o gestor em 3 frases */}
+      <PanoramaResumo mesRef={mesRef} />
 
       {/* Donut + Obrigações do mês */}
       <div className="grid gap-4 lg:grid-cols-2">
