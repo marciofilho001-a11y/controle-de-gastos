@@ -28,7 +28,7 @@ export const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
 
 export function NavBar({ active, onChange }: { active: TabId; onChange: (t: TabId) => void }) {
   return (
-    <nav className="scrollbar-none flex gap-1 overflow-x-auto rounded-xl border bg-card/60 p-1.5 backdrop-blur">
+    <nav className="scrollbar-none flex gap-1 overflow-x-auto rounded-xl border bg-card/60 p-1.5 backdrop-blur [mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)] sm:[mask-image:none]">
       {TABS.map((t) => {
         const Icon = t.icon
         const isActive = active === t.id

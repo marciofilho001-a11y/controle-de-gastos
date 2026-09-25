@@ -108,8 +108,8 @@ export function ProjecaoPage({ mesRef }: { mesRef: string }) {
       </section>
 
       {/* Tabela */}
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <Table>
+      <div className="overflow-x-auto rounded-xl border bg-card">
+        <Table className="min-w-[720px]">
           <TableHeader>
             <TableRow>
               <TableHead>Mês</TableHead>

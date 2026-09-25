@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import {
-  Clock, Plus, Trash2, Search, Inbox, Sparkles, CheckCheck, CreditCard, CalendarClock, Layers, X, ArrowLeft,
+  Clock, Plus, Search, Inbox, Sparkles, CheckCheck, CreditCard, CalendarClock, Layers, X, ArrowLeft,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/select"
 import { CategoryDonut, type DonutSlice } from "@/features/dashboard/category-donut"
 import { ItemIcon } from "./item-icon"
+import { RowActions } from "@/components/row-actions"
+import { TransacaoDialog } from "@/features/transacoes/nova-transacao-dialog"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Cartao, type Transacao } from "@/lib/supabase"
 import { DESPESA_CATS, catInfo, catColor } from "@/lib/categorias"
@@ -34,6 +36,7 @@ export function FaturaDetalhe({
   const [novoCat, setNovoCat] = useState("outro")
   const [novoValor, setNovoValor] = useState("")
   const [busy, setBusy] = useState(false)
+  const [editTx, setEditTx] = useState<Transacao | null>(null)
 
   const meses = useMemo(
     () => mesesDoCartao(cartao.id, transacoes, compras, faturaItens, mesRefBase),
@@ -182,6 +185,8 @@ export function FaturaDetalhe({
         </div>
       </div>
 
+      <TransacaoDialog editar={editTx} open={!!editTx} onOpenChange={(o) => !o && setEditTx(null)} />
+
       {/* corpo em tela cheia: meses | conteúdo */}
       <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
         {/* lista de meses */}
@@ -304,7 +309,7 @@ export function FaturaDetalhe({
                   </div>
                 ) : (
                   dados.itens.map((i) => (
-                    <ItemRow key={i.id} item={i} onDelete={() => delItem(i.id)} onCategoria={(c) => mudarCategoria(i.id, c)} busy={busy} />
+                    <ItemRow key={i.id} item={i} onEdit={() => setEditTx(i)} onDelete={() => delItem(i.id)} onCategoria={(c) => mudarCategoria(i.id, c)} busy={busy} />
                   ))
                 )}
                 {!dados.planejando && !catFiltro && dados.restante > 0.005 && (
@@ -340,9 +345,10 @@ export function FaturaDetalhe({
 }
 
 function ItemRow({
-  item, onDelete, onCategoria, busy,
+  item, onEdit, onDelete, onCategoria, busy,
 }: {
   item: Transacao
+  onEdit: () => void
   onDelete: () => void
   onCategoria: (c: string) => void
   busy: boolean
@@ -374,9 +380,7 @@ function ItemRow({
         )}
       </div>
       <span className="tnum text-sm font-medium">{fmtR(Number(item.valor))}</span>
-      <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={onDelete} disabled={busy}>
-        <Trash2 className="size-3.5" />
-      </Button>
+      <RowActions size="sm" onEditar={onEdit} onExcluir={busy ? undefined : onDelete} />
     </div>
   )
 }

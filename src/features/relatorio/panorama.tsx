@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { ItemIcon } from "@/features/cartoes/item-icon"
+import { EnsinarGestorDialog } from "./ensinar-gestor"
 import { useFinData } from "@/hooks/use-fin-data"
 import { gerarInsights, type Insight, type Severidade } from "@/lib/insights"
 import { fmtR, fmtMesLongo, fmtData } from "@/lib/format"
@@ -126,9 +127,12 @@ export function PanoramaDialog({ mesRef, trigger }: { mesRef: string; trigger: R
         <div className="flex flex-col gap-2.5">
           {insights.map((i, idx) => <InsightCard key={i.id} insight={i} index={idx} />)}
         </div>
-        <p className="mt-1 text-center text-[0.7rem] text-muted-foreground">
-          Calculado localmente a partir dos seus lançamentos. Nenhum número é inventado.
-        </p>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[0.7rem] text-muted-foreground">
+            Calculado localmente a partir dos seus lançamentos. Nenhum número é inventado.
+          </p>
+          <EnsinarGestorDialog />
+        </div>
       </DialogContent>
     </Dialog>
   )

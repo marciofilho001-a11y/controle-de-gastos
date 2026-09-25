@@ -159,3 +159,9 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Grades sem coluna explícita (celular) encolhem ao invés de estourar a tela:
+   a coluna implícita vira minmax(0,1fr) em vez de max-content. */
+@layer base {
+  .grid { grid-auto-columns: minmax(0, 1fr); }
+}

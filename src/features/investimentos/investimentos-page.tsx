@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
 } from "recharts"
 import {
-  Landmark, TrendingUp, Sparkles, CircleDollarSign, Plus, Trash2, Loader2, Inbox, Save,
+  Landmark, TrendingUp, Sparkles, CircleDollarSign, Plus, Loader2, Inbox, Save,
 } from "lucide-react"
 import { toast } from "sonner"
 import { StatCard } from "@/components/stat-card"
@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { PageHeader, SectionTitle } from "@/components/page-header"
 import { useFinData } from "@/hooks/use-fin-data"
-import { supabase } from "@/lib/supabase"
+import { supabase, type Investimento } from "@/lib/supabase"
+import { RowActions } from "@/components/row-actions"
 import { fmtR, fmtData, fmtMesRef, fmtMesCurto, proximosMeses, addMonths } from "@/lib/format"
 import {
   patrimonioDoMes, saldoContaDoMes, investidoAcumuladoAte, calcularProjecaoMes,
@@ -37,6 +38,7 @@ export function InvestimentosPage({ mesRef }: { mesRef: string }) {
   const [saldoInput, setSaldoInput] = useState("")
   const [savingSaldo, setSavingSaldo] = useState(false)
   const [delInv, setDelInv] = useState<number | null>(null)
+  const [editInv, setEditInv] = useState<Investimento | null>(null)
   const [busy, setBusy] = useState(false)
 
   const d = useMemo(() => {
@@ -170,8 +172,8 @@ export function InvestimentosPage({ mesRef }: { mesRef: string }) {
       </section>
 
       {/* histórico de aportes */}
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <Table>
+      <div className="overflow-x-auto rounded-xl border bg-card">
+        <Table className="min-w-[560px]">
           <TableHeader>
             <TableRow>
               <TableHead>Data</TableHead>
@@ -199,9 +201,7 @@ export function InvestimentosPage({ mesRef }: { mesRef: string }) {
                   <TableCell>{inv.descricao || "—"}</TableCell>
                   <TableCell className="tnum text-right font-semibold text-success">{fmtR(Number(inv.valor))}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => setDelInv(inv.id)}>
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <RowActions onEditar={() => setEditInv(inv)} onExcluir={() => setDelInv(inv.id)} />
                   </TableCell>
                 </TableRow>
               ))
@@ -209,6 +209,8 @@ export function InvestimentosPage({ mesRef }: { mesRef: string }) {
           </TableBody>
         </Table>
       </div>
+
+      <NovoInvestimentoDialog editar={editInv} open={!!editInv} onOpenChange={(v) => !v && setEditInv(null)} />
 
       <AlertDialog open={delInv != null} onOpenChange={(v) => !v && setDelInv(null)}>
         <AlertDialogContent>
@@ -229,13 +231,23 @@ export function InvestimentosPage({ mesRef }: { mesRef: string }) {
   )
 }
 
-function NovoInvestimentoDialog() {
+function NovoInvestimentoDialog({
+  editar, open: openProp, onOpenChange,
+}: { editar?: Investimento | null; open?: boolean; onOpenChange?: (v: boolean) => void } = {}) {
   const { loadAll } = useFinData()
-  const [open, setOpen] = useState(false)
+  const [openState, setOpenState] = useState(false)
+  const open = openProp ?? openState
+  const setOpen = (v: boolean) => { setOpenState(v); onOpenChange?.(v) }
   const [saving, setSaving] = useState(false)
   const [valor, setValor] = useState("")
   const [data, setData] = useState(new Date().toISOString().slice(0, 10))
   const [descricao, setDescricao] = useState("")
+
+  useEffect(() => {
+    if (!open) return
+    if (editar) { setValor(String(editar.valor)); setData(editar.data); setDescricao(editar.descricao || "") }
+    else { setValor(""); setDescricao(""); setData(new Date().toISOString().slice(0, 10)) }
+  }, [open, editar])
 
   async function salvar() {
     const v = parseFloat(valor)
@@ -245,13 +257,13 @@ function NovoInvestimentoDialog() {
     }
     setSaving(true)
     try {
-      const { error } = await supabase.from("fin_investimentos").insert({
-        valor: v, data, mes_ref: data.slice(0, 7), descricao: descricao.trim(),
-      })
+      const payload = { valor: v, data, mes_ref: data.slice(0, 7), descricao: descricao.trim() }
+      const { error } = editar
+        ? await supabase.from("fin_investimentos").update(payload).eq("id", editar.id)
+        : await supabase.from("fin_investimentos").insert(payload)
       if (error) throw error
-      toast.success("Investimento registrado!")
+      toast.success(editar ? "Aporte atualizado!" : "Investimento registrado!")
       setOpen(false)
-      setValor(""); setDescricao(""); setData(new Date().toISOString().slice(0, 10))
       await loadAll()
     } catch (e) {
       toast.error("Erro ao registrar", { description: e instanceof Error ? e.message : "" })
@@ -262,14 +274,16 @@ function NovoInvestimentoDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus data-icon="inline-start" /> Registrar Investimento
-        </Button>
-      </DialogTrigger>
+      {openProp === undefined && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus data-icon="inline-start" /> Registrar Investimento
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Registrar Investimento</DialogTitle>
+          <DialogTitle>{editar ? "Editar Aporte" : "Registrar Investimento"}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-2">
           <div className="grid grid-cols-2 gap-3">

@@ -213,8 +213,8 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
         <p className="mb-3 text-xs text-muted-foreground">
           Cada compra gera uma transação por parcela, já no mês certo — excluir aqui remove todas as parcelas de uma vez.
         </p>
-        <div className="overflow-hidden rounded-xl border bg-card">
-          <Table>
+        <div className="overflow-x-auto rounded-xl border bg-card">
+          <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Cartão</TableHead>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Search, Download, Trash2, Calculator, Loader2, List, LayoutGrid, Lock } from "lucide-react"
+import { Search, Download, Calculator, Loader2, List, LayoutGrid, Lock, CalendarRange } from "lucide-react"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { NovaTransacaoDialog } from "./nova-transacao-dialog"
+import { NovaTransacaoDialog, TransacaoDialog } from "./nova-transacao-dialog"
+import { RowActions } from "@/components/row-actions"
+import { duplicarTransacao } from "@/lib/transacoes-actions"
 import { TransacoesBlocos } from "./transacoes-blocos"
 import { PageHeader } from "@/components/page-header"
 import { useFinData } from "@/hooks/use-fin-data"
@@ -33,6 +35,8 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
   const [filtCat, setFiltCat] = useState("todas")
   const [delId, setDelId] = useState<number | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [editTx, setEditTx] = useState<Transacao | null>(null)
+  const [todosMeses, setTodosMeses] = useState(false)
 
   const todasCats = [...DESPESA_CATS, ...RECEITA_CATS].filter(
     (c, i, arr) => arr.findIndex((x) => x.v === c.v) === i
@@ -41,9 +45,11 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
   const list = useMemo(() => {
     // base sem duplicação de cartão: itens reais + linha virtual "Faturas a detalhar",
     // e as receitas do mês. Mesma base do Dashboard/Relatório — totais batem.
-    const receitas = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "receita")
-    const despesas = despesasExibicaoDoMes(transacoes, mesRef)
-    let l: LinhaExibicao[] = [...receitas, ...despesas]
+    const meses = todosMeses ? [...new Set(transacoes.map((t) => t.mes_ref))].sort() : [mesRef]
+    let l: LinhaExibicao[] = meses.flatMap((m) => [
+      ...txDoMes(transacoes, m).filter((t) => t.tipo === "receita"),
+      ...despesasExibicaoDoMes(transacoes, m),
+    ])
     if (filtTipo !== "todos") l = l.filter((t) => t.tipo === filtTipo)
     if (filtOrigem === "debito") l = l.filter((t) => !t.cartao_id && !t.obrigacao_id)
     else if (filtOrigem === "cartao") l = l.filter((t) => !!t.cartao_id)
@@ -52,7 +58,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
     const b = busca.trim().toLowerCase()
     if (b) l = l.filter((t) => (t.descricao || "").toLowerCase().includes(b))
     return l.sort((a, b2) => (a.data < b2.data ? 1 : -1))
-  }, [transacoes, mesRef, filtTipo, filtOrigem, filtCat, busca])
+  }, [transacoes, mesRef, filtTipo, filtOrigem, filtCat, busca, todosMeses])
 
   const algumFiltro = filtTipo !== "todos" || filtOrigem !== "todas" || filtCat !== "todas" || !!busca.trim()
   const totalDespesa = list.filter((t) => t.tipo === "despesa").reduce((s, t) => s + Number(t.valor), 0)
@@ -100,9 +106,19 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
     return cartoes.find((c) => c.id === id)?.nome
   }
 
+  async function duplicar(t: Transacao) {
+    try {
+      await duplicarTransacao(t, mesRef)
+      toast.success("Lançamento duplicado neste mês")
+      await loadAll()
+    } catch (e) {
+      toast.error("Erro ao duplicar", { description: e instanceof Error ? e.message : "" })
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Transações" accent={fmtMesCurto(mesRef)} description="Todos os lançamentos do mês, por forma de pagamento." actions={<NovaTransacaoDialog />} />
+      <PageHeader title="Transações" accent={todosMeses ? "todos os meses" : fmtMesCurto(mesRef)} description="Todos os lançamentos do mês, por forma de pagamento." actions={<NovaTransacaoDialog mesRef={mesRef} />} />
 
       {/* barra de busca + filtros */}
       <div className="flex flex-wrap items-center gap-2">
@@ -147,6 +163,15 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
             </SelectGroup>
           </SelectContent>
         </Select>
+        <button
+          onClick={() => setTodosMeses((v) => !v)}
+          className={cn("flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors",
+            todosMeses ? "border-primary/40 bg-primary/10 text-primary" : "bg-secondary/50 text-muted-foreground hover:text-foreground")}
+          aria-pressed={todosMeses}
+          title="Buscar em todos os meses"
+        >
+          <CalendarRange className="size-3.5" /> Todos os meses
+        </button>
         {algumFiltro && (
           <Button variant="ghost" onClick={limparFiltros}>Limpar filtros</Button>
         )}
@@ -190,10 +215,10 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
 
       {/* tabela ou blocos por método */}
       {modo === "blocos" ? (
-        <TransacoesBlocos list={list} cartoes={cartoes} onDelete={(id) => setDelId(id)} />
+        <TransacoesBlocos list={list} cartoes={cartoes} onDelete={(id) => setDelId(id)} onEdit={(t) => setEditTx(t)} onDuplicar={duplicar} />
       ) : (
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <Table>
+      <div className="overflow-x-auto rounded-xl border bg-card">
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               <TableHead>Data</TableHead>
@@ -245,9 +270,11 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                     </TableCell>
                     <TableCell>
                       {t.id > 0 ? (
-                        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => setDelId(t.id)}>
-                          <Trash2 className="size-4" />
-                        </Button>
+                        <RowActions
+                          onEditar={() => setEditTx(t)}
+                          onDuplicar={() => duplicar(t)}
+                          onExcluir={() => setDelId(t.id)}
+                        />
                       ) : (
                         <span className="grid size-8 place-items-center" title="Valor calculado — detalhe na aba Cartões">
                           <Lock className="size-3.5 text-muted-foreground/50" />
@@ -262,6 +289,8 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
         </Table>
       </div>
       )}
+
+      <TransacaoDialog editar={editTx} open={!!editTx} onOpenChange={(o) => !o && setEditTx(null)} />
 
       <AlertDialog open={delId != null} onOpenChange={(o) => !o && setDelId(null)}>
         <AlertDialogContent>

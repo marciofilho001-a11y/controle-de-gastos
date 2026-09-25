@@ -128,7 +128,7 @@ export function FormaPagamentoBreakdown({
                 <span className="tnum ml-auto text-lg font-semibold">{fmtR(sel.total)}</span>
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-[minmax(190px,230px)_1fr] sm:items-center">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-5 sm:grid-cols-[minmax(190px,230px)_minmax(0,1fr)] sm:items-center">
                 {/* donut — mesmo componente do Dashboard */}
                 <CategoryDonut
                   slices={breakdown.map((b) => ({ catKey: b.catKey, label: catInfo(b.catKey).l, value: b.valor }))}

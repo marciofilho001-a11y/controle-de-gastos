@@ -8,6 +8,14 @@ import { StatCard } from "@/components/stat-card"
 import { CategoryDonut, type DonutSlice } from "./category-donut"
 import { PanoramaResumo } from "@/features/relatorio/panorama"
 import { LancamentosFiltravel } from "./lancamentos-filtravel"
+import { TransacaoDialog } from "@/features/transacoes/nova-transacao-dialog"
+import { duplicarTransacao, excluirTransacao } from "@/lib/transacoes-actions"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Loader2 } from "lucide-react"
+import type { Transacao } from "@/lib/supabase"
 import { TrendPill } from "./trend-pill"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase } from "@/lib/supabase"
@@ -22,6 +30,21 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
   const { obrigacoes, cartoes, transacoes, descricaoIcones, loadAll } = useFinData()
   const [busyObr, setBusyObr] = useState<number | null>(null)
   const [verTodasCats, setVerTodasCats] = useState(false)
+  const [editTx, setEditTx] = useState<Transacao | null>(null)
+  const [delTx, setDelTx] = useState<Transacao | null>(null)
+  const [busyTx, setBusyTx] = useState(false)
+
+  async function duplicar(t: Transacao) {
+    try { await duplicarTransacao(t, mesRef); toast.success("Lançamento duplicado neste mês"); await loadAll() }
+    catch (e) { toast.error("Erro ao duplicar", { description: e instanceof Error ? e.message : "" }) }
+  }
+  async function confirmarExcluir() {
+    if (!delTx) return
+    setBusyTx(true)
+    try { await excluirTransacao(delTx.id); toast.success("Lançamento removido"); setDelTx(null); await loadAll() }
+    catch (e) { toast.error("Erro ao remover", { description: e instanceof Error ? e.message : "" }) }
+    finally { setBusyTx(false) }
+  }
 
   const d = useMemo(() => {
     const receitas = receitasDoMes(transacoes, mesRef)
@@ -144,7 +167,7 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
           <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             <PieChart className="size-3.5" /> Gastos por Categoria
           </div>
-          <div className="grid gap-5 sm:grid-cols-[minmax(190px,230px)_1fr] sm:items-center">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-5 sm:grid-cols-[minmax(190px,230px)_minmax(0,1fr)] sm:items-center">
             <CategoryDonut slices={d.slices} centerLabel="Despesas" centerValue={d.despesas} />
             <div className="flex flex-col gap-1">
               {(verTodasCats ? d.slices : d.slices.slice(0, 6)).map((s, i) => {
@@ -250,7 +273,27 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
       </div>
 
       {/* Lançamentos filtráveis (carrossel / grade) */}
-      <LancamentosFiltravel lancamentos={d.lancamentos} cartoes={cartoes} descricaoIcones={descricaoIcones} />
+      <LancamentosFiltravel
+        lancamentos={d.lancamentos} cartoes={cartoes} descricaoIcones={descricaoIcones}
+        onEdit={(t) => setEditTx(t)} onDuplicar={duplicar} onDelete={(t) => setDelTx(t)}
+      />
+
+      <TransacaoDialog editar={editTx} open={!!editTx} onOpenChange={(o) => !o && setEditTx(null)} />
+      <AlertDialog open={delTx != null} onOpenChange={(o) => !o && setDelTx(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover este lançamento?</AlertDialogTitle>
+            <AlertDialogDescription>{delTx?.descricao} — esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); confirmarExcluir() }} disabled={busyTx}>
+              {busyTx && <Loader2 data-icon="inline-start" className="animate-spin" />}
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

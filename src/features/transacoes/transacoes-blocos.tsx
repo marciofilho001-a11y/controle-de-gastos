@@ -1,11 +1,12 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { Banknote, CreditCard, Link as LinkIcon, ChevronDown, Trash2, TrendingUp } from "lucide-react"
+import { Banknote, CreditCard, Link as LinkIcon, ChevronDown, TrendingUp } from "lucide-react"
 import type { Cartao } from "@/lib/supabase"
 import type { LinhaExibicao } from "@/lib/selectors"
 import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtData } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { RowActions } from "@/components/row-actions"
 
 type Grupo = {
   chave: string
@@ -22,10 +23,14 @@ export function TransacoesBlocos({
   list,
   cartoes,
   onDelete,
+  onEdit,
+  onDuplicar,
 }: {
   list: LinhaExibicao[]
   cartoes: Cartao[]
   onDelete: (id: number) => void
+  onEdit?: (t: LinhaExibicao) => void
+  onDuplicar?: (t: LinhaExibicao) => void
 }) {
   const grupos: Grupo[] = [
     { chave: "receita", nome: "Receitas", icon: TrendingUp, cor: "#22d3a5", itens: list.filter((t) => t.tipo === "receita") },
@@ -116,13 +121,12 @@ export function TransacoesBlocos({
                               {receita ? "+ " : "− "}{fmtR(Number(t.valor))}
                             </span>
                             {t.id > 0 && (
-                              <button
-                                onClick={() => onDelete(t.id)}
-                                className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                                aria-label="Excluir"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </button>
+                              <RowActions
+                                size="sm"
+                                onEditar={onEdit ? () => onEdit(t) : undefined}
+                                onDuplicar={onDuplicar ? () => onDuplicar(t) : undefined}
+                                onExcluir={() => onDelete(t.id)}
+                              />
                             )}
                           </div>
                         )

@@ -11,18 +11,29 @@ import { fmtR, fmtData } from "@/lib/format"
 import type { LinhaExibicao } from "@/lib/selectors"
 import type { Cartao } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { RowActions } from "@/components/row-actions"
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const
+
+type Acoes = {
+  onEdit?: (t: LinhaExibicao) => void
+  onDuplicar?: (t: LinhaExibicao) => void
+  onDelete?: (t: LinhaExibicao) => void
+}
 
 export function LancamentosFiltravel({
   lancamentos,
   cartoes,
   descricaoIcones,
+  onEdit,
+  onDuplicar,
+  onDelete,
 }: {
   lancamentos: LinhaExibicao[]
   cartoes: Cartao[]
   descricaoIcones: Record<string, string>
-}) {
+} & Acoes) {
+  const acoes: Acoes = { onEdit, onDuplicar, onDelete }
   const [modo, setModo] = useState<"carrossel" | "grade">("carrossel")
   const [filtroCartao, setFiltroCartao] = useState("todos")
   const [filtroCat, setFiltroCat] = useState("todas")
@@ -119,7 +130,7 @@ export function LancamentosFiltravel({
             style={{ scrollSnapType: "x mandatory" }}
           >
             {filtrados.map((t, i) => (
-              <LancCard key={t.id} t={t} cartoes={cartoes} descricaoIcones={descricaoIcones} index={i} snap />
+              <LancCard key={t.id} t={t} cartoes={cartoes} descricaoIcones={descricaoIcones} index={i} snap acoes={acoes} />
             ))}
           </div>
           {/* setas de navegação */}
@@ -133,7 +144,7 @@ export function LancamentosFiltravel({
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtrados.map((t, i) => (
-            <LancCard key={t.id} t={t} cartoes={cartoes} descricaoIcones={descricaoIcones} index={i} />
+            <LancCard key={t.id} t={t} cartoes={cartoes} descricaoIcones={descricaoIcones} index={i} acoes={acoes} />
           ))}
         </div>
       )}
@@ -142,14 +153,16 @@ export function LancamentosFiltravel({
 }
 
 function LancCard({
-  t, cartoes, descricaoIcones, index, snap,
+  t, cartoes, descricaoIcones, index, snap, acoes,
 }: {
   t: LinhaExibicao
   cartoes: Cartao[]
   descricaoIcones: Record<string, string>
   index: number
   snap?: boolean
+  acoes: Acoes
 }) {
+  const editavel = t.id > 0
   const info = catInfo(t.categoria)
   const Icon = info.icon
   const cor = catColor(t.categoria)
@@ -182,6 +195,15 @@ function LancCard({
             {info.l}{cartaoTx && <span className="text-muted-foreground"> · {cartaoTx.nome}</span>}
           </p>
         </div>
+        {editavel && (
+          <RowActions
+            size="sm"
+            className="-mr-1.5 -mt-1"
+            onEditar={acoes.onEdit ? () => acoes.onEdit!(t) : undefined}
+            onDuplicar={acoes.onDuplicar ? () => acoes.onDuplicar!(t) : undefined}
+            onExcluir={acoes.onDelete ? () => acoes.onDelete!(t) : undefined}
+          />
+        )}
       </div>
       <div className="flex items-end justify-between">
         <span className="text-[0.7rem] text-muted-foreground">{fmtData(t.data)}</span>
