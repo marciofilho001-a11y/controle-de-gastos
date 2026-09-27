@@ -7,6 +7,7 @@ import { HistoricoChart } from "./historico-chart"
 import { CatCard, type CatLinha } from "./cat-card"
 import { FormaPagamentoBreakdown } from "./forma-pagamento"
 import { PanoramaButton } from "./panorama"
+import { PdfButton } from "./pdf-button"
 import { useFinData } from "@/hooks/use-fin-data"
 import { catColor, catInfo } from "@/lib/categorias"
 import { fmtMesLongo, fmtR } from "@/lib/format"
@@ -76,7 +77,7 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
         title="Relatório Mensal"
         accent={fmtMesLongo(mesRef)}
         description="Previsto x real por categoria, histórico e composição por forma de pagamento."
-        actions={<PanoramaButton mesRef={mesRef} />}
+        actions={<><PdfButton mesRef={mesRef} /><PanoramaButton mesRef={mesRef} /></>}
       />
 
       {/* Cockpit Financeiro */}
