@@ -17,6 +17,7 @@ import { supabase, type Cartao, type Transacao } from "@/lib/supabase"
 import { DESPESA_CATS, catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesRef, mesRefAtual, fmtData } from "@/lib/format"
 import { faturaDoMes, faturaInfoDoMes, ehFaturaCheia, mesesDoCartao, sugestoesParcelasParaMes } from "@/lib/selectors"
+import { LogoAvatar } from "@/components/logo-avatar"
 import { cn } from "@/lib/utils"
 
 export function FaturaDetalhe({
@@ -173,9 +174,7 @@ export function FaturaDetalhe({
         <Button variant="outline" size="icon" onClick={onVoltar} aria-label="Voltar">
           <ArrowLeft className="size-4" />
         </Button>
-        <span className="grid size-10 place-items-center overflow-hidden rounded-lg bg-muted text-muted-foreground ring-1 ring-border">
-          {cartao.logo ? <img src={cartao.logo} alt="" className="size-full object-contain p-1" /> : <CreditCard className="size-5" />}
-        </span>
+        <LogoAvatar src={cartao.logo} cor="var(--muted-foreground)" Icon={CreditCard} size={44} />
         <div>
           <h2 className="font-display text-2xl font-semibold">{cartao.nome}</h2>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">

@@ -19,6 +19,7 @@ import {
 import { gerarInsights, type Severidade } from "@/lib/insights"
 import { statusLancamento } from "@/lib/parcelas"
 import type { TabId } from "@/components/layout/nav"
+import { LogoAvatar } from "@/components/logo-avatar"
 import { cn } from "@/lib/utils"
 
 const EASE = [0.23, 1, 0.32, 1] as const
@@ -232,9 +233,7 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
                     <div className="mt-3 flex flex-col gap-1.5 border-t pt-3">
                       {d.faturasPendentes.map(({ c: cartao, f }) => (
                         <div key={cartao.id} className="flex items-center gap-3 rounded-lg bg-background/40 px-3 py-2 text-sm">
-                          <span className="grid size-7 place-items-center overflow-hidden rounded-md bg-secondary">
-                            {cartao.logo ? <img src={cartao.logo} alt="" className="size-full object-contain p-0.5" /> : <CreditCard className="size-3.5" />}
-                          </span>
+                          <LogoAvatar src={cartao.logo} cor="var(--muted-foreground)" Icon={CreditCard} size={28} />
                           <p className="min-w-0 flex-1 truncate font-medium">{cartao.nome}</p>
                           <span className="text-xs text-muted-foreground">{fmtR(f.detalhado)} de {fmtR(f.valor)} detalhado</span>
                           <span className="tnum font-semibold text-warning">{fmtR(f.indefinido)}</span>

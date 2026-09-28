@@ -22,6 +22,7 @@ import { supabase } from "@/lib/supabase"
 import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, addMonths } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { LogoAvatar } from "@/components/logo-avatar"
 import {
   receitasDoMes, despesasDoMes, txDoMes, itensObrigacoesDoMes, despesasExibicaoDoMes,
 } from "@/lib/selectors"
@@ -249,9 +250,7 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
                     >
                       {i.paga && <Check className="size-3.5" />}
                     </button>
-                    <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
-                      {cartao?.logo ? <img src={cartao.logo} alt="" className="size-full object-contain p-1" /> : <Icon className="size-4" />}
-                    </span>
+                    <LogoAvatar src={cartao?.logo} cor="var(--muted-foreground)" Icon={Icon} size={32} />
                     <div className="min-w-0 flex-1">
                       <p className={cn("truncate text-sm font-medium", i.paga && "line-through")}>
                         {i.nome}

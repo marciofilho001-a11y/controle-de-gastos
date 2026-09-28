@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react"
 import { motion } from "motion/react"
 import {
-  LayoutGrid, List, Inbox, TrendingUp, Calendar, ArrowUp, ArrowDown, Layers,
+  LayoutGrid, List, Inbox, TrendingUp, Calendar, ArrowUp, ArrowDown, Layers, Receipt, BarChart3, Trophy, ChevronDown,
 } from "lucide-react"
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { RowActions } from "@/components/row-actions"
+import { LogoAvatar } from "@/components/logo-avatar"
 import { catInfo, catColor, DESPESA_CATS, RECEITA_CATS } from "@/lib/categorias"
 import { fmtR, fmtData } from "@/lib/format"
 import type { LinhaExibicao } from "@/lib/selectors"
@@ -110,6 +111,42 @@ export function LancamentosFiltravel({
         </div>
       </div>
 
+      {/* resumo da categoria selecionada */}
+      {filtroCat !== "todas" && filtrados.length > 0 && (() => {
+        const info = catInfo(filtroCat); const Icon = info.icon; const cor = catColor(filtroCat)
+        const total = filtrados.reduce((s, t) => s + Number(t.valor), 0)
+        const maior = filtrados.reduce((m, t) => Math.max(m, Number(t.valor)), 0)
+        const totalGeral = porPagamento.reduce((s, t) => s + Number(t.valor), 0)
+        return (
+          <motion.div
+            key={filtroCat}
+            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: EASE_OUT }}
+            className="relative mb-4 flex flex-wrap items-center gap-x-6 gap-y-3 overflow-hidden rounded-xl border p-4"
+            style={{ background: `linear-gradient(90deg, ${cor}1f, transparent 60%)`, borderColor: `${cor}55` }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="grid size-12 place-items-center rounded-full" style={{ background: `${cor}2a`, color: cor, boxShadow: `0 0 18px ${cor}55` }}>
+                <Icon className="size-6" />
+              </span>
+              <div>
+                <p className="text-xs text-muted-foreground">Total da categoria</p>
+                <button onClick={() => setFiltroCat("todas")} className="flex items-center gap-1 font-display text-xl font-semibold leading-tight">
+                  {info.l} <ChevronDown className="size-4 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+            <p className="tnum font-display text-3xl font-bold" style={{ color: cor }}>{fmtR(total)}</p>
+            <div className="hidden h-8 w-px bg-border sm:block" />
+            <Stat icon={Receipt} cor={cor} big={String(filtrados.length)} small="lançamentos" />
+            <Stat icon={BarChart3} cor={cor} big={fmtR(total / filtrados.length)} small="média por gasto" />
+            <Stat icon={Trophy} cor={cor} big={fmtR(maior)} small="maior gasto" />
+            <span className="tnum ml-auto rounded-full border px-3 py-1 text-xs font-semibold text-muted-foreground" style={{ borderColor: `${cor}55` }}>
+              {totalGeral > 0 ? `${Math.round((total / totalGeral) * 100)}% do mês` : ""}
+            </span>
+          </motion.div>
+        )
+      })()}
+
       {/* chips de categoria com contagem */}
       <div className="scrollbar-none -mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1">
         <Chip ativo={filtroCat === "todas"} onClick={() => setFiltroCat("todas")} icon={Layers} label="Todos" n={porPagamento.length} />
@@ -144,6 +181,18 @@ export function LancamentosFiltravel({
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function Stat({ icon: Icon, cor, big, small }: { icon: React.ComponentType<{ className?: string }>; cor: string; big: string; small: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="grid size-9 place-items-center rounded-lg" style={{ background: `${cor}1f`, color: cor }}><Icon className="size-4" /></span>
+      <div className="leading-tight">
+        <p className="tnum font-semibold">{big}</p>
+        <p className="text-xs text-muted-foreground">{small}</p>
+      </div>
     </div>
   )
 }
@@ -196,17 +245,6 @@ function useVisual(t: LinhaExibicao, cartoes: Cartao[], descricaoIcones: Record<
   return { info, cor, receita, cartaoTx, imagem }
 }
 
-function Avatar({ imagem, cor, Icon, size = 40 }: { imagem: string | null; cor: string; Icon: React.ComponentType<{ className?: string }>; size?: number }) {
-  return (
-    <span
-      className="grid shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-border"
-      style={{ width: size, height: size, background: imagem ? "var(--background)" : `${cor}1f`, color: cor }}
-    >
-      {imagem ? <img src={imagem} alt="" className="size-full object-contain p-1.5" /> : <Icon className="size-[45%]" />}
-    </span>
-  )
-}
-
 function ValorPill({ receita, valor }: { receita: boolean; valor: number }) {
   return (
     <span className={cn(
@@ -239,7 +277,7 @@ function LancCard({
       <span className="absolute inset-y-0 left-0 w-1" style={{ background: cor }} aria-hidden />
 
       <div className="flex items-start gap-3">
-        <Avatar imagem={imagem} cor={cor} Icon={Icon} />
+        <LogoAvatar src={imagem} cor={cor} Icon={Icon} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-[15px] font-semibold leading-tight">{t.descricao || info.l}</p>
           <p className="mt-1 flex items-center gap-1.5 truncate text-xs font-medium" style={{ color: cor }}>
@@ -286,7 +324,7 @@ function LancRow({
       className="relative flex items-center gap-3 overflow-hidden rounded-lg border bg-background/40 py-2 pl-4 pr-2 transition-colors hover:border-primary/30"
     >
       <span className="absolute inset-y-0 left-0 w-1" style={{ background: cor }} aria-hidden />
-      <Avatar imagem={imagem} cor={cor} Icon={Icon} size={34} />
+      <LogoAvatar src={imagem} cor={cor} Icon={Icon} size={34} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{t.descricao || info.l}</p>
         <p className="flex items-center gap-1.5 truncate text-xs" style={{ color: cor }}>

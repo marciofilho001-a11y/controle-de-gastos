@@ -6,6 +6,7 @@ import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR } from "@/lib/format"
 import { linhasDoMetodo, breakdownPorCategoria } from "@/lib/selectors"
 import type { Transacao, Cartao } from "@/lib/supabase"
+import { LogoAvatar } from "@/components/logo-avatar"
 import { cn } from "@/lib/utils"
 
 type MetodoId = "debito" | `cartao-${number}`
@@ -78,13 +79,7 @@ export function FormaPagamentoBreakdown({
                 ativo ? "border-primary/40 bg-primary/8 ring-1 ring-primary/15" : "hover:bg-secondary/60"
               )}
             >
-              <span className={cn(
-                "grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl",
-                m.logo ? "bg-muted ring-1 ring-border" : ""
-              )} style={m.logo ? {} : { background: `${m.cor}22`, color: m.cor }}>
-                {m.logo ? <img src={m.logo} alt="" className="size-full object-contain p-1" /> :
-                  m.id === "debito" ? <Banknote className="size-5" /> : <CreditCard className="size-5" />}
-              </span>
+              <LogoAvatar src={m.logo} cor={m.cor} Icon={m.id === "debito" ? Banknote : CreditCard} size={40} />
               <div className="min-w-0 flex-1">
                 <p className={cn("truncate text-sm font-semibold", ativo && "text-primary")}>{m.nome}</p>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
@@ -116,11 +111,7 @@ export function FormaPagamentoBreakdown({
               transition={{ duration: 0.22, ease: EASE_OUT }}
             >
               <div className="mb-3 flex items-center gap-2.5">
-                <span className={cn("grid size-9 place-items-center overflow-hidden rounded-lg",
-                  sel.logo ? "bg-muted ring-1 ring-border" : "")} style={sel.logo ? {} : { background: `${sel.cor}22`, color: sel.cor }}>
-                  {sel.logo ? <img src={sel.logo} alt="" className="size-full object-contain p-1" /> :
-                    sel.id === "debito" ? <Banknote className="size-[1.05rem]" /> : <CreditCard className="size-[1.05rem]" />}
-                </span>
+                <LogoAvatar src={sel.logo} cor={sel.cor} Icon={sel.id === "debito" ? Banknote : CreditCard} size={36} />
                 <div>
                   <p className="font-display text-[15px] font-semibold">{sel.nome}</p>
                   <p className="text-xs text-muted-foreground">Gastos por categoria</p>

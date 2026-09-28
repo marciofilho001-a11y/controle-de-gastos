@@ -5,6 +5,7 @@ import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { RowActions } from "@/components/row-actions"
+import { LogoAvatar } from "@/components/logo-avatar"
 import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtData, fmtMesCurto } from "@/lib/format"
 import { statusLancamento } from "@/lib/parcelas"
@@ -246,12 +247,7 @@ function Linha({ t, i, cartoes, descricaoIcones, acoes, hoje }: {
       </td>
       <td className={cn(cell, "pr-3")}>
         <div className="flex items-center gap-2.5">
-          <span
-            className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-border"
-            style={{ background: imagem ? "var(--background)" : `${cor}1f`, color: cor }}
-          >
-            {imagem ? <img src={imagem} alt="" className="size-full object-contain p-1" /> : <Icon className="size-4" />}
-          </span>
+          <LogoAvatar src={imagem} cor={cor} Icon={Icon} size={32} />
           <div className="min-w-0">
             <p className="truncate font-semibold">{t.descricao || info.l}</p>
             <p className="truncate text-[0.7rem] text-muted-foreground">{cartao?.nome || (t.obrigacao_id ? "Obrigação fixa" : "Pix / Débito")}</p>

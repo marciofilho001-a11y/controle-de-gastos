@@ -7,6 +7,7 @@ import { catInfo, catColor } from "@/lib/categorias"
 import { normalizarDescricao } from "@/lib/selectors"
 import { comprimirImagemParaIcone } from "@/lib/image"
 import { cn } from "@/lib/utils"
+import { useCorLogo } from "@/components/logo-avatar"
 
 // Ícone de um lançamento: imagem custom (vinculada ao nome) OU ícone da categoria.
 // Clicar abre o seletor de imagem; se já tem imagem própria, mostra botão de restaurar.
@@ -73,6 +74,8 @@ export function ItemIcon({
   }
 
   const img = imgCustom || imgCategoria
+  const info = useCorLogo(img)
+  const glow = img ? info?.cor || "transparent" : cor
 
   return (
     <span className="relative inline-flex shrink-0">
@@ -80,16 +83,16 @@ export function ItemIcon({
         type="button"
         onClick={() => inputRef.current?.click()}
         title="Clique pra usar sua própria imagem nesse lançamento (vale pra todos com o mesmo nome)"
-        className={cn("grid place-items-center overflow-hidden rounded-lg transition-transform hover:scale-105")}
+        className={cn("grid place-items-center overflow-hidden rounded-full transition-transform hover:scale-105")}
         style={{
           width: size, height: size,
-          background: img ? "transparent" : `${cor}1f`,
+          background: img ? info?.fundo || "var(--background)" : `${cor}1f`,
           color: cor,
-          border: img ? "1px solid var(--border)" : `1px solid ${cor}3a`,
+          boxShadow: `0 0 0 1px color-mix(in srgb, ${glow} 55%, transparent), 0 0 ${Math.round(size * 0.4)}px color-mix(in srgb, ${glow} 45%, transparent)`,
         }}
       >
         {img ? (
-          <img src={img} alt="" className="size-full object-contain" />
+          <img src={img} alt="" className="size-full scale-[1.18] object-cover" draggable={false} />
         ) : (
           <Icon style={{ width: size * 0.55, height: size * 0.55 }} />
         )}

@@ -19,6 +19,7 @@ import { calcularProjecaoMes, obrigacoesAtivasNoMes, faturaDoMes, parcelaNoMes }
 import {
   useChartColors, fmtAxis, axisProps, gridProps, ChartTooltip, ChartLegend, CHART_ANIM,
 } from "@/lib/chart-theme"
+import { LogoAvatar } from "@/components/logo-avatar"
 import { cn } from "@/lib/utils"
 import type { Obrigacao, Cartao, Transacao } from "@/lib/supabase"
 
@@ -337,9 +338,7 @@ function DetalheMes({
       ))}
       {faturas.map(({ c, v }) => (
         <div key={`c-${c.id}`} className="flex items-center gap-2.5 rounded-lg bg-secondary/40 px-3 py-2">
-          <span className="grid size-7 place-items-center overflow-hidden rounded-md bg-muted text-muted-foreground ring-1 ring-border">
-            {c.logo ? <img src={c.logo} alt="" className="size-full object-contain p-0.5" /> : <CreditCard className="size-3.5" />}
-          </span>
+          <LogoAvatar src={c.logo} cor="var(--muted-foreground)" Icon={CreditCard} size={28} />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium">Fatura {c.nome}</span>
             <span className="block text-[0.7rem] text-muted-foreground">Dia {c.dia_vencimento || "—"} · cartão</span>

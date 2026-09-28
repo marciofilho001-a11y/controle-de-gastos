@@ -23,6 +23,7 @@ import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesCurto } from "@/lib/format"
 import { faturaInfoDoMes } from "@/lib/selectors"
 import { motion } from "motion/react"
+import { LogoAvatar } from "@/components/logo-avatar"
 import { cn } from "@/lib/utils"
 
 export function CartoesPage({ mesRef }: { mesRef: string }) {
@@ -113,9 +114,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                 onClick={() => setDetalheCartao(c)}
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted text-muted-foreground ring-1 ring-border">
-                    {c.logo ? <img src={c.logo} alt="" className="size-full object-contain p-1" /> : <CreditCard className="size-5" />}
-                  </span>
+                  <LogoAvatar src={c.logo} cor="var(--muted-foreground)" Icon={CreditCard} size={40} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-display text-[15px] font-semibold">{c.nome}</p>
                     <p className="text-xs text-muted-foreground">Vencimento dia {c.dia_vencimento || "—"}</p>
