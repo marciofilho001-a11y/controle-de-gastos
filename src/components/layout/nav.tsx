@@ -4,8 +4,7 @@ import {
   CreditCard,
   ArrowLeftRight,
   TrendingUp,
-  Landmark,
-  Gauge,
+
   FileText,
   type LucideIcon,
 } from "lucide-react"
@@ -13,7 +12,7 @@ import { cn } from "@/lib/utils"
 
 export type TabId =
   | "dashboard" | "obrigacoes" | "cartoes" | "transacoes"
-  | "projecao" | "investimentos" | "limites" | "relatorio"
+  | "projecao" | "relatorio"
 
 export const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -21,8 +20,6 @@ export const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "cartoes", label: "Cartões", icon: CreditCard },
   { id: "transacoes", label: "Transações", icon: ArrowLeftRight },
   { id: "projecao", label: "Projeção", icon: TrendingUp },
-  { id: "investimentos", label: "Investimentos", icon: Landmark },
-  { id: "limites", label: "Limites", icon: Gauge },
   { id: "relatorio", label: "Relatório", icon: FileText },
 ]
 
