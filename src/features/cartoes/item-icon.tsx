@@ -92,7 +92,7 @@ export function ItemIcon({
         }}
       >
         {img ? (
-          <img src={img} alt="" className="size-full scale-[1.18] object-cover" draggable={false} />
+          info ? <img src={info.img} alt="" className="size-full object-cover" draggable={false} /> : null
         ) : (
           <Icon style={{ width: size * 0.55, height: size * 0.55 }} />
         )}
