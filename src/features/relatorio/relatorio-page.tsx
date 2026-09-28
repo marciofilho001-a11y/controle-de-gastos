@@ -1,10 +1,19 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
+import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { TransacaoDialog } from "@/features/transacoes/nova-transacao-dialog"
+import { duplicarTransacao, excluirTransacao } from "@/lib/transacoes-actions"
+import type { Transacao } from "@/lib/supabase"
 import { DollarSign, Calculator, CreditCard, Wallet, CircleGauge, Shapes, Banknote } from "lucide-react"
 import { StatCard } from "@/components/stat-card"
 import { PageHeader, SectionTitle } from "@/components/page-header"
 import { ChartPrevistoReal, type LinhaCat } from "./chart-previsto-real"
 import { HistoricoChart } from "./historico-chart"
-import { CatCard, type CatLinha } from "./cat-card"
+import { CategoriasLancamentos } from "./categorias-lancamentos"
 import { FormaPagamentoBreakdown } from "./forma-pagamento"
 import { PanoramaButton } from "./panorama"
 import { PdfButton } from "./pdf-button"
@@ -19,8 +28,23 @@ import {
 } from "@/lib/selectors"
 
 export function RelatorioPage({ mesRef }: { mesRef: string }) {
-  const { obrigacoes, transacoes, cartoes, tetos, config } = useFinData()
+  const { obrigacoes, transacoes, cartoes, tetos, config, descricaoIcones, loadAll } = useFinData()
   const cores = useChartColors()
+  const [editTx, setEditTx] = useState<Transacao | null>(null)
+  const [delTx, setDelTx] = useState<Transacao | null>(null)
+  const [busyTx, setBusyTx] = useState(false)
+
+  async function duplicar(t: Transacao) {
+    try { await duplicarTransacao(t, mesRef); toast.success("Lançamento duplicado neste mês"); await loadAll() }
+    catch (e) { toast.error("Erro ao duplicar", { description: e instanceof Error ? e.message : "" }) }
+  }
+  async function confirmarExcluir() {
+    if (!delTx) return
+    setBusyTx(true)
+    try { await excluirTransacao(delTx.id); toast.success("Lançamento removido"); setDelTx(null); await loadAll() }
+    catch (e) { toast.error("Erro ao remover", { description: e instanceof Error ? e.message : "" }) }
+    finally { setBusyTx(false) }
+  }
 
   const calc = useMemo(() => {
     const rendaPrevista = parseFloat(config.renda_projetada) || 0
@@ -69,7 +93,6 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
   const chartData: LinhaCat[] = calc.linhasCat.map((l) => ({
     catKey: l.catKey, label: l.label, previsto: l.previsto, real: l.real, cor: l.cor,
   }))
-  const catCards: CatLinha[] = calc.linhasCat
 
   return (
     <div className="flex flex-col gap-6">
@@ -121,11 +144,15 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
         <div className="rounded-xl border bg-card p-5">
           <ChartPrevistoReal linhas={chartData} />
         </div>
-        <div className="mt-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {catCards.map((l, i) => (
-            <CatCard key={l.catKey} linha={l} index={i} transacoes={calc.despesasMes} cartoes={cartoes} />
-          ))}
-        </div>
+      </section>
+
+      {/* Categorias + lançamentos do mês */}
+      <section>
+        <SectionTitle icon={Shapes}>Categorias e Lançamentos</SectionTitle>
+        <CategoriasLancamentos
+          lancamentos={calc.despesasMes} cartoes={cartoes} descricaoIcones={descricaoIcones}
+          onEdit={(t) => setEditTx(t)} onDuplicar={duplicar} onDelete={(t) => setDelTx(t)}
+        />
       </section>
 
       {/* Histórico receitas x despesas (vindo da antiga aba Gráficos) */}
@@ -136,6 +163,23 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
         <SectionTitle icon={Banknote}>Por Forma de Pagamento</SectionTitle>
         <FormaPagamentoBreakdown transacoes={transacoes} cartoes={cartoes} mesRef={mesRef} />
       </section>
+
+      <TransacaoDialog editar={editTx} open={!!editTx} onOpenChange={(o) => !o && setEditTx(null)} />
+      <AlertDialog open={delTx != null} onOpenChange={(o) => !o && setDelTx(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover este lançamento?</AlertDialogTitle>
+            <AlertDialogDescription>{delTx?.descricao} — esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); confirmarExcluir() }} disabled={busyTx}>
+              {busyTx && <Loader2 data-icon="inline-start" className="animate-spin" />}
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

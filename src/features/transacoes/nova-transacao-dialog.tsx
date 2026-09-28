@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Plus, Loader2, Banknote, CreditCard } from "lucide-react"
+import { Plus, Loader2, Banknote, CreditCard, Layers } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose,
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/select"
 import { supabase, type Transacao } from "@/lib/supabase"
 import { DESPESA_CATS, RECEITA_CATS } from "@/lib/categorias"
+import { addMonths, fmtR, fmtMesCurto } from "@/lib/format"
+import { infoParcela } from "@/lib/parcelas"
 import { useFinData } from "@/hooks/use-fin-data"
 
 const DEBITO = "debito"
@@ -45,6 +47,9 @@ export function TransacaoDialog({
   const [data, setData] = useState(new Date().toISOString().slice(0, 10))
   const [forma, setForma] = useState<string>(DEBITO) // "debito" | id do cartão
   const [mesFatura, setMesFatura] = useState("")
+  const [parcelas, setParcelas] = useState("1")        // novo lançamento: nº de parcelas (1 = à vista)
+  const [parcAtual, setParcAtual] = useState("")       // edição: parcela atual / total
+  const [parcTotal, setParcTotal] = useState("")
 
   const cartoesAtivos = cartoes.filter((c) => c.ativo !== false)
   const cats = tipo === "receita" ? RECEITA_CATS : DESPESA_CATS
@@ -60,11 +65,14 @@ export function TransacaoDialog({
       setData(editar.data)
       setForma(editar.cartao_id ? String(editar.cartao_id) : DEBITO)
       setMesFatura(editar.mes_ref)
+      const p = infoParcela(editar)
+      setParcAtual(p ? String(p.atual) : ""); setParcTotal(p ? String(p.total) : ""); setParcelas("1")
     } else {
       const hoje = new Date().toISOString().slice(0, 10)
       setTipo("despesa"); setDescricao(""); setValor(""); setCategoria("outro")
       setData(mesRefPadrao && !hoje.startsWith(mesRefPadrao) ? `${mesRefPadrao}-01` : hoje)
       setForma(DEBITO); setMesFatura(mesRefPadrao || hoje.slice(0, 7))
+      setParcelas("1"); setParcAtual(""); setParcTotal("")
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editar])
@@ -75,6 +83,9 @@ export function TransacaoDialog({
     if (d && (!mesFatura || mesFatura === data.slice(0, 7))) setMesFatura(d.slice(0, 7))
   }
 
+  const nParc = tipo === "despesa" && !editar ? Math.max(1, Math.min(72, parseInt(parcelas) || 1)) : 1
+  const vNum = parseFloat(valor) || 0
+
   async function salvar() {
     const v = parseFloat(valor)
     if (!descricao.trim() || !v || v <= 0 || !data) {
@@ -83,16 +94,50 @@ export function TransacaoDialog({
     }
     const cartao_id = noCartao ? parseInt(forma) : null
     const mes_ref = noCartao && mesFatura ? mesFatura : data.slice(0, 7)
-    const payload = {
-      tipo, descricao: descricao.trim(), valor: v, data, categoria, mes_ref, cartao_id,
-    }
     setSaving(true)
     try {
-      const { error } = editar
-        ? await supabase.from("fin_transacoes").update(payload).eq("id", editar.id)
-        : await supabase.from("fin_transacoes").insert(payload)
-      if (error) throw error
-      toast.success(editar ? "Lançamento atualizado!" : "Lançamento salvo!")
+      if (editar) {
+        const pt = parseInt(parcTotal) || 0
+        const pa = parseInt(parcAtual) || 0
+        const payload = {
+          tipo, descricao: descricao.trim(), valor: v, data, categoria, mes_ref, cartao_id,
+          parcela_total: pt > 1 ? pt : null,
+          parcela_atual: pt > 1 ? Math.min(Math.max(1, pa || 1), pt) : null,
+        }
+        const { error } = await supabase.from("fin_transacoes").update(payload).eq("id", editar.id)
+        if (error) throw error
+        toast.success("Lançamento atualizado!")
+      } else if (nParc <= 1) {
+        const { error } = await supabase.from("fin_transacoes").insert({
+          tipo, descricao: descricao.trim(), valor: v, data, categoria, mes_ref, cartao_id,
+        })
+        if (error) throw error
+        toast.success("Lançamento salvo!")
+      } else {
+        // parcelado: no cartão registra a compra (igual ao "Nova Compra"); no débito só as parcelas.
+        let compra_id: number | null = null
+        if (cartao_id) {
+          const { data: compra, error: cErr } = await supabase.from("fin_cartao_compras").insert({
+            cartao_id, descricao: descricao.trim(), categoria, valor_parcela: v, parcela_total: nParc, data_inicio: data,
+          }).select()
+          if (cErr) throw cErr
+          compra_id = compra![0].id
+        }
+        const dia = data.slice(8, 10)
+        const linhas = Array.from({ length: nParc }, (_, i) => {
+          const m = addMonths(mes_ref, i)
+          const [ano, mes] = m.split("-").map(Number)
+          const ultimo = new Date(ano, mes, 0).getDate()
+          const dataParc = i === 0 ? data : `${m}-${String(Math.min(Number(dia), ultimo)).padStart(2, "0")}`
+          return {
+            tipo, descricao: `${descricao.trim()} (${i + 1}/${nParc})`, valor: v, categoria,
+            data: dataParc, mes_ref: m, cartao_id, compra_id, parcela_atual: i + 1, parcela_total: nParc,
+          }
+        })
+        const { error } = await supabase.from("fin_transacoes").insert(linhas)
+        if (error) throw error
+        toast.success(`${nParc} parcelas de ${fmtR(v)} lançadas`, { description: `Total ${fmtR(v * nParc)} até ${fmtMesCurto(addMonths(mes_ref, nParc - 1))}` })
+      }
       setOpen(false)
       await loadAll()
     } catch (e) {
@@ -188,6 +233,30 @@ export function TransacaoDialog({
               <span className="text-xs text-muted-foreground">
                 Em qual fatura essa compra cai. Compras depois do fechamento vão pro mês seguinte.
               </span>
+            </div>
+          )}
+          {tipo === "despesa" && !editar && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="tx-parc" className="flex items-center gap-1.5"><Layers className="size-3.5" /> Parcelas</Label>
+              <div className="grid grid-cols-[110px_1fr] items-center gap-3">
+                <Input id="tx-parc" type="number" min={1} max={72} value={parcelas} onChange={(e) => setParcelas(e.target.value)} />
+                <span className="text-xs text-muted-foreground">
+                  {nParc <= 1
+                    ? "À vista (1x). Informe 2 ou mais pra dividir em parcelas mensais."
+                    : `${nParc}x de ${fmtR(vNum)} = ${fmtR(vNum * nParc)} · uma parcela por mês a partir de ${fmtMesCurto(mesFatura || data.slice(0, 7))}`}
+                </span>
+              </div>
+            </div>
+          )}
+          {tipo === "despesa" && editar && (
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1.5"><Layers className="size-3.5" /> Parcela</Label>
+              <div className="flex items-center gap-2">
+                <Input type="number" min={1} value={parcAtual} onChange={(e) => setParcAtual(e.target.value)} placeholder="atual" className="w-24" />
+                <span className="text-sm text-muted-foreground">de</span>
+                <Input type="number" min={1} value={parcTotal} onChange={(e) => setParcTotal(e.target.value)} placeholder="total" className="w-24" />
+                <span className="text-xs text-muted-foreground">Deixe vazio se não é parcelado. Aparece como "Pago 2/5".</span>
+              </div>
             </div>
           )}
           {editar && (editar.obrigacao_id || editar.compra_id) && (
