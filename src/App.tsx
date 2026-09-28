@@ -9,6 +9,8 @@ import { TransacoesPage } from "@/features/transacoes/transacoes-page"
 import { ObrigacoesPage } from "@/features/obrigacoes/obrigacoes-page"
 import { CartoesPage } from "@/features/cartoes/cartoes-page"
 import { ProjecaoPage } from "@/features/projecao/projecao-page"
+import { FechamentoPage } from "@/features/fechamento/fechamento-page"
+import { HistoricoPage } from "@/features/historico/historico-page"
 import { ChatAssistente } from "@/features/chat/chat-assistente"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
@@ -53,6 +55,10 @@ export default function App() {
             <ProjecaoPage mesRef={mesRef} />
           ) : tab === "transacoes" ? (
             <TransacoesPage mesRef={mesRef} />
+          ) : tab === "fechamento" ? (
+            <FechamentoPage mesRef={mesRef} onNavigate={setTab} />
+          ) : tab === "historico" ? (
+            <HistoricoPage mesRef={mesRef} />
           ) : tab === "relatorio" ? (
             <RelatorioPage mesRef={mesRef} />
           ) : null}

@@ -6,13 +6,14 @@ import {
   TrendingUp,
 
   FileText,
+  CalendarCheck, History,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export type TabId =
   | "dashboard" | "obrigacoes" | "cartoes" | "transacoes"
-  | "projecao" | "relatorio"
+  | "projecao" | "fechamento" | "historico" | "relatorio"
 
 export const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -20,6 +21,8 @@ export const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "cartoes", label: "Cartões", icon: CreditCard },
   { id: "transacoes", label: "Transações", icon: ArrowLeftRight },
   { id: "projecao", label: "Projeção", icon: TrendingUp },
+  { id: "fechamento", label: "Fechamento", icon: CalendarCheck },
+  { id: "historico", label: "Histórico", icon: History },
   { id: "relatorio", label: "Relatório", icon: FileText },
 ]
 

@@ -12,7 +12,6 @@ import { DollarSign, Calculator, CreditCard, Wallet, CircleGauge, Shapes, Bankno
 import { StatCard } from "@/components/stat-card"
 import { PageHeader, SectionTitle } from "@/components/page-header"
 import { ChartPrevistoReal, type LinhaCat } from "./chart-previsto-real"
-import { HistoricoChart } from "./historico-chart"
 import { CategoriasLancamentos } from "./categorias-lancamentos"
 import { FormaPagamentoBreakdown } from "./forma-pagamento"
 import { PanoramaButton } from "./panorama"
@@ -154,9 +153,6 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
           onEdit={(t) => setEditTx(t)} onDuplicar={duplicar} onDelete={(t) => setDelTx(t)}
         />
       </section>
-
-      {/* Histórico receitas x despesas (vindo da antiga aba Gráficos) */}
-      <HistoricoChart transacoes={transacoes} mesRef={mesRef} />
 
       {/* Por forma de pagamento — drill-down interativo */}
       <section>
