@@ -1,20 +1,21 @@
 import { useMemo, useState } from "react"
 import { motion } from "motion/react"
 import {
-  ComposedChart, Bar, Line, Area, AreaChart, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
+  ComposedChart, Bar, Line, Area, AreaChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
 } from "recharts"
-import { BarChart3, Layers, TrendingUp, Trophy, ThumbsDown, Wallet, Receipt, Sigma, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { BarChart3, Trophy, ThumbsDown, Wallet, Receipt, Sigma, ArrowUpRight, ArrowDownRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader, SectionTitle } from "@/components/page-header"
 import { StatCard } from "@/components/stat-card"
 import { useFinData } from "@/hooks/use-fin-data"
-import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesCurto, addMonths } from "@/lib/format"
 import { receitasDoMes, despesasDoMes, despesasExibicaoDoMes } from "@/lib/selectors"
 import {
   useChartColors, fmtAxis, axisProps, gridProps, cursorProps, ChartTooltip, ChartLegend, CHART_ANIM,
 } from "@/lib/chart-theme"
 import { cn } from "@/lib/utils"
+import { CategoriasTempo, type LinhaStack, type Panorama } from "./categorias-tempo"
+import { RankingPeriodo } from "./ranking-periodo"
 
 const RANGES = [{ label: "6m", v: 6 }, { label: "12m", v: 12 }, { label: "24m", v: 24 }, { label: "Tudo", v: 0 }]
 const EASE = [0.23, 1, 0.32, 1] as const
@@ -45,19 +46,40 @@ export function HistoricoPage({ mesRef }: { mesRef: string }) {
     const totalCat = new Map<string, number>()
     for (const pm of porMes) for (const [k, v] of pm.cats) totalCat.set(k, (totalCat.get(k) || 0) + v)
     const totalDesp = porMes.reduce((s, x) => s + x.despesa, 0)
+    const totalCats = [...totalCat.values()].reduce((s, v) => s + v, 0)
     const ranking = [...totalCat.entries()].map(([k, v]) => ({
-      k, total: v, media: v / porMes.length, pct: totalDesp > 0 ? (v / totalDesp) * 100 : 0,
+      k, total: v, media: v / porMes.length, pct: totalCats > 0 ? (v / totalCats) * 100 : 0,
       serie: porMes.map((pm) => pm.cats.get(k) || 0),
     })).sort((a, b) => b.total - a.total)
     const top = ranking.slice(0, 6).map((r) => r.k)
 
     const stack = porMes.map((pm) => {
-      const row: Record<string, number | string> = { mes: fmtMesCurto(pm.m) }
+      const row = { mes: fmtMesCurto(pm.m), total: 0 } as LinhaStack
       let outros = 0
       for (const [k, v] of pm.cats) (top.includes(k) ? (row[k] = Math.round(v)) : (outros += v))
       if (outros > 0) row.__outros = Math.round(outros)
+      row.total = [...pm.cats.values()].reduce((s, v) => s + v, 0)
       return row
     })
+
+    // panorama do período (tudo dos dados reais) + comparação com o período anterior de mesmo tamanho
+    const somaCats = (m: string) => despesasExibicaoDoMes(transacoes, m).reduce((s, t) => s + Number(t.valor), 0)
+    const nJan = porMes.length
+    const ate = todos.length - (range > 0 ? nJan : 0)
+    const prev = range > 0 ? todos.slice(Math.max(0, ate - nJan), ate) : []
+    const prevTotal = prev.reduce((s, m) => s + somaCats(m), 0)
+    const pctVs = (atual: number, antes: number) => (antes > 0 ? ((atual - antes) / antes) * 100 : null)
+    const reais = ranking.filter((r) => r.k !== "fatura_indefinida")
+    const base = reais.length ? reais : ranking
+    const item = (r?: (typeof ranking)[number]) => (r ? { k: r.k, v: r.total, pct: r.pct } : null)
+    const panorama: Panorama = {
+      total: totalCats,
+      media: totalCats / nJan,
+      deltaTotal: prev.length === nJan ? pctVs(totalCats, prevTotal) : null,
+      deltaMedia: prev.length > 0 ? pctVs(totalCats / nJan, prevTotal / prev.length) : null,
+      maior: item(base[0]),
+      menor: item(base[base.length - 1]),
+    }
 
     let acc = 0
     const acumulado = porMes.map((pm) => ({ mes: fmtMesCurto(pm.m), Acumulado: Math.round(acc += pm.sobra) }))
@@ -75,12 +97,10 @@ export function HistoricoPage({ mesRef }: { mesRef: string }) {
     const tend = ant.length ? ((med(ult) - med(ant)) / med(ant)) * 100 : null
 
     return {
-      porMes, lista, ranking, top, stack, acumulado, mediaRec, mediaDesp, mediaSobra, melhor, pior, tend, totalDesp, n,
+      porMes, lista, ranking, top, stack, panorama, acumulado, mediaRec, mediaDesp, mediaSobra, melhor, pior, tend, totalDesp, n,
       grafico: porMes.map((pm) => ({ mes: fmtMesCurto(pm.m), Receitas: Math.round(pm.receita), Despesas: Math.round(pm.despesa), Sobra: Math.round(pm.sobra) })),
     }
   }, [transacoes, mesRef, range])
-
-  const serieSel = catSel ? d.ranking.find((r) => r.k === catSel) : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -144,87 +164,13 @@ export function HistoricoPage({ mesRef }: { mesRef: string }) {
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        {/* categorias ao longo do tempo */}
-        <section>
-          <SectionTitle icon={Layers}>Categorias ao longo do tempo</SectionTitle>
-          <div className="rounded-xl border bg-card p-5">
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {d.top.map((k) => (
-                <button
-                  key={k} onClick={() => setCatSel(catSel === k ? null : k)} aria-pressed={catSel === k}
-                  className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors", catSel === k ? "border-transparent text-white" : "text-muted-foreground hover:text-foreground")}
-                  style={catSel === k ? { background: catColor(k) } : undefined}
-                >
-                  <span className="size-2 rounded-full" style={{ background: catColor(k) }} /> {catInfo(k).l}
-                </button>
-              ))}
-              {d.stack.some((r) => r.__outros) && <span className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs text-muted-foreground"><span className="size-2 rounded-full bg-muted-foreground/50" /> Outras</span>}
-            </div>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={d.stack} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barCategoryGap="30%">
-                  <CartesianGrid vertical={false} {...gridProps(c)} />
-                  <XAxis dataKey="mes" {...axisProps(c)} />
-                  <YAxis tickFormatter={fmtAxis} {...axisProps(c)} width={72} />
-                  <Tooltip content={<ChartTooltip />} cursor={cursorProps(c)} />
-                  {d.top.map((k, i) => (
-                    <Bar
-                      key={k} dataKey={k} name={catInfo(k).l} stackId="a" fill={catColor(k)}
-                      fillOpacity={catSel && catSel !== k ? 0.18 : 1}
-                      radius={i === d.top.length - 1 && !d.stack.some((r) => r.__outros) ? [6, 6, 0, 0] : 0}
-                      maxBarSize={34} animationDuration={CHART_ANIM}
-                    />
-                  ))}
-                  {d.stack.some((r) => r.__outros) && (
-                    <Bar dataKey="__outros" name="Outras" stackId="a" fill={c.text} fillOpacity={catSel ? 0.18 : 0.5} radius={[6, 6, 0, 0]} maxBarSize={34} animationDuration={CHART_ANIM} />
-                  )}
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            {serieSel && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                <span className="font-semibold text-foreground">{catInfo(serieSel.k).l}</span>: {fmtR(serieSel.total)} no período · média {fmtR(serieSel.media)}/mês · {serieSel.pct.toFixed(0)}% das despesas
-              </p>
-            )}
-          </div>
-        </section>
-
-        {/* ranking do período */}
-        <section>
-          <SectionTitle icon={TrendingUp}>No que mais gastei no período</SectionTitle>
-          <div className="rounded-xl border bg-card p-2">
-            <div className="flex flex-col">
-              {d.ranking.slice(0, 10).map((r, i) => {
-                const I = catInfo(r.k).icon; const cor = catColor(r.k)
-                const max = d.ranking[0]?.total || 1
-                return (
-                  <motion.button
-                    key={r.k} onClick={() => setCatSel(catSel === r.k ? null : r.k)}
-                    initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.22, delay: i * 0.03, ease: EASE }}
-                    className={cn("flex items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-secondary/50", catSel === r.k && "bg-secondary/70")}
-                  >
-                    <span className="tnum w-4 text-xs text-muted-foreground">{i + 1}</span>
-                    <span className="grid size-8 shrink-0 place-items-center rounded-lg" style={{ background: `${cor}22`, color: cor }}><I className="size-4" /></span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <p className="truncate text-sm font-semibold">{catInfo(r.k).l}</p>
-                        <p className="tnum text-sm font-bold">{fmtR(r.total)}</p>
-                      </div>
-                      <div className="mt-1 flex items-center gap-2">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-                          <motion.div className="h-full rounded-full" style={{ background: cor }} initial={{ width: 0 }} animate={{ width: `${(r.total / max) * 100}%` }} transition={{ duration: 0.6, delay: 0.1 + i * 0.03, ease: EASE }} />
-                        </div>
-                        <span className="tnum w-32 shrink-0 text-right text-[0.7rem] text-muted-foreground">{fmtR(r.media)}/mês · {r.pct.toFixed(0)}%</span>
-                      </div>
-                    </div>
-                  </motion.button>
-                )
-              })}
-              {d.ranking.length === 0 && <p className="px-3 py-8 text-center text-sm text-muted-foreground">Sem despesas no período</p>}
-            </div>
-          </div>
-        </section>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+        <CategoriasTempo
+          stack={d.stack} top={d.top} temOutras={d.stack.some((r) => r.__outros)}
+          catSel={catSel} onCatSel={setCatSel} range={range} onRange={setRange}
+          panorama={d.panorama} nMeses={d.n}
+        />
+        <RankingPeriodo ranking={d.ranking} catSel={catSel} onCatSel={setCatSel} />
       </div>
 
       {/* sobra acumulada */}
