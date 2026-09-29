@@ -8,6 +8,9 @@ import {
 } from "@/components/ui/select"
 import { RowActions } from "@/components/row-actions"
 import { LogoAvatar } from "@/components/logo-avatar"
+import { useFinData } from "@/hooks/use-fin-data"
+import { tipoDoGasto, TIPO_OUTROS, type TipoGasto } from "@/lib/tipo-gasto"
+import { temasComExtras } from "@/lib/temas"
 import { catInfo, catColor, DESPESA_CATS, RECEITA_CATS } from "@/lib/categorias"
 import { fmtR, fmtData } from "@/lib/format"
 import type { LinhaExibicao } from "@/lib/selectors"
@@ -37,7 +40,18 @@ export function LancamentosFiltravel({
   const acoes: Acoes = { onEdit, onDuplicar, onDelete }
   const [modo, setModo] = useState<"grade" | "lista">("grade")
   const [filtroCartao, setFiltroCartao] = useState("todos")
-  const [filtroCat, setFiltroCat] = useState("todas")
+  const [filtroCat, setFiltroCatRaw] = useState("todas")
+  const [filtroTipo, setFiltroTipo] = useState("todos")
+  const setFiltroCat = (v: string) => { setFiltroCatRaw(v); setFiltroTipo("todos") }
+  const { config } = useFinData()
+
+  // tipo de gasto de cada lançamento, lido da descrição (bebida, jogo, perfume, pagamento...)
+  const tipoDe = useMemo(() => {
+    const temas = temasComExtras(config.temas_extra)
+    const m = new Map<number, TipoGasto | null>()
+    for (const t of lancamentos) m.set(t.id, tipoDoGasto(t.descricao, temas))
+    return m
+  }, [lancamentos, config.temas_extra])
 
   // base após o filtro de pagamento — é sobre ela que os chips contam
   const porPagamento = useMemo(() => {
@@ -60,9 +74,29 @@ export function LancamentosFiltravel({
       .sort((a, b) => b.n - a.n)
   }, [porPagamento])
 
-  const filtrados = useMemo(
+  const daCategoria = useMemo(
     () => (filtroCat === "todas" ? porPagamento : porPagamento.filter((t) => (t.categoria || "outro") === filtroCat)),
     [porPagamento, filtroCat]
+  )
+
+  // grupos de tipo dentro da categoria escolhida: organiza uma categoria grande (ex.: Lazer)
+  const grupos = useMemo(() => {
+    const m = new Map<string, { grupo: string; tipo: TipoGasto | null; itens: LinhaExibicao[]; total: number }>()
+    for (const t of daCategoria) {
+      const tp = tipoDe.get(t.id) ?? null
+      const g = tp?.grupo ?? TIPO_OUTROS
+      const cur = m.get(g) || { grupo: g, tipo: tp, itens: [], total: 0 }
+      cur.itens.push(t); cur.total += Number(t.valor)
+      m.set(g, cur)
+    }
+    return [...m.values()].sort((a, b) =>
+      a.grupo === TIPO_OUTROS ? 1 : b.grupo === TIPO_OUTROS ? -1 : b.total - a.total)
+  }, [daCategoria, tipoDe])
+  const usaGrupos = filtroCat !== "todas" && grupos.length >= 2
+
+  const filtrados = useMemo(
+    () => (usaGrupos && filtroTipo !== "todos" ? daCategoria.filter((t) => (tipoDe.get(t.id)?.grupo ?? TIPO_OUTROS) === filtroTipo) : daCategoria),
+    [daCategoria, usaGrupos, filtroTipo, tipoDe]
   )
 
   const cartoesAtivos = cartoes.filter((c) => c.ativo !== false)
@@ -82,7 +116,7 @@ export function LancamentosFiltravel({
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Select value={filtroCartao} onValueChange={(v) => { setFiltroCartao(v); setFiltroCat("todas") }}>
-            <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-[172px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 <SelectItem value="todos">Todo pagamento</SelectItem>
@@ -94,7 +128,7 @@ export function LancamentosFiltravel({
             </SelectContent>
           </Select>
           <Select value={filtroCat} onValueChange={setFiltroCat}>
-            <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-[172px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 <SelectItem value="todas">Toda categoria</SelectItem>
@@ -112,10 +146,10 @@ export function LancamentosFiltravel({
       </div>
 
       {/* resumo da categoria selecionada */}
-      {filtroCat !== "todas" && filtrados.length > 0 && (() => {
+      {filtroCat !== "todas" && daCategoria.length > 0 && (() => {
         const info = catInfo(filtroCat); const Icon = info.icon; const cor = catColor(filtroCat)
-        const total = filtrados.reduce((s, t) => s + Number(t.valor), 0)
-        const maior = filtrados.reduce((m, t) => Math.max(m, Number(t.valor)), 0)
+        const total = daCategoria.reduce((s, t) => s + Number(t.valor), 0)
+        const maior = daCategoria.reduce((m, t) => Math.max(m, Number(t.valor)), 0)
         const totalGeral = porPagamento.reduce((s, t) => s + Number(t.valor), 0)
         return (
           <motion.div
@@ -137,12 +171,10 @@ export function LancamentosFiltravel({
             </div>
             <p className="tnum font-display text-3xl font-bold" style={{ color: cor }}>{fmtR(total)}</p>
             <div className="hidden h-8 w-px bg-border sm:block" />
-            <Stat icon={Receipt} cor={cor} big={String(filtrados.length)} small="lançamentos" />
-            <Stat icon={BarChart3} cor={cor} big={fmtR(total / filtrados.length)} small="média por gasto" />
+            <Stat icon={Receipt} cor={cor} big={String(daCategoria.length)} small="lançamentos" />
+            <Stat icon={BarChart3} cor={cor} big={fmtR(total / daCategoria.length)} small="média por gasto" />
             <Stat icon={Trophy} cor={cor} big={fmtR(maior)} small="maior gasto" />
-            <span className="tnum ml-auto rounded-full border px-3 py-1 text-xs font-semibold text-muted-foreground" style={{ borderColor: `${cor}55` }}>
-              {totalGeral > 0 ? `${Math.round((total / totalGeral) * 100)}% do mês` : ""}
-            </span>
+            <PctMes pct={totalGeral > 0 ? (total / totalGeral) * 100 : 0} cor={cor} />
           </motion.div>
         )
       })()}
@@ -163,24 +195,124 @@ export function LancamentosFiltravel({
         ))}
       </div>
 
+      {/* tipos de gasto dentro da categoria (bebidas, jogos, perfumes...) */}
+      {usaGrupos && (
+        <div className="scrollbar-none -mx-1 mb-4 flex items-center gap-2 overflow-x-auto px-1 pb-1">
+          <span className="shrink-0 pr-1 text-xs font-medium text-muted-foreground">Tipo de gasto</span>
+          <TipoChip ativo={filtroTipo === "todos"} onClick={() => setFiltroTipo("todos")} label="Todos" n={daCategoria.length} />
+          {grupos.map((g) => (
+            <TipoChip
+              key={g.grupo}
+              ativo={filtroTipo === g.grupo}
+              onClick={() => setFiltroTipo(filtroTipo === g.grupo ? "todos" : g.grupo)}
+              icon={g.tipo?.icon}
+              cor={g.tipo?.cor}
+              label={g.grupo}
+              n={g.itens.length}
+            />
+          ))}
+        </div>
+      )}
+
       {filtrados.length === 0 ? (
         <div className="grid place-items-center gap-2 py-10 text-center">
           <Inbox className="size-7 text-muted-foreground/60" />
           <p className="text-sm text-muted-foreground">Nenhum lançamento com esse filtro</p>
         </div>
-      ) : modo === "grade" ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtrados.map((t, i) => (
-            <LancCard key={t.id} t={t} cartoes={cartoes} descricaoIcones={descricaoIcones} index={i} acoes={acoes} />
+      ) : usaGrupos && filtroTipo === "todos" ? (
+        <div className="flex flex-col gap-5">
+          {grupos.map((g) => (
+            <section key={g.grupo}>
+              <SecaoHeader tipo={g.tipo} grupo={g.grupo} n={g.itens.length} total={g.total} />
+              <Itens itens={g.itens} modo={modo} cartoes={cartoes} descricaoIcones={descricaoIcones} tipoDe={tipoDe} acoes={acoes} />
+            </section>
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-1.5">
-          {filtrados.map((t, i) => (
-            <LancRow key={t.id} t={t} cartoes={cartoes} descricaoIcones={descricaoIcones} index={i} acoes={acoes} />
-          ))}
-        </div>
+        <Itens itens={filtrados} modo={modo} cartoes={cartoes} descricaoIcones={descricaoIcones} tipoDe={tipoDe} acoes={acoes} />
       )}
+    </div>
+  )
+}
+
+function Itens({
+  itens, modo, cartoes, descricaoIcones, tipoDe, acoes,
+}: {
+  itens: LinhaExibicao[]; modo: "grade" | "lista"; cartoes: Cartao[]; descricaoIcones: Record<string, string>
+  tipoDe: Map<number, TipoGasto | null>; acoes: Acoes
+}) {
+  return modo === "grade" ? (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {itens.map((t, i) => (
+        <LancCard key={t.id} t={t} tipo={tipoDe.get(t.id) ?? null} cartoes={cartoes} descricaoIcones={descricaoIcones} index={i} acoes={acoes} />
+      ))}
+    </div>
+  ) : (
+    <div className="flex flex-col gap-1.5">
+      {itens.map((t, i) => (
+        <LancRow key={t.id} t={t} tipo={tipoDe.get(t.id) ?? null} cartoes={cartoes} descricaoIcones={descricaoIcones} index={i} acoes={acoes} />
+      ))}
+    </div>
+  )
+}
+
+function SecaoHeader({ tipo, grupo, n, total }: { tipo: TipoGasto | null; grupo: string; n: number; total: number }) {
+  const Icon = tipo?.icon
+  const cor = tipo?.cor || "var(--muted-foreground)"
+  return (
+    <div className="mb-2.5 flex items-center gap-2.5">
+      {Icon && (
+        <span className="grid size-8 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${cor} 16%, transparent)`, color: cor, boxShadow: `0 0 12px color-mix(in srgb, ${cor} 35%, transparent)` }}>
+          <Icon className="size-4" />
+        </span>
+      )}
+      <h4 className="font-display text-base font-semibold">{grupo}</h4>
+      <span className="tnum rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold text-muted-foreground">{n}</span>
+      <span className="h-px flex-1 bg-border/70" />
+      <span className="tnum text-sm font-semibold" style={{ color: cor }}>{fmtR(total)}</span>
+    </div>
+  )
+}
+
+function TipoChip({
+  ativo, onClick, icon: Icon, label, n, cor,
+}: {
+  ativo: boolean; onClick: () => void; icon?: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; label: string; n: number; cor?: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={ativo}
+      className={cn(
+        "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+        ativo ? "border-primary/50 bg-primary/15 text-primary" : "bg-background/40 text-foreground hover:bg-secondary"
+      )}
+    >
+      {Icon && <Icon className="size-3.5" style={!ativo && cor ? { color: cor } : undefined} />}
+      {label}
+      <span className={cn("tnum rounded-full px-1.5 text-[0.68rem] font-semibold", ativo ? "text-primary" : "text-muted-foreground")}>{n}</span>
+    </button>
+  )
+}
+
+// quanto a categoria pesa no mês: % + barra com brilho (LED) na cor da categoria
+function PctMes({ pct, cor }: { pct: number; cor: string }) {
+  const txt = pct > 0 && pct < 1 ? "<1" : String(Math.round(pct))
+  return (
+    <div
+      className="ml-auto w-full min-w-[180px] max-w-[230px] rounded-xl border px-3.5 py-2.5"
+      style={{ borderColor: `color-mix(in srgb, ${cor} 35%, transparent)`, background: `color-mix(in srgb, ${cor} 6%, transparent)` }}
+    >
+      <p className="tnum text-sm font-semibold" style={{ color: cor }}>{txt}% <span className="font-medium text-muted-foreground">do mês</span></p>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full" style={{ background: "color-mix(in srgb, var(--foreground) 10%, transparent)" }}>
+        <motion.div
+          className="h-full rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(100, Math.max(pct, 3))}%` }}
+          transition={{ duration: 0.7, ease: EASE_OUT }}
+          style={{ background: `linear-gradient(90deg, color-mix(in srgb, ${cor} 70%, transparent), ${cor})`, boxShadow: `0 0 10px ${cor}` }}
+        />
+      </div>
     </div>
   )
 }
@@ -257,10 +389,20 @@ function ValorPill({ receita, valor }: { receita: boolean; valor: number }) {
   )
 }
 
+function TipoIcone({ tipo, className }: { tipo: TipoGasto | null; className?: string }) {
+  if (!tipo) return null
+  const I = tipo.icon
+  return (
+    <span title={tipo.grupo} className={cn("grid shrink-0 place-items-center", className)} style={{ color: tipo.cor, filter: `drop-shadow(0 0 6px color-mix(in srgb, ${tipo.cor} 45%, transparent))` }}>
+      <I className="size-full" />
+    </span>
+  )
+}
+
 function LancCard({
-  t, cartoes, descricaoIcones, index, acoes,
+  t, tipo, cartoes, descricaoIcones, index, acoes,
 }: {
-  t: LinhaExibicao; cartoes: Cartao[]; descricaoIcones: Record<string, string>; index: number; acoes: Acoes
+  t: LinhaExibicao; tipo: TipoGasto | null; cartoes: Cartao[]; descricaoIcones: Record<string, string>; index: number; acoes: Acoes
 }) {
   const { info, cor, receita, cartaoTx, imagem } = useVisual(t, cartoes, descricaoIcones)
   const Icon = info.icon
@@ -286,31 +428,34 @@ function LancCard({
             {cartaoTx && <span className="truncate text-muted-foreground">· {cartaoTx.nome}</span>}
           </p>
         </div>
-        {editavel && (
-          <RowActions
-            size="sm"
-            className="-mr-1.5 -mt-1"
-            onEditar={acoes.onEdit ? () => acoes.onEdit!(t) : undefined}
-            onDuplicar={acoes.onDuplicar ? () => acoes.onDuplicar!(t) : undefined}
-            onExcluir={acoes.onDelete ? () => acoes.onDelete!(t) : undefined}
-          />
-        )}
+        <TipoIcone tipo={tipo} className="size-7 opacity-80" />
       </div>
 
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Calendar className="size-3.5" /> <span className="tnum">{fmtData(t.data)}</span>
         </span>
-        <ValorPill receita={receita} valor={Number(t.valor)} />
+        <span className="flex items-center gap-1">
+          <ValorPill receita={receita} valor={Number(t.valor)} />
+          {editavel && (
+            <RowActions
+              size="sm"
+              className="-mr-1.5"
+              onEditar={acoes.onEdit ? () => acoes.onEdit!(t) : undefined}
+              onDuplicar={acoes.onDuplicar ? () => acoes.onDuplicar!(t) : undefined}
+              onExcluir={acoes.onDelete ? () => acoes.onDelete!(t) : undefined}
+            />
+          )}
+        </span>
       </div>
     </motion.div>
   )
 }
 
 function LancRow({
-  t, cartoes, descricaoIcones, index, acoes,
+  t, tipo, cartoes, descricaoIcones, index, acoes,
 }: {
-  t: LinhaExibicao; cartoes: Cartao[]; descricaoIcones: Record<string, string>; index: number; acoes: Acoes
+  t: LinhaExibicao; tipo: TipoGasto | null; cartoes: Cartao[]; descricaoIcones: Record<string, string>; index: number; acoes: Acoes
 }) {
   const { info, cor, receita, cartaoTx, imagem } = useVisual(t, cartoes, descricaoIcones)
   const Icon = info.icon
@@ -335,6 +480,7 @@ function LancRow({
       <span className="tnum hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
         <Calendar className="size-3.5" /> {fmtData(t.data)}
       </span>
+      <TipoIcone tipo={tipo} className="size-5 opacity-80" />
       <ValorPill receita={receita} valor={Number(t.valor)} />
       {editavel && (
         <RowActions
