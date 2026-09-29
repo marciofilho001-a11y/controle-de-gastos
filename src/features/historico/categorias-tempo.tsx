@@ -67,77 +67,111 @@ function Seg({ x, y, width, height, fill, cor, topo, opacidade }: any) {
   )
 }
 
+const larg = (txt: string) => 18 + txt.length * 6.8
+
 // pílula de valor (total do mês / final da linha)
-function Pilula({ x, y, txt, cor, ativo = false, alpha = 1, forte = false }: {
-  x: number; y: number; txt: string; cor?: string; ativo?: boolean; alpha?: number; forte?: boolean
+function Pilula({ x, y, txt, cor, ativo = false, alpha = 1, forte = false, alt = 23 }: {
+  x: number; y: number; txt: string; cor?: string; ativo?: boolean; alpha?: number; forte?: boolean; alt?: number
 }) {
-  const w = 16 + txt.length * 6.7
+  const w = larg(txt)
   const borda = cor ?? COR_TOTAL
   return (
     <g opacity={alpha} style={{ transition: "opacity .2s" }}>
       <rect
-        x={x} y={y} width={w} height={23} rx={8}
+        x={x} y={y} width={w} height={alt} rx={alt / 2}
         fill={forte && cor ? `color-mix(in srgb, ${cor} 14%, var(--card))` : "var(--card)"}
         stroke={borda} strokeOpacity={ativo ? 0.95 : forte ? 0.7 : 0.45} strokeWidth={1.2}
         style={{ filter: ativo ? `drop-shadow(0 0 8px ${borda})` : undefined }}
       />
-      <text x={x + w / 2} y={y + 16} textAnchor="middle" fontSize={12.5} fontWeight={600} fill={forte && cor ? cor : "var(--foreground)"} style={{ fontFamily: "Inter, sans-serif" }}>
+      <text x={x + w / 2} y={y + alt / 2 + 4.5} textAnchor="middle" fontSize={12} fontWeight={600} fill={forte && cor ? cor : "var(--foreground)"} style={{ fontFamily: "Inter, sans-serif" }}>
         {txt}
       </text>
     </g>
   )
 }
-const larg = (txt: string) => 16 + txt.length * 6.7
 
-// rótulos à direita do fim de cada linha, sem se sobreporem
-function FimLabels({ itens, n, padR }: { itens: { k: string; v: number }[]; n: number; padR: number }) {
+// rótulos à direita do fim de cada linha: empilhados com respiro e ligados ao ponto
+function FimLabels({ itens, n, padR, catSel }: { itens: { k: string; v: number }[]; n: number; padR: number; catSel: string | null }) {
   const escY = useYAxisScale()
   const area = usePlotArea()
   if (!escY || !area || !itens.length) return null
   const xUlt = n > 1 ? area.x + area.width - padR : area.x + area.width / 2
-  const H = 24
+  const H = 22, GAP = 7, PASSO = H + GAP
   const pos = itens
-    .map((i) => ({ ...i, y: Number(escY(i.v)) - H / 2 }))
+    .map((i) => ({ ...i, yReal: Number(escY(i.v)), y: Number(escY(i.v)) - H / 2, dobra: 0 }))
     .sort((a, b) => a.y - b.y)
-  for (let i = 1; i < pos.length; i++) if (pos[i].y - pos[i - 1].y < H) pos[i].y = pos[i - 1].y + H
-  const fundo = area.y + area.height - H
-  const excesso = pos.length ? pos[pos.length - 1].y - fundo : 0
+  // empurra pra baixo o que colide, depois reequilibra se passar do fundo
+  for (let i = 1; i < pos.length; i++) if (pos[i].y - pos[i - 1].y < PASSO) pos[i].y = pos[i - 1].y + PASSO
+  const excesso = pos[pos.length - 1].y + H - (area.y + area.height)
   if (excesso > 0) for (const p of pos) p.y -= excesso
+  for (let i = pos.length - 2; i >= 0; i--) if (pos[i + 1].y - pos[i].y < PASSO) pos[i].y = pos[i + 1].y - PASSO
+  const topo = area.y - pos[0].y
+  if (topo > 0) for (const p of pos) p.y += topo
+  // conectores em leque: cada um dobra num x diferente, pra não virarem um feixe só
+  const X_PILULA = xUlt + 46
+  pos.forEach((p, i) => { (p as any).dobra = xUlt + 8 + i * 3.4 })
+
   return (
     <g>
-      {pos.map((p) => (
-        <Pilula key={p.k} x={xUlt + 14} y={p.y} txt={rs0(p.v)} cor={corDe(p.k)} forte />
-      ))}
+      {pos.map((p) => {
+        const cor = corDe(p.k)
+        const apagado = catSel && catSel !== p.k
+        const yMeio = p.y + H / 2
+        return (
+          <g key={p.k} opacity={apagado ? 0.25 : 1} style={{ transition: "opacity .2s" }}>
+            <circle cx={xUlt} cy={p.yReal} r={2.4} fill={cor} opacity={0.9} />
+            <path
+              d={`M${xUlt + 3},${p.yReal} L${p.dobra},${p.yReal} L${p.dobra + 7},${yMeio} L${X_PILULA - 3},${yMeio}`}
+              fill="none" stroke={cor} strokeOpacity={0.45} strokeWidth={1.1} strokeLinejoin="round"
+            />
+            <Pilula x={X_PILULA} y={p.y} alt={H} txt={rs0(p.v)} cor={cor} forte />
+          </g>
+        )
+      })}
     </g>
   )
 }
 
-function TooltipCat({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null
-  const itens = payload
-    .filter((p: any) => p.dataKey !== "total" && Number(p.value) > 0)
-    .sort((a: any, b: any) => b.value - a.value)
-  const total = Number(payload[0]?.payload?.total) || itens.reduce((s: number, p: any) => s + Number(p.value), 0)
+// Tooltip montado a partir da própria linha de dados (não do payload), pra não
+// repetir categoria quando há área + linha desenhadas na mesma série.
+function TooltipCat({ active, payload, label, chaves, catSel }: any) {
+  const row = payload?.[0]?.payload
+  if (!active || !row) return null
+  const total = Number(row.total) || 0
+  const itens = (chaves as string[])
+    .map((k) => ({ k, v: Number(row[k]) || 0 }))
+    .filter((i) => i.v > 0)
+    .sort((a, b) => b.v - a.v)
+  if (!itens.length) return null
   return (
-    <div className="font-ui min-w-[200px] rounded-2xl border bg-popover/95 px-4 py-3 text-xs shadow-xl backdrop-blur"
-      style={{ borderColor: "rgb(20 184 166 / .4)", boxShadow: "0 0 26px -6px rgb(20 184 166 / .45)" }}>
-      <div className="mb-2 flex items-baseline justify-between gap-4">
-        <p className="text-sm font-semibold">{label}</p>
-        <p className="tnum text-sm font-bold" style={{ color: COR_TOTAL }}>{fmtR(total)}</p>
+    <div
+      className="font-ui w-[312px] overflow-hidden rounded-2xl border bg-popover/95 shadow-2xl backdrop-blur-md"
+      style={{ borderColor: "rgb(20 184 166 / .45)", boxShadow: "0 18px 40px -16px rgb(0 0 0 / .8), 0 0 26px -8px rgb(20 184 166 / .5)" }}
+    >
+      <div className="flex items-baseline justify-between gap-3 border-b px-4 py-3" style={{ borderColor: "rgb(148 163 184 / .16)" }}>
+        <p className="text-[14.5px] font-semibold">{label}</p>
+        <p className="tnum text-[15px] font-bold" style={{ color: COR_TOTAL }}>{fmtR(total)}</p>
       </div>
-      <div className="flex flex-col gap-1.5">
-        {itens.map((p: any) => {
-          const cor = corDe(String(p.dataKey))
+      <ul className="flex flex-col px-1.5 py-1.5">
+        {itens.map((i) => {
+          const cor = corDe(i.k)
+          const destaque = catSel === i.k
           return (
-            <p key={p.dataKey} className="flex items-center gap-2 text-muted-foreground">
+            <li
+              key={i.k}
+              className="flex items-center gap-2.5 rounded-xl px-2.5 py-[7px]"
+              style={destaque ? { background: `color-mix(in srgb, ${cor} 14%, transparent)` } : undefined}
+            >
               <span className="size-2.5 shrink-0 rounded-full" style={{ background: cor, boxShadow: `0 0 7px ${cor}` }} />
-              <span className="flex-1">{p.name}</span>
-              <span className="tnum font-medium text-foreground">{fmtR(Number(p.value))}</span>
-              <span className="tnum w-10 text-right text-[0.68rem]">{total > 0 ? fmtPct((Number(p.value) / total) * 100) : ""}</span>
-            </p>
+              <span className="min-w-0 flex-1 truncate text-[13px] text-foreground/85">{nomeDe(i.k)}</span>
+              <span className="tnum shrink-0 text-[13px] font-semibold">{fmtR(i.v)}</span>
+              <span className="tnum w-[38px] shrink-0 text-right text-[11.5px] text-muted-foreground">
+                {total > 0 ? fmtPct((i.v / total) * 100) : ""}
+              </span>
+            </li>
           )
         })}
-      </div>
+      </ul>
     </div>
   )
 }
@@ -237,7 +271,7 @@ export function CategoriasTempo({
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={dados}
-            margin={{ top: 38, right: linhas ? 100 : 10, bottom: 0, left: 0 }}
+            margin={{ top: 38, right: linhas ? 146 : 10, bottom: 0, left: 0 }}
             barCategoryGap="28%"
             onMouseMove={(s: any) => setHover(typeof s?.activeTooltipIndex === "number" ? s.activeTooltipIndex : null)}
             onMouseLeave={() => setHover(null)}
@@ -270,7 +304,7 @@ export function CategoriasTempo({
               domain={[0, teto]} ticks={ticks} interval={0}
             />
             <Tooltip
-              content={<TooltipCat />}
+              content={(p: any) => <TooltipCat {...p} chaves={chaves} catSel={catSel} />}
               cursor={linhas
                 ? { stroke: COR_TOTAL_LINHA, strokeOpacity: 0.4, strokeDasharray: "4 4" }
                 : { fill: "rgb(20 184 166)", opacity: 0.07, radius: 10 }}
@@ -336,7 +370,7 @@ export function CategoriasTempo({
 
             {linhas && ultimo && (
               <FimLabels
-                n={stack.length} padR={padR}
+                n={stack.length} padR={padR} catSel={catSel}
                 itens={chaves.filter((k) => Number(ultimo[k]) > 0).map((k) => ({ k, v: Number(ultimo[k]) }))}
               />
             )}
