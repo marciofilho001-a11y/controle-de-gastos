@@ -15,7 +15,7 @@ import { TransacaoDialog } from "@/features/transacoes/nova-transacao-dialog"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Cartao, type Transacao } from "@/lib/supabase"
 import { DESPESA_CATS, catInfo, catColor } from "@/lib/categorias"
-import { fmtR, fmtMesRef, mesRefAtual, fmtData } from "@/lib/format"
+import { fmtR, fmtMesRef, mesRefAtual, fmtData, addMonths } from "@/lib/format"
 import { faturaDoMes, faturaInfoDoMes, ehFaturaCheia, mesesDoCartao, sugestoesParcelasParaMes } from "@/lib/selectors"
 import { LogoAvatar } from "@/components/logo-avatar"
 import { cn } from "@/lib/utils"
@@ -36,7 +36,9 @@ export function FaturaDetalhe({
   const [novoDesc, setNovoDesc] = useState("")
   const [novoCat, setNovoCat] = useState("outro")
   const [novoValor, setNovoValor] = useState("")
+  const [novoParc, setNovoParc] = useState("1")
   const [busy, setBusy] = useState(false)
+  const parcN = Math.max(1, Math.min(60, parseInt(novoParc) || 1))
   const [editTx, setEditTx] = useState<Transacao | null>(null)
 
   const meses = useMemo(
@@ -84,19 +86,26 @@ export function FaturaDetalhe({
 
   async function addItem() {
     const v = parseFloat(novoValor)
+    const n = Math.max(1, Math.min(60, parseInt(novoParc) || 1))
     if (!novoDesc.trim() || isNaN(v) || v <= 0) {
       toast.error("Preencha descrição e valor do item")
       return
     }
     setBusy(true)
     try {
-      const { error } = await supabase.from("fin_transacoes").insert({
-        tipo: "despesa", cartao_id: cartao.id, mes_ref: mesAtivo,
-        data: mesAtivo + "-01", descricao: novoDesc.trim(), valor: v, categoria: novoCat,
+      // parcelado: uma linha por mês a partir do mês aberto, cada uma com o valor da parcela
+      const linhas = Array.from({ length: n }, (_, i) => {
+        const mes = addMonths(mesAtivo, i)
+        return {
+          tipo: "despesa" as const, cartao_id: cartao.id, mes_ref: mes,
+          data: mes + "-01", descricao: novoDesc.trim(), valor: v, categoria: novoCat,
+          parcela_atual: n > 1 ? i + 1 : null, parcela_total: n > 1 ? n : null,
+        }
       })
+      const { error } = await supabase.from("fin_transacoes").insert(linhas)
       if (error) throw error
-      toast.success("Item adicionado!")
-      setNovoDesc(""); setNovoValor(""); setBusca("")
+      toast.success(n > 1 ? `${n} parcelas de ${fmtR(v)} adicionadas` : "Item adicionado!")
+      setNovoDesc(""); setNovoValor(""); setNovoParc("1"); setBusca("")
       await loadAll()
     } catch (e) {
       toast.error("Erro ao adicionar", { description: e instanceof Error ? e.message : "" })
@@ -320,7 +329,8 @@ export function FaturaDetalhe({
               </div>
 
               {/* form adicionar */}
-              <div className="mt-1 flex flex-wrap items-end gap-2 rounded-xl border bg-card/60 p-3">
+              <div className="mt-1 flex flex-col gap-2 rounded-xl border bg-card/60 p-3">
+                <div className="flex flex-wrap items-end gap-2">
                 <Input value={novoDesc} onChange={(e) => setNovoDesc(e.target.value)} placeholder="Descrição (ex: iFood)" className="min-w-[140px] flex-1" />
                 <Select value={novoCat} onValueChange={setNovoCat}>
                   <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
@@ -330,10 +340,32 @@ export function FaturaDetalhe({
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-                <Input type="number" step="0.01" value={novoValor} onChange={(e) => setNovoValor(e.target.value)} placeholder="Valor" className="w-[100px]" />
+                <Input
+                  type="number" step="0.01" value={novoValor} onChange={(e) => setNovoValor(e.target.value)}
+                  placeholder={parcN > 1 ? "Valor da parcela" : "Valor"} className={parcN > 1 ? "w-[132px]" : "w-[100px]"}
+                />
+                <div className="flex items-center gap-1.5 rounded-lg border bg-background/50 px-2 py-1">
+                  <Layers className="size-3.5 shrink-0 text-muted-foreground" />
+                  <Input
+                    type="number" min="1" max="60" value={novoParc}
+                    onChange={(e) => setNovoParc(e.target.value)}
+                    aria-label="Número de parcelas" title="Número de parcelas"
+                    className="h-7 w-[46px] border-0 bg-transparent px-1 text-center shadow-none focus-visible:ring-0"
+                  />
+                  <span className="text-xs text-muted-foreground">{parcN > 1 ? "parcelas" : "x"}</span>
+                </div>
                 <Button onClick={addItem} disabled={busy}>
                   <Plus data-icon="inline-start" /> Add
                 </Button>
+                </div>
+                {parcN > 1 && (
+                  <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                    <Layers className="size-3.5 text-primary" />
+                    {parcN}x de <span className="tnum font-semibold text-foreground">{fmtR(parseFloat(novoValor) || 0)}</span>
+                    = <span className="tnum font-semibold text-foreground">{fmtR((parseFloat(novoValor) || 0) * parcN)}</span>
+                    · de {fmtMesRef(mesAtivo)} a {fmtMesRef(addMonths(mesAtivo, parcN - 1))}
+                  </p>
+                )}
               </div>
             </div>
           </div>
