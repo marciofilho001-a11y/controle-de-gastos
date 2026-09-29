@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter+Tight:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 
@@ -165,3 +165,27 @@
 @layer base {
   .grid { grid-auto-columns: minmax(0, 1fr); }
 }
+
+
+/* ---- Painéis "LED" do Histórico: navy profundo + borda neon (teal / violeta) ---- */
+.font-ui { font-family: "Inter", var(--font-sans); letter-spacing: 0; }
+.led-panel {
+  --lp-c: 20 184 166;
+  position: relative;
+  border-radius: 1.4rem;
+  border: 1.5px solid rgb(var(--lp-c) / 0.42);
+  background: linear-gradient(160deg, rgb(var(--lp-c) / 0.06), transparent 55%), var(--card);
+  box-shadow: 0 0 34px -10px rgb(var(--lp-c) / 0.5), inset 0 0 40px -22px rgb(var(--lp-c) / 0.5);
+}
+.led-panel[data-tone="violet"] { --lp-c: 139 92 246; }
+.dark .led-panel { background: linear-gradient(160deg, rgb(20 31 44), rgb(13 21 31) 70%); }
+.dark .led-panel[data-tone="violet"] { background: linear-gradient(160deg, rgb(24 24 54), rgb(15 17 36) 70%); }
+.led-card {
+  border-radius: 1.4rem;
+  background: color-mix(in srgb, var(--lc) 4%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--lc) 40%, transparent);
+  box-shadow: 0 0 22px -12px var(--lc);
+}
+.dark .led-card { background: color-mix(in srgb, var(--lc) 5%, rgb(13 21 30)); }
+.led-row { border-radius: 1rem; border: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent); background: color-mix(in srgb, var(--foreground) 3%, transparent); }
+.dark .led-row { background: rgb(17 23 37 / 0.85); }

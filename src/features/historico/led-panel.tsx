@@ -1,38 +1,41 @@
 import { cn } from "@/lib/utils"
 
-// Cartão "LED": fundo com gradiente sutil, borda e brilho externo na cor de destaque.
+// Painel "LED": navy profundo, borda neon (teal ou violeta) e brilho externo.
 export function LedPanel({
-  children, className, cor = "var(--primary)", forte = false,
-}: { children: React.ReactNode; className?: string; cor?: string; forte?: boolean }) {
+  children, className, tone = "teal",
+}: { children: React.ReactNode; className?: string; tone?: "teal" | "violet" }) {
   return (
-    <div
-      className={cn("relative overflow-hidden rounded-2xl border", className)}
-      style={{
-        background: `linear-gradient(155deg, color-mix(in srgb, ${cor} ${forte ? 16 : 9}%, var(--card)), var(--card) 62%)`,
-        borderColor: `color-mix(in srgb, ${cor} ${forte ? 45 : 28}%, var(--border))`,
-        boxShadow: `0 0 ${forte ? 34 : 26}px -10px color-mix(in srgb, ${cor} ${forte ? 55 : 38}%, transparent), inset 0 1px 0 color-mix(in srgb, var(--foreground) 5%, transparent)`,
-      }}
-    >
+    <div data-tone={tone} className={cn("led-panel font-ui", className)}>
       {children}
     </div>
   )
 }
 
-// Ícone em "pastilha" com brilho (o LED)
+// Mini card com borda e brilho na cor de destaque
+export function LedCard({
+  children, cor, className,
+}: { children: React.ReactNode; cor: string; className?: string }) {
+  return (
+    <div className={cn("led-card font-ui", className)} style={{ ["--lc" as string]: cor }}>
+      {children}
+    </div>
+  )
+}
+
+// Ícone em círculo: aro fino na cor + brilho suave (o LED)
 export function LedIcon({
-  icon: Icon, cor, size = 40, redondo = false, className,
-}: { icon: React.ComponentType<{ className?: string }>; cor: string; size?: number; redondo?: boolean; className?: string }) {
+  icon: Icon, cor, size = 44, className,
+}: { icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; cor: string; size?: number; className?: string }) {
   return (
     <span
-      className={cn("grid shrink-0 place-items-center", redondo ? "rounded-full" : "rounded-xl", className)}
+      className={cn("grid shrink-0 place-items-center rounded-full", className)}
       style={{
-        width: size, height: size,
-        color: cor,
-        background: `color-mix(in srgb, ${cor} 20%, transparent)`,
-        boxShadow: `0 0 0 1px color-mix(in srgb, ${cor} 45%, transparent), 0 0 ${Math.round(size * 0.45)}px color-mix(in srgb, ${cor} 45%, transparent)`,
+        width: size, height: size, color: cor,
+        background: `color-mix(in srgb, ${cor} 14%, transparent)`,
+        boxShadow: `inset 0 0 0 1.5px color-mix(in srgb, ${cor} 75%, transparent), 0 0 ${Math.round(size * 0.42)}px color-mix(in srgb, ${cor} 38%, transparent)`,
       }}
     >
-      <Icon className="size-[48%]" />
+      <Icon className="size-[46%]" strokeWidth={1.8} />
     </span>
   )
 }
