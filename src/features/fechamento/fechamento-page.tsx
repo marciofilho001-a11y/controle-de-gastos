@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { motion } from "motion/react"
 import {
   CheckCircle2, Circle, AlertTriangle, Lock, Unlock, Loader2, ListChecks, CreditCard, Wallet,
-  Clock, Sparkles, ArrowRight, TrendingUp, TrendingDown, Minus, Scale, Landmark, Receipt, Flag,
+  Clock, Sparkles, ArrowRight, TrendingUp, TrendingDown, Minus, Scale, Landmark, Receipt, Flag, CalendarClock,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesCurto, fmtMesLongo, addMonths, fmtData } from "@/lib/format"
 import {
   receitasDoMes, despesasDoMes, obrigacoesAtivasNoMes, obrigacaoPagaNoMes, faturaInfoDoMes,
-  despesasExibicaoDoMes, txDoMes, parcelaNoMes, variacaoPct,
+  despesasExibicaoDoMes, txDoMes, parcelaNoMes, variacaoPct, faturaPagaNoMes,
 } from "@/lib/selectors"
 import { gerarInsights, type Severidade } from "@/lib/insights"
 import { statusLancamento } from "@/lib/parcelas"
@@ -33,7 +33,7 @@ const SEV: Record<Severidade, { label: string; cls: string }> = {
 // Tela de "virar o mês": checklist do que falta, comparação com o mês anterior,
 // veredito e o carimbo de fechamento (guardado em fin_config: fechado_<mes>).
 export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavigate: (t: TabId) => void }) {
-  const { transacoes, cartoes, obrigacoes, tetos, config, saveConfig, loadAll } = useFinData()
+  const { transacoes, cartoes, obrigacoes, tetos, config, faturaPagamentos, saveConfig, loadAll } = useFinData()
   const [busy, setBusy] = useState<number | "fechar" | null>(null)
   const hoje = new Date().toISOString().slice(0, 10)
   const fechadoEm = config[`fechado_${mesRef}`] || ""
@@ -57,6 +57,11 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
     const indefinido = faturas.reduce((s, x) => s + x.f.indefinido, 0)
     const faturasPendentes = faturas.filter((x) => x.f.indefinido > 0)
     const totalFat = faturas.reduce((s, x) => s + x.f.valor, 0)
+    // baixa manual da fatura (fin_fatura_pagamentos): o que ainda falta pagar
+    const faturasComBaixa = faturas.map((x) => ({ ...x, pg: faturaPagaNoMes(faturaPagamentos, x.c.id, mesRef) }))
+    const faturasAPagar = faturasComBaixa.filter((x) => !x.pg)
+    const totalFatAPagar = faturasAPagar.reduce((s, x) => s + x.f.valor, 0)
+    const aPagar = totalFatAPagar + naoPagas.reduce((s, x) => s + Number(x.o.valor), 0)
 
     const exib = despesasExibicaoDoMes(transacoes, mesRef)
     const pendentes = exib.filter((t) => !t._virtual && statusLancamento(t, hoje).key === "pendente")
@@ -81,6 +86,7 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
 
     const checks = [
       { id: "obrig", ok: naoPagas.length === 0, titulo: "Obrigações pagas", detalhe: naoPagas.length ? `${naoPagas.length} de ${ativas.length} ainda sem baixa` : `${ativas.length} de ${ativas.length} com baixa`, icon: ListChecks },
+      { id: "fatpg", ok: faturasAPagar.length === 0, titulo: "Faturas pagas", detalhe: faturasAPagar.length ? `${fmtR(totalFatAPagar)} em ${faturasAPagar.length} fatura(s) sem baixa` : faturas.length ? `${faturas.length} de ${faturas.length} com baixa` : "Nenhuma fatura neste mês", icon: CalendarClock },
       { id: "fat", ok: indefinido <= 0, titulo: "Faturas detalhadas", detalhe: indefinido > 0 ? `${fmtR(indefinido)} sem detalhamento em ${faturasPendentes.length} fatura(s)` : "Todas as faturas abertas item a item", icon: CreditCard },
       { id: "rec", ok: receita > 0 && (rendaPrev === 0 || receita >= rendaPrev * 0.9), titulo: "Receitas registradas", detalhe: receita === 0 ? "Nenhuma receita lançada" : rendaPrev > 0 && receita < rendaPrev * 0.9 ? `${fmtR(receita)} de ${fmtR(rendaPrev)} previstos` : `${fmtR(receita)} em ${receitas.length} lançamento(s)`, icon: Wallet },
       { id: "pend", ok: pendentes.length === 0, titulo: "Lançamentos pendentes", detalhe: pendentes.length ? `${pendentes.length} com data futura (${fmtR(pendentes.reduce((s, t) => s + Number(t.valor), 0))})` : "Nada com data futura", icon: Clock },
@@ -91,8 +97,9 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
     return {
       receita, despesa, sobra, recAnt, despAnt, sobraAnt, obrig, naoPagas, totalObrig, faturas, faturasPendentes, indefinido, totalFat,
       pendentes, semCategoria, rendaPrev, cats, insights, checks, feitos, exib,
+      faturasComBaixa, faturasAPagar, totalFatAPagar, aPagar,
     }
-  }, [transacoes, cartoes, obrigacoes, tetos, config, mesRef, anterior, hoje])
+  }, [transacoes, cartoes, obrigacoes, tetos, config, faturaPagamentos, mesRef, anterior, hoje])
 
   async function pagarObrigacao(o: (typeof d.obrig)[number]["o"]) {
     setBusy(o.id)
@@ -155,6 +162,18 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
               <span className={cn("tnum", d.sobra >= 0 ? "text-success" : "text-destructive")}>{fmtR(d.sobra)}</span>
               {d.receita > 0 && <span className="text-base font-normal text-muted-foreground"> · {pctRenda.toFixed(0)}% da renda</span>}
             </p>
+            {d.aPagar > 0 && (
+              <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
+                <span className="flex items-center gap-1.5 rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-semibold text-warning">
+                  <Clock className="size-3.5" /> Falta pagar {fmtR(d.aPagar)}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {d.faturasAPagar.length > 0 && `${d.faturasAPagar.length} fatura(s)`}
+                  {d.faturasAPagar.length > 0 && d.naoPagas.length > 0 && " · "}
+                  {d.naoPagas.length > 0 && `${d.naoPagas.length} obrigação(ões)`}
+                </span>
+              </p>
+            )}
             <p className="mt-1 text-sm text-muted-foreground">
               {d.recAnt > 0 || d.despAnt > 0
                 ? `Em ${fmtMesCurto(anterior)} a sobra foi ${fmtR(d.sobraAnt)} (${d.sobra >= d.sobraAnt ? "+" : ""}${fmtR(d.sobra - d.sobraAnt)} agora).`
@@ -199,7 +218,7 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
                       <p className="font-semibold">{c.titulo}</p>
                       <p className="text-xs text-muted-foreground">{c.detalhe}</p>
                     </div>
-                    {!c.ok && c.id === "fat" && (
+                    {!c.ok && (c.id === "fat" || c.id === "fatpg") && (
                       <Button size="sm" variant="outline" onClick={() => onNavigate("cartoes")}>Detalhar <ArrowRight data-icon="inline-end" /></Button>
                     )}
                     {!c.ok && (c.id === "pend" || c.id === "cat") && (
@@ -209,6 +228,21 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
                       <Button size="sm" variant="outline" onClick={() => onNavigate("transacoes")}>Lançar <ArrowRight data-icon="inline-end" /></Button>
                     )}
                   </div>
+
+                  {c.id === "fatpg" && d.faturasAPagar.length > 0 && (
+                    <div className="mt-3 flex flex-col gap-1.5 border-t pt-3">
+                      {d.faturasAPagar.map(({ c: cart, f }) => (
+                        <div key={cart.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1">
+                          <LogoAvatar src={cart.logo} cor="var(--muted-foreground)" Icon={CreditCard} size={28} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{cart.nome}</p>
+                            <p className="text-xs text-muted-foreground">Vence dia {cart.dia_vencimento || "—"}</p>
+                          </div>
+                          <span className="tnum text-sm font-medium">{fmtR(f.valor)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {c.id === "obrig" && d.naoPagas.length > 0 && (
                     <div className="mt-3 flex flex-col gap-1.5 border-t pt-3">

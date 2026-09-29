@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { CreditCard, Pencil, Trash2, Loader2, Inbox } from "lucide-react"
+import { CreditCard, Pencil, Trash2, Loader2, Inbox, Check, Undo2, CalendarClock } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,21 +18,23 @@ import { CompraDialog } from "./compra-dialog"
 import { FaturaPrevistaDialog } from "./fatura-prevista-dialog"
 import { FaturaDetalhe } from "./fatura-detalhe"
 import { useFinData } from "@/hooks/use-fin-data"
+import { registrarFaturaPaga, removerFaturaPaga } from "@/lib/pagamentos"
 import { supabase, type Cartao, type CartaoCompra } from "@/lib/supabase"
 import { catInfo, catColor } from "@/lib/categorias"
-import { fmtR, fmtMesCurto } from "@/lib/format"
-import { faturaInfoDoMes } from "@/lib/selectors"
+import { fmtR, fmtMesCurto, fmtData } from "@/lib/format"
+import { faturaInfoDoMes, faturaPagaNoMes } from "@/lib/selectors"
 import { motion } from "motion/react"
 import { LogoAvatar } from "@/components/logo-avatar"
 import { cn } from "@/lib/utils"
 
 export function CartoesPage({ mesRef }: { mesRef: string }) {
-  const { cartoes, compras, transacoes, loadAll } = useFinData()
+  const { cartoes, compras, transacoes, faturaPagamentos, loadAll } = useFinData()
   const [filtroCartao, setFiltroCartao] = useState("todos")
   const [delCartao, setDelCartao] = useState<Cartao | null>(null)
   const [delCompra, setDelCompra] = useState<CartaoCompra | null>(null)
   const [busy, setBusy] = useState(false)
   const [detalheCartao, setDetalheCartao] = useState<Cartao | null>(null)
+  const [busyFat, setBusyFat] = useState<number | null>(null)
 
   const comprasFiltradas = useMemo(() => {
     if (filtroCartao === "todos") return compras
@@ -78,6 +80,25 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
     }
   }
 
+  // baixa da fatura do mês navegado (fica registrada; não mexe nos lançamentos)
+  async function alternarFatura(c: Cartao, paga: boolean, valor: number) {
+    setBusyFat(c.id)
+    try {
+      if (paga) {
+        await removerFaturaPaga(c.id, mesRef)
+        toast.success(`Fatura do ${c.nome} reaberta`)
+      } else {
+        await registrarFaturaPaga(c.id, mesRef, valor)
+        toast.success(`Fatura do ${c.nome} marcada como paga`)
+      }
+      await loadAll()
+    } catch (e) {
+      toast.error("Não foi possível atualizar a fatura", { description: e instanceof Error ? e.message : "" })
+    } finally {
+      setBusyFat(null)
+    }
+  }
+
   function cartaoNome(id: number) {
     return cartoes.find((c) => c.id === id)?.nome ?? "—"
   }
@@ -104,6 +125,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
             const fatInfo = faturaInfoDoMes(transacoes, c.id, mesRef)
             const fatura = fatInfo.valor
             const usoLimite = c.limite ? Math.min(100, (fatura / Number(c.limite)) * 100) : null
+            const pg = faturaPagaNoMes(faturaPagamentos, c.id, mesRef)
             return (
               <motion.div
                 key={c.id}
@@ -170,6 +192,34 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                       <span className="tnum">{fmtR(fatura)} de {fmtR(Number(c.limite))}</span>
                       <span className="tnum">{usoLimite.toFixed(0)}%</span>
                     </div>
+                  </div>
+                )}
+                {fatura > 0 && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    {pg ? (
+                      <div className="flex items-center gap-2 rounded-lg border border-success/40 bg-success/10 px-2.5 py-1.5">
+                        <Check className="size-4 shrink-0 text-success" />
+                        <p className="min-w-0 flex-1 truncate text-xs font-medium text-success">Paga em {fmtData(pg.pago_em)}</p>
+                        <Button
+                          variant="ghost" size="icon" className="size-6 text-muted-foreground hover:text-foreground"
+                          aria-label="Reabrir fatura" disabled={busyFat === c.id}
+                          onClick={() => alternarFatura(c, true, fatura)}
+                        >
+                          {busyFat === c.id ? <Loader2 className="size-3.5 animate-spin" /> : <Undo2 className="size-3.5" />}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline" size="sm" disabled={busyFat === c.id}
+                        onClick={() => alternarFatura(c, false, fatura)}
+                        className="w-full border-warning/50 text-warning hover:bg-warning/10 hover:text-warning"
+                      >
+                        {busyFat === c.id
+                          ? <Loader2 data-icon="inline-start" className="animate-spin" />
+                          : <CalendarClock data-icon="inline-start" />}
+                        Marcar fatura como paga
+                      </Button>
+                    )}
                   </div>
                 )}
                 <div className="mt-auto flex gap-2" onClick={(e) => e.stopPropagation()}>

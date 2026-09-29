@@ -1,4 +1,4 @@
-import type { Obrigacao, Transacao, Cartao, CartaoCompra } from "@/lib/supabase"
+import type { Obrigacao, Transacao, Cartao, CartaoCompra, FaturaPagamento } from "@/lib/supabase"
 
 // Em qual parcela a obrigação está no mês de referência (1-indexed)
 export function parcelaNoMes(obr: Obrigacao, mesRef: string): number {
@@ -96,6 +96,13 @@ export function faturaDoMes(transacoes: Transacao[], cartaoId: number, mesRef: s
   return faturaInfoDoMes(transacoes, cartaoId, mesRef).valor
 }
 
+// Baixa manual da fatura: existe registro em fin_fatura_pagamentos pra (cartão, mês)
+export function faturaPagaNoMes(
+  pagamentos: FaturaPagamento[], cartaoId: number, mesRef: string
+): FaturaPagamento | undefined {
+  return pagamentos.find((p) => Number(p.cartao_id) === Number(cartaoId) && p.mes_ref === mesRef)
+}
+
 export function totalCartoesNoMes(cartoes: Cartao[], transacoes: Transacao[], mesRef: string): number {
   return cartoes
     .filter((c) => c.ativo !== false)
@@ -178,11 +185,13 @@ export type ItemObrigacao = {
   categoria: string | null
   valor: number
   paga: boolean
+  pagoEm: string | null
   parcTxt: string
 }
 
 export function itensObrigacoesDoMes(
-  obrigacoes: Obrigacao[], cartoes: Cartao[], transacoes: Transacao[], mesRef: string
+  obrigacoes: Obrigacao[], cartoes: Cartao[], transacoes: Transacao[], mesRef: string,
+  pagamentos: FaturaPagamento[] = []
 ): ItemObrigacao[] {
   const itensObr: ItemObrigacao[] = obrigacoesAtivasNoMes(obrigacoes, mesRef).map((o) => ({
     tipo: "obrigacao",
@@ -192,12 +201,14 @@ export function itensObrigacoesDoMes(
     categoria: o.categoria,
     valor: Number(o.valor),
     paga: !!obrigacaoPagaNoMes(transacoes, o.id, mesRef),
+    pagoEm: obrigacaoPagaNoMes(transacoes, o.id, mesRef)?.data ?? null,
     parcTxt: o.parcela_total ? `Parcela ${parcelaNoMes(o, mesRef)}/${o.parcela_total}` : "Recorrente",
   }))
   const itensCartao: ItemObrigacao[] = []
   for (const c of cartoes.filter((c) => c.ativo !== false)) {
     const valor = faturaDoMes(transacoes, c.id, mesRef)
     if (valor <= 0) continue
+    const pg = faturaPagaNoMes(pagamentos, c.id, mesRef)
     itensCartao.push({
       tipo: "cartao",
       id: c.id,
@@ -205,11 +216,43 @@ export function itensObrigacoesDoMes(
       dia: c.dia_vencimento,
       categoria: "cartao",
       valor,
-      paga: true,
-      parcTxt: "Fatura do cartão (já lançada)",
+      paga: !!pg,
+      pagoEm: pg?.pago_em ?? null,
+      parcTxt: pg ? "Fatura do cartão" : c.dia_vencimento ? `Fatura do cartão · vence dia ${c.dia_vencimento}` : "Fatura do cartão",
     })
   }
   return [...itensObr, ...itensCartao]
+}
+
+export type ContasDoMes = {
+  itens: ItemObrigacao[]
+  pendentes: ItemObrigacao[]
+  pagas: ItemObrigacao[]
+  vencidas: ItemObrigacao[]
+  total: number
+  totalPago: number
+  totalPendente: number
+}
+
+// Panorama do que ainda precisa ser pago no mês: obrigações sem baixa + faturas
+// de cartão sem registro de pagamento. "Vencida" = dia de vencimento já passou.
+export function contasDoMes(
+  obrigacoes: Obrigacao[], cartoes: Cartao[], transacoes: Transacao[], mesRef: string,
+  pagamentos: FaturaPagamento[] = [], hoje = new Date().toISOString().slice(0, 10)
+): ContasDoMes {
+  const itens = itensObrigacoesDoMes(obrigacoes, cartoes, transacoes, mesRef, pagamentos)
+    .sort((a, b) => (a.paga === b.paga ? (a.dia ?? 99) - (b.dia ?? 99) : a.paga ? 1 : -1))
+  const pendentes = itens.filter((i) => !i.paga)
+  const pagas = itens.filter((i) => i.paga)
+  const mesCorrente = hoje.slice(0, 7)
+  const diaHoje = Number(hoje.slice(8, 10))
+  const vencidas = pendentes.filter((i) =>
+    mesRef < mesCorrente || (mesRef === mesCorrente && i.dia != null && i.dia < diaHoje))
+  const soma = (arr: ItemObrigacao[]) => arr.reduce((s, i) => s + i.valor, 0)
+  return {
+    itens, pendentes, pagas, vencidas,
+    total: soma(itens), totalPago: soma(pagas), totalPendente: soma(pendentes),
+  }
 }
 
 // ---- Projeção de um mês ----

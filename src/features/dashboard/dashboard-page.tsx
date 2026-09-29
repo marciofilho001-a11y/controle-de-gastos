@@ -18,17 +18,19 @@ import { Loader2 } from "lucide-react"
 import type { Transacao } from "@/lib/supabase"
 import { TrendPill } from "./trend-pill"
 import { useFinData } from "@/hooks/use-fin-data"
+import { registrarFaturaPaga, removerFaturaPaga } from "@/lib/pagamentos"
 import { supabase } from "@/lib/supabase"
 import { catInfo, catColor } from "@/lib/categorias"
-import { fmtR, addMonths } from "@/lib/format"
+import { fmtR, addMonths , fmtData } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { LogoAvatar } from "@/components/logo-avatar"
 import {
-  receitasDoMes, despesasDoMes, txDoMes, itensObrigacoesDoMes, despesasExibicaoDoMes,
+  receitasDoMes, despesasDoMes, txDoMes, despesasExibicaoDoMes,
+  contasDoMes,
 } from "@/lib/selectors"
 
 export function DashboardPage({ mesRef }: { mesRef: string }) {
-  const { obrigacoes, cartoes, transacoes, descricaoIcones, loadAll } = useFinData()
+  const { obrigacoes, cartoes, transacoes, descricaoIcones, loadAll , faturaPagamentos } = useFinData()
   const [busyObr, setBusyObr] = useState<number | null>(null)
   const [verTodasCats, setVerTodasCats] = useState(false)
   const [editTx, setEditTx] = useState<Transacao | null>(null)
@@ -55,9 +57,10 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
     const receitasAnt = receitasDoMes(transacoes, mesAnt)
     const despesasAnt = despesasDoMes(transacoes, mesAnt)
     const saldoAnt = receitasAnt - despesasAnt
-    const itens = itensObrigacoesDoMes(obrigacoes, cartoes, transacoes, mesRef)
-    const pendentes = itens.filter((i) => !i.paga).reduce((s, i) => s + i.valor, 0)
-    const totalObr = itens.reduce((s, i) => s + i.valor, 0)
+    const contas = contasDoMes(obrigacoes, cartoes, transacoes, mesRef, faturaPagamentos)
+    const itens = contas.itens
+    const pendentes = contas.totalPendente
+    const totalObr = contas.total
     const pctComprometido = receitas > 0 ? Math.min(100, (totalObr / receitas) * 100) : 0
 
     // donut de gastos por categoria (despesas do mês, SEM duplicação de cartão)
@@ -96,14 +99,17 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
     // total de lançamentos do mês
     const totalLanc = lancamentos.length
 
-    return { receitas, despesas, saldo, receitasAnt, despesasAnt, saldoAnt, itens, pendentes, totalObr, pctComprometido, slices, despesas_total: despesas, dias, sparkSaldo, lancamentos, totalLanc }
+    return { receitas, despesas, saldo, receitasAnt, despesasAnt, saldoAnt, itens, contas, pendentes, totalObr, pctComprometido, slices, despesas_total: despesas, dias, sparkSaldo, lancamentos, totalLanc }
   }, [obrigacoes, cartoes, transacoes, mesRef])
 
   async function toggleObrigacao(item: (typeof d.itens)[number]) {
-    if (item.tipo === "cartao") return
     setBusyObr(item.id)
     try {
-      if (item.paga) {
+      if (item.tipo === "cartao") {
+        if (item.paga) await removerFaturaPaga(item.id, mesRef)
+        else await registrarFaturaPaga(item.id, mesRef, item.valor)
+        toast.success(item.paga ? `Fatura reaberta` : `${item.nome} marcada como paga`)
+      } else if (item.paga) {
         // remover a transação que marca como paga
         const { error } = await supabase
           .from("fin_transacoes")
@@ -208,7 +214,7 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
         <div className="rounded-xl border bg-card p-5">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              <Scale className="size-3.5" /> Obrigações do Mês
+              <Scale className="size-3.5" /> Contas do Mês
             </div>
             <span className="tnum text-xs text-muted-foreground">
               {d.pctComprometido.toFixed(0)}% comprometido
@@ -222,8 +228,19 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
               transition={{ duration: 0.5, ease: [0.2, 0, 0, 1] }}
             />
           </div>
-          <p className="mb-3 text-xs text-muted-foreground">
-            {fmtR(d.totalObr)} de {fmtR(d.receitas)}
+          <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span>{fmtR(d.totalObr)} de {fmtR(d.receitas)}</span>
+            {d.contas.pendentes.length > 0 ? (
+              <span className="flex items-center gap-1.5 rounded-full bg-warning/15 px-2 py-0.5 font-semibold text-warning">
+                <Clock className="size-3" />
+                Falta pagar {fmtR(d.contas.totalPendente)} · {d.contas.pendentes.length} conta{d.contas.pendentes.length > 1 ? "s" : ""}
+                {d.contas.vencidas.length > 0 && <span className="text-destructive">({d.contas.vencidas.length} vencida{d.contas.vencidas.length > 1 ? "s" : ""})</span>}
+              </span>
+            ) : d.itens.length > 0 ? (
+              <span className="flex items-center gap-1.5 rounded-full bg-success/12 px-2 py-0.5 font-semibold text-success">
+                <Check className="size-3" /> Tudo pago neste mês
+              </span>
+            ) : null}
           </p>
           <div className="flex flex-col gap-1.5">
             {d.itens.length === 0 ? (
@@ -240,11 +257,10 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
                   >
                     <button
                       onClick={() => toggleObrigacao(i)}
-                      disabled={i.tipo === "cartao" || busyObr === i.id}
+                      disabled={busyObr === i.id}
                       className={cn(
                         "grid size-5 shrink-0 place-items-center rounded-md border transition-colors",
-                        i.paga ? "border-success bg-success text-success-foreground" : "border-border hover:border-primary",
-                        i.tipo === "cartao" && "cursor-default opacity-60"
+                        i.paga ? "border-success bg-success text-success-foreground" : "border-border hover:border-primary"
                       )}
                       aria-label={i.paga ? "Marcar como não paga" : "Marcar como paga"}
                     >
@@ -259,7 +275,9 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Dia {i.dia || "—"} · {i.parcTxt}
+                        {i.paga && i.pagoEm
+                          ? <>Pago em {fmtData(i.pagoEm)} · {i.parcTxt}</>
+                          : <>Dia {i.dia || "—"} · {i.parcTxt}</>}
                       </p>
                     </div>
                     <span className="tnum text-sm font-medium">{fmtR(i.valor)}</span>

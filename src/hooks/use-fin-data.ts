@@ -6,6 +6,7 @@ import {
   type Cartao,
   type CartaoCompra,
   type FaturaItem,
+  type FaturaPagamento,
   type Investimento,
   type SaldoConta,
   type Teto,
@@ -22,6 +23,7 @@ type FinState = {
   cartoes: Cartao[]
   compras: CartaoCompra[]
   faturaItens: FaturaItem[]
+  faturaPagamentos: FaturaPagamento[]
   investimentos: Investimento[]
   saldos: SaldoConta[]
   tetos: Teto[]
@@ -40,6 +42,7 @@ export const useFinData = create<FinState>((set) => ({
   cartoes: [],
   compras: [],
   faturaItens: [],
+  faturaPagamentos: [],
   investimentos: [],
   saldos: [],
   tetos: [],
@@ -53,12 +56,13 @@ export const useFinData = create<FinState>((set) => ({
   loadAll: async () => {
     set({ loading: true, error: null })
     try {
-      const [obr, tx, cart, comp, fat, inv, sal, tet, cfg, dic, cic] = await Promise.all([
+      const [obr, tx, cart, comp, fat, fpg, inv, sal, tet, cfg, dic, cic] = await Promise.all([
         supabase.from("fin_obrigacoes").select("*").order("dia_vencimento"),
         supabase.from("fin_transacoes").select("*").order("data", { ascending: false }),
         supabase.from("fin_cartoes").select("*").order("nome"),
         supabase.from("fin_cartao_compras").select("*").order("criado_em"),
         supabase.from("fin_fatura_itens").select("*").order("criado_em"),
+        supabase.from("fin_fatura_pagamentos").select("*"),
         supabase.from("fin_investimentos").select("*").order("data", { ascending: false }),
         supabase.from("fin_saldo_conta").select("*"),
         supabase.from("fin_tetos").select("*"),
@@ -68,7 +72,7 @@ export const useFinData = create<FinState>((set) => ({
       ])
 
       const firstError =
-        obr.error || tx.error || cart.error || comp.error || fat.error ||
+        obr.error || tx.error || cart.error || comp.error || fat.error || fpg.error ||
         inv.error || sal.error || tet.error || cfg.error || dic.error || cic.error
       if (firstError) throw firstError
 
@@ -92,6 +96,7 @@ export const useFinData = create<FinState>((set) => ({
         cartoes: (cart.data as Cartao[]) || [],
         compras: (comp.data as CartaoCompra[]) || [],
         faturaItens: (fat.data as FaturaItem[]) || [],
+        faturaPagamentos: (fpg.data as FaturaPagamento[]) || [],
         investimentos: (inv.data as Investimento[]) || [],
         saldos: (sal.data as SaldoConta[]) || [],
         tetos: (tet.data as Teto[]) || [],

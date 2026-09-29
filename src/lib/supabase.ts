@@ -75,6 +75,15 @@ export type FaturaItem = {
   criado_em: string
 }
 
+export type FaturaPagamento = {
+  id: number
+  cartao_id: number
+  mes_ref: string
+  pago_em: string
+  valor: number | null
+  criado_em: string
+}
+
 export type Investimento = {
   id: number
   mes_ref: string
