@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { PageHeader, SectionTitle } from "@/components/page-header"
 import { PdfButton } from "@/features/relatorio/pdf-button"
 import { useFinData } from "@/hooks/use-fin-data"
+import { EssencialCard } from "@/features/essencial/essencial-card"
 import { supabase } from "@/lib/supabase"
 import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesCurto, fmtMesLongo, addMonths, fmtData } from "@/lib/format"
@@ -198,6 +199,9 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
           <Comparativo label="Sobra" atual={d.sobra} ant={d.sobraAnt} icon={TrendingUp} bomQuandoSobe index={3} />
         </div>
       </section>
+
+      {/* essencial x por escolha do mês */}
+      <EssencialCard mesRef={mesRef} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         {/* checklist */}

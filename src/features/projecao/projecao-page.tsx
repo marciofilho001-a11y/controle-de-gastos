@@ -20,6 +20,7 @@ import {
   useChartColors, fmtAxis, axisProps, gridProps, ChartTooltip, ChartLegend, CHART_ANIM,
 } from "@/lib/chart-theme"
 import { LogoAvatar } from "@/components/logo-avatar"
+import { SimuladorCompra } from "./simulador-compra"
 import { cn } from "@/lib/utils"
 import type { Obrigacao, Cartao, Transacao } from "@/lib/supabase"
 
@@ -83,6 +84,9 @@ export function ProjecaoPage({ mesRef }: { mesRef: string }) {
           </Select>
         </div>
       </div>
+
+      {/* posso comprar? */}
+      <SimuladorCompra mesRef={mesRef} />
 
       <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
         {/* coluna lateral: resumo + parâmetros */}

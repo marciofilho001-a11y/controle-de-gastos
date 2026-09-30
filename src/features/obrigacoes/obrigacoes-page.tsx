@@ -8,6 +8,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { ObrigacaoDialog } from "./obrigacao-dialog"
+import { AssinaturasPanel } from "@/features/assinaturas/assinaturas-panel"
 import { PageHeader } from "@/components/page-header"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Obrigacao } from "@/lib/supabase"
@@ -46,7 +47,9 @@ export function ObrigacoesPage({ mesRef }: { mesRef: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Obrigações Mensais" description="Contas fixas e parcelamentos recorrentes do mês." actions={<ObrigacaoDialog />} />
+      <PageHeader title="Obrigações Mensais" description="Contas fixas, parcelamentos recorrentes e assinaturas do mês." actions={<ObrigacaoDialog />} />
+
+      <AssinaturasPanel mesRef={mesRef} />
 
       {/* Ativas */}
       <section>

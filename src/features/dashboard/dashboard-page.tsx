@@ -18,6 +18,7 @@ import { Loader2 } from "lucide-react"
 import type { Transacao } from "@/lib/supabase"
 import { TrendPill } from "./trend-pill"
 import { useFinData } from "@/hooks/use-fin-data"
+import { EssencialCard } from "@/features/essencial/essencial-card"
 import { registrarFaturaPaga, removerFaturaPaga } from "@/lib/pagamentos"
 import { supabase } from "@/lib/supabase"
 import { catInfo, catColor } from "@/lib/categorias"
@@ -167,6 +168,9 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
 
       {/* Panorama do mês — o gestor em 3 frases */}
       <PanoramaResumo mesRef={mesRef} />
+
+      {/* Essencial x por escolha */}
+      <EssencialCard mesRef={mesRef} />
 
       {/* Donut + Obrigações do mês */}
       <div className="grid gap-4 lg:grid-cols-2">
