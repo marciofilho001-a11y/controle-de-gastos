@@ -8,4 +8,13 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },
+  // duas páginas: o app e a do ícone "Lançar" (manifesto próprio pro iPhone)
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+        lancar: path.resolve(__dirname, "lancar/index.html"),
+      },
+    },
+  },
 })

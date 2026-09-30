@@ -1,6 +1,17 @@
 {
   "framework": "vite",
   "rewrites": [
-    { "source": "/((?!assets/|favicon|.*\\.).*)", "destination": "/index.html" }
+    {
+      "source": "/lancar",
+      "destination": "/lancar/index.html"
+    },
+    {
+      "source": "/lancar/:path*",
+      "destination": "/lancar/index.html"
+    },
+    {
+      "source": "/((?!assets/|favicon|.*\\.).*)",
+      "destination": "/index.html"
+    }
   ]
 }
