@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
-import { Plus, Send, CheckCircle2, Nfc, ArrowUpRight, Mic, Loader2, CircleAlert } from "lucide-react"
+import { Plus, Send, CheckCircle2, ArrowUpRight, Mic, Loader2, CircleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PreviewCard } from "@/features/chat/chat-assistente"
 import { parseEntrada, type ParseResult } from "@/features/chat/parser"
 import { salvarEntrada } from "@/features/chat/salvar"
 import { useFinData } from "@/hooks/use-fin-data"
 import { mesRefAtual } from "@/lib/format"
-import { mesFaturaPara, dataLocal } from "@/lib/inbox"
+import { mesFaturaPara, dataLocal } from "@/lib/data-compra"
 import { cn } from "@/lib/utils"
 
 const EASE = [0.23, 1, 0.32, 1] as const
@@ -17,7 +17,7 @@ const EXEMPLOS = ["pix 50 luiz", "mercado 120 débito", "ifood 45 nubank", "3x 7
 // Tela aberta pelo ícone "Lançar" da tela inicial do iPhone: escreve (ou dita pelo
 // microfone do teclado), confere a prévia e grava direto na lista de lançamentos.
 export function LancarRapido() {
-  const { loading, error, cartoes, transacoes, faturaItens, inbox, loadAll } = useFinData()
+  const { loading, error, cartoes, transacoes, faturaItens, loadAll } = useFinData()
   const [texto, setTexto] = useState("")
   const [previa, setPrevia] = useState<ParseResult | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -92,15 +92,6 @@ export function LancarRapido() {
         </a>
       </div>
 
-      {inbox.length > 0 && (
-        <a href="/" className="flex items-center gap-2.5 rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-2.5 text-sm">
-          <Nfc className="size-4.5 shrink-0 text-primary" />
-          <span className="flex-1">
-            <span className="font-semibold">{inbox.length} compra{inbox.length > 1 ? "s" : ""} por aproximação</span> esperando revisão
-          </span>
-          <ArrowUpRight className="size-4 text-primary" />
-        </a>
-      )}
 
       {loading ? (
         <div className="grid flex-1 place-items-center"><Loader2 className="size-6 animate-spin text-primary" /></div>

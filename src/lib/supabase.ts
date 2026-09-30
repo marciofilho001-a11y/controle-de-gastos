@@ -84,19 +84,6 @@ export type FaturaPagamento = {
   criado_em: string
 }
 
-export type InboxItem = {
-  id: number
-  origem: string
-  valor_bruto: string | null
-  estabelecimento: string | null
-  cartao_nome: string | null
-  payload: Record<string, unknown> | null
-  recebido_em: string
-  status: "pendente" | "confirmado" | "descartado"
-  transacao_id: number | null
-  resolvido_em: string | null
-}
-
 export type Investimento = {
   id: number
   mes_ref: string
