@@ -13,7 +13,8 @@ import {
 import { supabase, type Transacao } from "@/lib/supabase"
 import { DESPESA_CATS, RECEITA_CATS } from "@/lib/categorias"
 import { addMonths, fmtR, fmtMesCurto } from "@/lib/format"
-import { infoParcela } from "@/lib/parcelas"
+import { infoParcela, parcelasIrmas, baseDescricao, descricaoIrma } from "@/lib/parcelas"
+import { Switch } from "@/components/ui/switch"
 import { useFinData } from "@/hooks/use-fin-data"
 
 const DEBITO = "debito"
@@ -34,7 +35,7 @@ export function TransacaoDialog({
   onOpenChange?: (v: boolean) => void
   mesRefPadrao?: string
 }) {
-  const { cartoes, loadAll } = useFinData()
+  const { cartoes, transacoes, loadAll } = useFinData()
   const [openState, setOpenState] = useState(false)
   const open = openProp ?? openState
   const setOpen = (v: boolean) => { setOpenState(v); onOpenChange?.(v) }
@@ -50,6 +51,7 @@ export function TransacaoDialog({
   const [parcelas, setParcelas] = useState("1")        // novo lançamento: nº de parcelas (1 = à vista)
   const [parcAtual, setParcAtual] = useState("")       // edição: parcela atual / total
   const [parcTotal, setParcTotal] = useState("")
+  const [aplicarTodas, setAplicarTodas] = useState(true) // edição de parcela: levar a mudança pras outras parcelas
 
   const cartoesAtivos = cartoes.filter((c) => c.ativo !== false)
   const cats = tipo === "receita" ? RECEITA_CATS : DESPESA_CATS
@@ -67,6 +69,7 @@ export function TransacaoDialog({
       setMesFatura(editar.mes_ref)
       const p = infoParcela(editar)
       setParcAtual(p ? String(p.atual) : ""); setParcTotal(p ? String(p.total) : ""); setParcelas("1")
+      setAplicarTodas(true)
     } else {
       const hoje = new Date().toISOString().slice(0, 10)
       setTipo("despesa"); setDescricao(""); setValor(""); setCategoria("outro")
@@ -82,6 +85,8 @@ export function TransacaoDialog({
     setData(d)
     if (d && (!mesFatura || mesFatura === data.slice(0, 7))) setMesFatura(d.slice(0, 7))
   }
+
+  const irmas = editar ? parcelasIrmas(editar, transacoes) : []
 
   const nParc = tipo === "despesa" && !editar ? Math.max(1, Math.min(72, parseInt(parcelas) || 1)) : 1
   const vNum = parseFloat(valor) || 0
@@ -106,7 +111,25 @@ export function TransacaoDialog({
         }
         const { error } = await supabase.from("fin_transacoes").update(payload).eq("id", editar.id)
         if (error) throw error
-        toast.success("Lançamento atualizado!")
+        if (aplicarTodas && irmas.length) {
+          // mesmas mudanças nas outras parcelas: nome, categoria, valor da parcela e cartão;
+          // se o mês da fatura mudou, todas andam o mesmo tanto
+          const novaBase = baseDescricao(descricao)
+          const desloc = mesesEntre(editar.mes_ref, mes_ref)
+          for (const o of irmas) {
+            const { error: e2 } = await supabase.from("fin_transacoes").update({
+              descricao: descricaoIrma(novaBase, o), categoria, valor: v, cartao_id,
+              ...(desloc ? { mes_ref: addMonths(o.mes_ref, desloc), data: somarMesesData(o.data, desloc) } : {}),
+            }).eq("id", o.id)
+            if (e2) throw e2
+          }
+          if (editar.compra_id) {
+            await supabase.from("fin_cartao_compras").update({ descricao: novaBase, categoria, valor_parcela: v }).eq("id", editar.compra_id)
+          }
+          toast.success(`Lançamento atualizado em ${irmas.length + 1} parcelas`)
+        } else {
+          toast.success("Lançamento atualizado!")
+        }
       } else if (nParc <= 1) {
         const { error } = await supabase.from("fin_transacoes").insert({
           tipo, descricao: descricao.trim(), valor: v, data, categoria, mes_ref, cartao_id,
@@ -259,6 +282,17 @@ export function TransacaoDialog({
               </div>
             </div>
           )}
+          {editar && irmas.length > 0 && (
+            <label className="flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5">
+              <Switch checked={aplicarTodas} onCheckedChange={setAplicarTodas} />
+              <span className="text-sm leading-tight">
+                Aplicar nas outras {irmas.length} parcela{irmas.length > 1 ? "s" : ""}
+                <span className="block text-xs text-muted-foreground">
+                  {irmas.map((o) => `${infoParcela(o)?.atual}/${infoParcela(o)?.total} ${fmtMesCurto(o.mes_ref)}`).join(" · ")} — nome, categoria, valor e cartão
+                </span>
+              </span>
+            </label>
+          )}
           {editar && (editar.obrigacao_id || editar.compra_id) && (
             <p className="rounded-lg bg-secondary px-3 py-2 text-xs text-muted-foreground">
               Este lançamento está vinculado a {editar.obrigacao_id ? "uma obrigação" : "uma compra parcelada"}. O vínculo é mantido ao salvar.
@@ -277,6 +311,17 @@ export function TransacaoDialog({
       </DialogContent>
     </Dialog>
   )
+}
+
+function mesesEntre(de: string, ate: string): number {
+  const [a1, m1] = de.split("-").map(Number)
+  const [a2, m2] = ate.split("-").map(Number)
+  return (a2 - a1) * 12 + (m2 - m1)
+}
+function somarMesesData(data: string, n: number): string {
+  const [a, m, d] = data.split("-").map(Number)
+  const ultimo = new Date(Date.UTC(a, m - 1 + n + 1, 0)).getUTCDate()
+  return new Date(Date.UTC(a, m - 1 + n, Math.min(d, ultimo))).toISOString().slice(0, 10)
 }
 
 // compatibilidade: botão "Nova Transação" dos cabeçalhos

@@ -12,6 +12,7 @@ import { CategoryDonut, type DonutSlice } from "@/features/dashboard/category-do
 import { ItemIcon } from "./item-icon"
 import { RowActions } from "@/components/row-actions"
 import { TransacaoDialog } from "@/features/transacoes/nova-transacao-dialog"
+import { parcelasIrmas } from "@/lib/parcelas"
 import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Cartao, type Transacao } from "@/lib/supabase"
 import { DESPESA_CATS, catInfo, catColor } from "@/lib/categorias"
@@ -130,8 +131,12 @@ export function FaturaDetalhe({
 
   async function mudarCategoria(id: number, categoria: string) {
     try {
-      const { error } = await supabase.from("fin_transacoes").update({ categoria }).eq("id", id)
+      // categoria é da compra: vale pra todas as parcelas dela
+      const tx = transacoes.find((t) => t.id === id)
+      const ids = [id, ...(tx ? parcelasIrmas(tx, transacoes).map((o) => o.id) : [])]
+      const { error } = await supabase.from("fin_transacoes").update({ categoria }).in("id", ids)
       if (error) throw error
+      if (ids.length > 1) toast.success(`Categoria trocada nas ${ids.length} parcelas`)
       await loadAll()
     } catch (e) {
       toast.error("Erro ao mudar categoria", { description: e instanceof Error ? e.message : "" })

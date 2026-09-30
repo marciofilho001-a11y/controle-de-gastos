@@ -34,6 +34,8 @@ type FinState = {
   saveConfig: (chave: string, valor: string) => Promise<void>
 }
 
+let jaCarregou = false
+
 export const useFinData = create<FinState>((set) => ({
   loading: true,
   error: null,
@@ -54,7 +56,9 @@ export const useFinData = create<FinState>((set) => ({
     set((st) => ({ config: { ...st.config, [chave]: String(valor) } }))
   },
   loadAll: async () => {
-    set({ loading: true, error: null })
+    // só a primeira carga mostra o "carregando" em tela cheia; as recargas depois de salvar
+    // atualizam em silêncio (senão a tela desmonta e você perde a fatura/aba que estava aberta)
+    set({ loading: !jaCarregou, error: null })
     try {
       const [obr, tx, cart, comp, fat, fpg, inv, sal, tet, cfg, dic, cic] = await Promise.all([
         supabase.from("fin_obrigacoes").select("*").order("dia_vencimento"),
@@ -89,6 +93,7 @@ export const useFinData = create<FinState>((set) => ({
         if (c.categoria) categoriaIcones[c.categoria] = c.imagem
       }
 
+      jaCarregou = true
       set({
         loading: false,
         obrigacoes: (obr.data as Obrigacao[]) || [],
