@@ -13,7 +13,7 @@ import { useFinData } from "@/hooks/use-fin-data"
 import { parseEntrada, type ParseResult } from "./parser"
 import { salvarEntrada } from "./salvar"
 import { DESPESA_CATS, RECEITA_CATS, catInfo, catColor } from "@/lib/categorias"
-import { fmtR, fmtMesRef } from "@/lib/format"
+import { fmtR, fmtMesRef, addMonths } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 type Msg =
@@ -174,8 +174,10 @@ export function ChatAssistente({ mesRef }: { mesRef: string }) {
   )
 }
 
-function PreviewCard({
+export function PreviewCard({
   parse, cartoes, salvando, onConfirm, onCancel, onChange, mesRef,
+  titulo = "Confirma esse lançamento?", rotuloConfirmar = "Cadastrar", rotuloCancelar = "Cancelar",
+  iniciarEditando = false, className,
 }: {
   parse: ParseResult
   cartoes: any[]
@@ -184,8 +186,15 @@ function PreviewCard({
   onCancel: () => void
   onChange: (patch: Partial<ParseResult>) => void
   mesRef: string
+  titulo?: React.ReactNode
+  rotuloConfirmar?: string
+  rotuloCancelar?: string
+  iniciarEditando?: boolean
+  className?: string
 }) {
-  const [editando, setEditando] = useState(false)
+  const [editando, setEditando] = useState(iniciarEditando)
+  const mesBase = parse.mesRef || mesRef
+  const opcoesMes = [-1, 0, 1, 2].map((d) => addMonths(mesBase, d))
   const cats = parse.tipo === "receita" ? RECEITA_CATS : DESPESA_CATS
   const info = catInfo(parse.categoria)
   const Icon = info.icon
@@ -197,13 +206,13 @@ function PreviewCard({
       ? parse.cartao
         ? `${parse.cartao.nome}${parse.numParcelas > 1 ? ` · ${parse.numParcelas}x` : " · à vista"}`
         : "Cartão (não identificado)"
-      : "Débito / dinheiro"
+      : "Débito / Pix / dinheiro"
 
   return (
-    <div className="self-start w-full rounded-2xl border bg-background/60 p-3">
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-        <Sparkles className="size-3.5 text-primary" /> Confirma esse lançamento?
-      </p>
+    <div className={cn("self-start w-full rounded-2xl border bg-background/60 p-3", className)}>
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+        <Sparkles className="size-3.5 shrink-0 text-primary" /> {titulo}
+      </div>
 
       {parse.cartaoMencionadoNaoEncontrado && (
         <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-warning/10 px-2.5 py-1.5 text-xs text-warning">
@@ -262,25 +271,35 @@ function PreviewCard({
             <SelectTrigger><SelectValue placeholder="Forma de pagamento" /></SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="debito">Débito / dinheiro</SelectItem>
+                <SelectItem value="debito">Débito / Pix / dinheiro</SelectItem>
                 {cartoesAtivos.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>)}
               </SelectGroup>
             </SelectContent>
           </Select>
+          {parse.origem === "cartao" && (
+            <Select value={mesBase} onValueChange={(v) => onChange({ mesRef: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {opcoesMes.map((m) => <SelectItem key={m} value={m}>Fatura de {fmtMesRef(m)}</SelectItem>)}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
         </div>
       )}
 
       <div className="mt-3 flex gap-2">
         <Button variant="outline" size="sm" className="flex-1" onClick={onCancel} disabled={salvando}>
-          Cancelar
+          {rotuloCancelar}
         </Button>
         <Button
           size="sm" className="flex-1"
           onClick={onConfirm}
-          disabled={salvando || (parse.origem === "cartao" && !parse.cartao)}
+          disabled={salvando || parse.valorTotal <= 0 || (parse.origem === "cartao" && !parse.cartao)}
         >
           {salvando ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Check data-icon="inline-start" />}
-          Cadastrar
+          {rotuloConfirmar}
         </Button>
       </div>
     </div>

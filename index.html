@@ -3,9 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#141a24" />
+    <!-- modo app (tela inicial do iPhone/Android) -->
+    <link id="pwa-manifest" rel="manifest" href="/manifest.webmanifest" />
+    <link id="pwa-icon" rel="apple-touch-icon" href="/icons/app-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta id="pwa-title" name="apple-mobile-web-app-title" content="FinFlow" />
     <title>FinFlow Pro — Controle Financeiro</title>
+    <script>
+      // em /lancar, "Adicionar à Tela de Início" cria o ícone "Lançar" (abre direto no lançamento rápido)
+      if (location.pathname.indexOf("/lancar") === 0) {
+        document.getElementById("pwa-manifest").href = "/manifest-lancar.webmanifest";
+        document.getElementById("pwa-icon").href = "/icons/lancar-180.png";
+        document.getElementById("pwa-title").content = "Lançar";
+        document.title = "Lançar gasto — FinFlow";
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

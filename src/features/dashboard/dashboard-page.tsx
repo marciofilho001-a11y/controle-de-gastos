@@ -19,6 +19,7 @@ import type { Transacao } from "@/lib/supabase"
 import { TrendPill } from "./trend-pill"
 import { useFinData } from "@/hooks/use-fin-data"
 import { EssencialCard } from "@/features/essencial/essencial-card"
+import { InboxRevisao } from "@/features/inbox/inbox-revisao"
 import { registrarFaturaPaga, removerFaturaPaga } from "@/lib/pagamentos"
 import { supabase } from "@/lib/supabase"
 import { catInfo, catColor } from "@/lib/categorias"
@@ -142,6 +143,9 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* compras por aproximação vindas do iPhone, aguardando confirmação */}
+      <InboxRevisao />
+
       {/* KPIs */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

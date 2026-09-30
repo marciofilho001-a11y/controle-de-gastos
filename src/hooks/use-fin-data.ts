@@ -7,6 +7,7 @@ import {
   type CartaoCompra,
   type FaturaItem,
   type FaturaPagamento,
+  type InboxItem,
   type Investimento,
   type SaldoConta,
   type Teto,
@@ -24,6 +25,7 @@ type FinState = {
   compras: CartaoCompra[]
   faturaItens: FaturaItem[]
   faturaPagamentos: FaturaPagamento[]
+  inbox: InboxItem[]
   investimentos: Investimento[]
   saldos: SaldoConta[]
   tetos: Teto[]
@@ -43,6 +45,7 @@ export const useFinData = create<FinState>((set) => ({
   compras: [],
   faturaItens: [],
   faturaPagamentos: [],
+  inbox: [],
   investimentos: [],
   saldos: [],
   tetos: [],
@@ -56,13 +59,14 @@ export const useFinData = create<FinState>((set) => ({
   loadAll: async () => {
     set({ loading: true, error: null })
     try {
-      const [obr, tx, cart, comp, fat, fpg, inv, sal, tet, cfg, dic, cic] = await Promise.all([
+      const [obr, tx, cart, comp, fat, fpg, ibx, inv, sal, tet, cfg, dic, cic] = await Promise.all([
         supabase.from("fin_obrigacoes").select("*").order("dia_vencimento"),
         supabase.from("fin_transacoes").select("*").order("data", { ascending: false }),
         supabase.from("fin_cartoes").select("*").order("nome"),
         supabase.from("fin_cartao_compras").select("*").order("criado_em"),
         supabase.from("fin_fatura_itens").select("*").order("criado_em"),
         supabase.from("fin_fatura_pagamentos").select("*"),
+        supabase.from("fin_inbox").select("*").eq("status", "pendente").order("recebido_em", { ascending: false }),
         supabase.from("fin_investimentos").select("*").order("data", { ascending: false }),
         supabase.from("fin_saldo_conta").select("*"),
         supabase.from("fin_tetos").select("*"),
@@ -97,6 +101,8 @@ export const useFinData = create<FinState>((set) => ({
         compras: (comp.data as CartaoCompra[]) || [],
         faturaItens: (fat.data as FaturaItem[]) || [],
         faturaPagamentos: (fpg.data as FaturaPagamento[]) || [],
+        // a caixa de entrada não pode derrubar o app se falhar
+        inbox: ibx.error ? [] : (ibx.data as InboxItem[]) || [],
         investimentos: (inv.data as Investimento[]) || [],
         saldos: (sal.data as SaldoConta[]) || [],
         tetos: (tet.data as Teto[]) || [],

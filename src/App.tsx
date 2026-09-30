@@ -12,6 +12,7 @@ import { ProjecaoPage } from "@/features/projecao/projecao-page"
 import { FechamentoPage } from "@/features/fechamento/fechamento-page"
 import { HistoricoPage } from "@/features/historico/historico-page"
 import { ChatAssistente } from "@/features/chat/chat-assistente"
+import { LancarRapido } from "@/features/lancar/lancar-rapido"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
 import { Loader2 } from "lucide-react"
@@ -24,6 +25,16 @@ export default function App() {
   useEffect(() => {
     loadAll()
   }, [loadAll])
+
+  // ícone "Lançar" da tela inicial: só a tela de lançamento rápido, sem o app inteiro
+  if (window.location.pathname.startsWith("/lancar")) {
+    return (
+      <>
+        <LancarRapido />
+        <Toaster position="top-center" richColors />
+      </>
+    )
+  }
 
   return (
     <TooltipProvider delayDuration={200}>
