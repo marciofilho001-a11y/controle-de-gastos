@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { CreditCard, Pencil, Trash2, Loader2, Inbox, Check, Undo2, CalendarClock } from "lucide-react"
+import { CreditCard, Pencil, Trash2, Loader2, Inbox, Check, Undo2, FileCheck2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { PageHeader } from "@/components/page-header"
 import { CartaoDialog } from "./cartao-dialog"
+import { CartaoMini } from "./cartao-mini"
 import { CompraDialog } from "./compra-dialog"
 import { FaturaPrevistaDialog } from "./fatura-prevista-dialog"
 import { FaturaDetalhe } from "./fatura-detalhe"
@@ -133,7 +134,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: i * 0.04, ease: [0.2, 0, 0, 1] }}
-                className="flex cursor-pointer flex-col gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+                className="group/cartao flex cursor-pointer flex-col gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
                 onClick={() => setDetalheCartao(c)}
               >
                 <div className="flex items-center gap-2.5">
@@ -142,6 +143,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                     <p className="truncate font-display text-[15px] font-semibold">{c.nome}</p>
                     <CicloCartao cartao={c} />
                   </div>
+                  <CartaoMini nome={c.nome} logo={c.logo} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -210,16 +212,16 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                         </Button>
                       </div>
                     ) : (
-                      <Button
-                        variant="outline" size="sm" disabled={busyFat === c.id}
+                      <button
+                        type="button" disabled={busyFat === c.id}
                         onClick={() => alternarFatura(c, false, fatura)}
-                        className="w-full border-warning/50 text-warning hover:bg-warning/10 hover:text-warning"
+                        className="btn-pagar"
                       >
-                        {busyFat === c.id
-                          ? <Loader2 data-icon="inline-start" className="animate-spin" />
-                          : <CalendarClock data-icon="inline-start" />}
-                        Marcar fatura como paga
-                      </Button>
+                        <span className="btn-pagar-icone">
+                          {busyFat === c.id ? <Loader2 className="size-4 animate-spin" /> : <FileCheck2 className="size-4" />}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate pr-8 text-center">Marcar fatura como paga</span>
+                      </button>
                     )}
                   </div>
                 )}
