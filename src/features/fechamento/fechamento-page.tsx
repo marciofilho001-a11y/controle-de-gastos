@@ -240,7 +240,7 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
                           <LogoAvatar src={cart.logo} cor="var(--muted-foreground)" Icon={CreditCard} size={28} />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium">{cart.nome}</p>
-                            <p className="text-xs text-muted-foreground">Vence dia {cart.dia_vencimento || "—"}</p>
+                            <p className="text-xs text-muted-foreground">{cart.dia_fechamento ? `Fecha dia ${cart.dia_fechamento} · ` : ""}Vence dia {cart.dia_vencimento || "—"}</p>
                           </div>
                           <span className="tnum text-sm font-medium">{fmtR(f.valor)}</span>
                         </div>

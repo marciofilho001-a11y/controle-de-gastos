@@ -15,6 +15,7 @@ import { DESPESA_CATS, RECEITA_CATS } from "@/lib/categorias"
 import { addMonths, fmtR, fmtMesCurto } from "@/lib/format"
 import { infoParcela, parcelasIrmas, baseDescricao, descricaoIrma } from "@/lib/parcelas"
 import { Switch } from "@/components/ui/switch"
+import { mesFaturaPara } from "@/lib/data-compra"
 import { useFinData } from "@/hooks/use-fin-data"
 
 const DEBITO = "debito"
@@ -48,6 +49,7 @@ export function TransacaoDialog({
   const [data, setData] = useState(new Date().toISOString().slice(0, 10))
   const [forma, setForma] = useState<string>(DEBITO) // "debito" | id do cartão
   const [mesFatura, setMesFatura] = useState("")
+  const [mesManual, setMesManual] = useState(false)     // true depois que o usuário mexe no mês da fatura
   const [parcelas, setParcelas] = useState("1")        // novo lançamento: nº de parcelas (1 = à vista)
   const [parcAtual, setParcAtual] = useState("")       // edição: parcela atual / total
   const [parcTotal, setParcTotal] = useState("")
@@ -66,7 +68,7 @@ export function TransacaoDialog({
       setCategoria(editar.categoria || "outro")
       setData(editar.data)
       setForma(editar.cartao_id ? String(editar.cartao_id) : DEBITO)
-      setMesFatura(editar.mes_ref)
+      setMesFatura(editar.mes_ref); setMesManual(true)
       const p = infoParcela(editar)
       setParcAtual(p ? String(p.atual) : ""); setParcTotal(p ? String(p.total) : ""); setParcelas("1")
       setAplicarTodas(true)
@@ -74,16 +76,32 @@ export function TransacaoDialog({
       const hoje = new Date().toISOString().slice(0, 10)
       setTipo("despesa"); setDescricao(""); setValor(""); setCategoria("outro")
       setData(mesRefPadrao && !hoje.startsWith(mesRefPadrao) ? `${mesRefPadrao}-01` : hoje)
-      setForma(DEBITO); setMesFatura(mesRefPadrao || hoje.slice(0, 7))
+      setForma(DEBITO); setMesFatura(mesRefPadrao || hoje.slice(0, 7)); setMesManual(false)
       setParcelas("1"); setParcAtual(""); setParcTotal("")
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editar])
 
+  // Mês da fatura sugerido pelo fechamento do cartão (só quando o cartão tem o dia de fechamento cadastrado)
+  function sugerirMes(d: string, f: string) {
+    const c = cartoesAtivos.find((x) => String(x.id) === f)
+    return c?.dia_fechamento && d ? mesFaturaPara(c, d) : null
+  }
+
   // ao mudar a data, o mês da fatura acompanha (a menos que o usuário já tenha mexido nele)
   function mudarData(d: string) {
     setData(d)
-    if (d && (!mesFatura || mesFatura === data.slice(0, 7))) setMesFatura(d.slice(0, 7))
+    if (!d) return
+    const sug = !editar && !mesManual ? sugerirMes(d, forma) : null
+    if (sug) setMesFatura(sug)
+    else if (!mesFatura || mesFatura === data.slice(0, 7)) setMesFatura(d.slice(0, 7))
+  }
+
+  function mudarForma(f: string) {
+    setForma(f)
+    const sug = !editar && !mesManual ? sugerirMes(data, f) : null
+    if (sug) setMesFatura(sug)
+    else if (!editar && !mesManual && data) setMesFatura(data.slice(0, 7))
   }
 
   const irmas = editar ? parcelasIrmas(editar, transacoes) : []
@@ -231,7 +249,7 @@ export function TransacaoDialog({
             {tipo === "despesa" && (
               <div className="flex flex-col gap-1.5">
                 <Label>Forma de pagamento</Label>
-                <Select value={forma} onValueChange={setForma}>
+                <Select value={forma} onValueChange={mudarForma}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
@@ -252,9 +270,14 @@ export function TransacaoDialog({
           {noCartao && (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="tx-mes">Mês da fatura</Label>
-              <Input id="tx-mes" type="month" value={mesFatura} onChange={(e) => setMesFatura(e.target.value)} />
+              <Input id="tx-mes" type="month" value={mesFatura} onChange={(e) => { setMesFatura(e.target.value); setMesManual(true) }} />
               <span className="text-xs text-muted-foreground">
-                Em qual fatura essa compra cai. Compras depois do fechamento vão pro mês seguinte.
+                {(() => {
+                  const c = cartoesAtivos.find((x) => String(x.id) === forma)
+                  return c?.dia_fechamento
+                    ? `Fatura fecha dia ${c.dia_fechamento}: compras depois disso vão pro mês seguinte. Sugerido pela data; você pode trocar.`
+                    : "Em qual fatura essa compra cai. Compras depois do fechamento vão pro mês seguinte (cadastre o fechamento no cartão para sugerir sozinho)."
+                })()}
               </span>
             </div>
           )}

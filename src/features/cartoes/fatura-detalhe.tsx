@@ -19,6 +19,7 @@ import { DESPESA_CATS, catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesRef, mesRefAtual, fmtData, addMonths } from "@/lib/format"
 import { faturaDoMes, faturaInfoDoMes, ehFaturaCheia, mesesDoCartao, sugestoesParcelasParaMes } from "@/lib/selectors"
 import { LogoAvatar } from "@/components/logo-avatar"
+import { fechamentoDoCartao } from "@/lib/data-compra"
 import { cn } from "@/lib/utils"
 
 export function FaturaDetalhe({
@@ -192,7 +193,8 @@ export function FaturaDetalhe({
         <div>
           <h2 className="font-display text-2xl font-semibold">{cartao.nome}</h2>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="size-3" /> Vencimento dia {cartao.dia_vencimento || "—"}
+            <Clock className="size-3" />
+            {fechamentoDoCartao(cartao) ? `Fecha dia ${fechamentoDoCartao(cartao)!.dia}${fechamentoDoCartao(cartao)!.estimado ? "*" : ""} · ` : ""}Vence dia {cartao.dia_vencimento || "—"}
             {cartao.limite ? ` · limite ${fmtR(Number(cartao.limite))}` : ""}
           </p>
         </div>

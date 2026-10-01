@@ -45,6 +45,7 @@ export type Cartao = {
   id: number
   nome: string
   dia_vencimento: number | null
+  dia_fechamento: number | null
   limite: number | null
   ativo: boolean | null
   logo: string | null

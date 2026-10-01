@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { supabase, type Cartao } from "@/lib/supabase"
 import { useFinData } from "@/hooks/use-fin-data"
+import { fechamentoDoCartao } from "@/lib/data-compra"
 
 export function CartaoDialog({ editar, trigger }: { editar?: Cartao; trigger?: React.ReactNode }) {
   const { loadAll } = useFinData()
@@ -16,15 +17,17 @@ export function CartaoDialog({ editar, trigger }: { editar?: Cartao; trigger?: R
   const [saving, setSaving] = useState(false)
   const [nome, setNome] = useState("")
   const [dia, setDia] = useState("")
+  const [fecha, setFecha] = useState("")
   const [limite, setLimite] = useState("")
 
   useEffect(() => {
     if (open && editar) {
       setNome(editar.nome)
       setDia(editar.dia_vencimento ? String(editar.dia_vencimento) : "")
+      setFecha(editar.dia_fechamento ? String(editar.dia_fechamento) : "")
       setLimite(editar.limite ? String(editar.limite) : "")
     } else if (open && !editar) {
-      setNome(""); setDia(""); setLimite("")
+      setNome(""); setDia(""); setFecha(""); setLimite("")
     }
   }, [open, editar])
 
@@ -33,11 +36,17 @@ export function CartaoDialog({ editar, trigger }: { editar?: Cartao; trigger?: R
       toast.error("Preencha o nome do cartão")
       return
     }
+    const diaOk = (v: string) => !v || (Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 31)
+    if (!diaOk(dia) || !diaOk(fecha)) {
+      toast.error("Os dias de fechamento e vencimento vão de 1 a 31")
+      return
+    }
     setSaving(true)
     try {
       const payload = {
         nome: nome.trim(),
         dia_vencimento: parseInt(dia) || null,
+        dia_fechamento: parseInt(fecha) || null,
         limite: parseFloat(limite) || null,
       }
       const { error } = editar
@@ -74,13 +83,18 @@ export function CartaoDialog({ editar, trigger }: { editar?: Cartao; trigger?: R
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="c-dia">Dia vencimento</Label>
-              <Input id="c-dia" type="number" min="1" max="31" value={dia} onChange={(e) => setDia(e.target.value)} placeholder="Ex: 10" />
+              <Label htmlFor="c-fecha">Dia do fechamento</Label>
+              <Input id="c-fecha" type="number" min="1" max="31" value={fecha} onChange={(e) => setFecha(e.target.value)} placeholder="Ex: 3" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="c-limite">Limite (R$)</Label>
-              <Input id="c-limite" type="number" step="0.01" value={limite} onChange={(e) => setLimite(e.target.value)} placeholder="opcional" />
+              <Label htmlFor="c-dia">Dia do vencimento</Label>
+              <Input id="c-dia" type="number" min="1" max="31" value={dia} onChange={(e) => setDia(e.target.value)} placeholder="Ex: 10" />
             </div>
+          </div>
+          <ExplicacaoCiclo fecha={parseInt(fecha) || null} venc={parseInt(dia) || null} />
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="c-limite">Limite (R$)</Label>
+            <Input id="c-limite" type="number" step="0.01" value={limite} onChange={(e) => setLimite(e.target.value)} placeholder="opcional" />
           </div>
         </div>
         <DialogFooter>
@@ -94,5 +108,24 @@ export function CartaoDialog({ editar, trigger }: { editar?: Cartao; trigger?: R
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// Resume o ciclo da fatura com os dias digitados (e avisa quando o fechamento está sendo estimado)
+function ExplicacaoCiclo({ fecha, venc }: { fecha: number | null; venc: number | null }) {
+  const f = fechamentoDoCartao({ dia_fechamento: fecha, dia_vencimento: venc })
+  if (!f) return <p className="-mt-1 text-xs text-muted-foreground">Informe o fechamento e o vencimento da fatura.</p>
+  if (f.estimado) {
+    return (
+      <p className="-mt-1 text-xs text-muted-foreground">
+        Sem o dia de fechamento, o app estima <b className="text-foreground">dia {f.dia}</b> (7 dias antes do vencimento). Informe o dia certo para as compras caírem na fatura certa.
+      </p>
+    )
+  }
+  const mesSeguinte = !!venc && venc <= f.dia
+  return (
+    <p className="-mt-1 text-xs text-muted-foreground">
+      Compras até o <b className="text-foreground">dia {f.dia}</b> entram na fatura que {venc ? <>vence <b className="text-foreground">dia {venc}</b> {mesSeguinte ? "do mês seguinte" : "do mesmo mês"}</> : "fecha neste mês"}; depois do dia {f.dia}, na fatura seguinte.
+    </p>
   )
 }

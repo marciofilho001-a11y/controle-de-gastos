@@ -25,6 +25,7 @@ import { fmtR, fmtMesCurto, fmtData } from "@/lib/format"
 import { faturaInfoDoMes, faturaPagaNoMes } from "@/lib/selectors"
 import { motion } from "motion/react"
 import { LogoAvatar } from "@/components/logo-avatar"
+import { fechamentoDoCartao, diasParaFechar, dataLocal } from "@/lib/data-compra"
 import { cn } from "@/lib/utils"
 
 export function CartoesPage({ mesRef }: { mesRef: string }) {
@@ -139,7 +140,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                   <LogoAvatar src={c.logo} cor="var(--muted-foreground)" Icon={CreditCard} size={40} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-display text-[15px] font-semibold">{c.nome}</p>
-                    <p className="text-xs text-muted-foreground">Vencimento dia {c.dia_vencimento || "—"}</p>
+                    <CicloCartao cartao={c} />
                   </div>
                 </div>
                 <div>
@@ -369,6 +370,28 @@ function Empty({ children }: { children: React.ReactNode }) {
     <div className="grid place-items-center gap-2 rounded-xl border border-dashed py-10 text-center">
       <Inbox className="size-7 text-muted-foreground/60" />
       <p className="text-sm text-muted-foreground">{children}</p>
+    </div>
+  )
+}
+
+// "Fecha dia 3 · Vence dia 10" + quantos dias faltam pro fechamento
+function CicloCartao({ cartao }: { cartao: Cartao }) {
+  const f = fechamentoDoCartao(cartao)
+  const dias = diasParaFechar(cartao, dataLocal(new Date().toISOString()))
+  return (
+    <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+      <p className="flex flex-wrap items-center gap-x-1.5">
+        <span title={f?.estimado ? "Estimado: 7 dias antes do vencimento. Edite o cartão para informar o dia certo." : undefined}>
+          Fecha {f ? `dia ${f.dia}${f.estimado ? "*" : ""}` : "—"}
+        </span>
+        <span aria-hidden>·</span>
+        <span>Vence dia {cartao.dia_vencimento || "—"}</span>
+      </p>
+      {dias !== null && (
+        <p className={cn("text-[0.7rem]", dias <= 3 ? "font-medium text-warning" : "text-muted-foreground/80")}>
+          {dias === 0 ? "fecha hoje" : dias === 1 ? "fecha amanhã" : `fecha em ${dias} dias`}
+        </p>
+      )}
     </div>
   )
 }
