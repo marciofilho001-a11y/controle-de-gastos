@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { motion } from "motion/react"
 import {
   CheckCircle2, Circle, AlertTriangle, Lock, Unlock, Loader2, ListChecks, CreditCard, Wallet,
-  Clock, Sparkles, ArrowRight, TrendingUp, TrendingDown, Minus, Scale, Landmark, Receipt, Flag, CalendarClock,
+  Clock, Sparkles, ArrowRight, TrendingUp, TrendingDown, Minus, Scale, Landmark, Receipt,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -15,10 +15,11 @@ import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesCurto, fmtMesLongo, addMonths, fmtData } from "@/lib/format"
 import {
   receitasDoMes, despesasDoMes, obrigacoesAtivasNoMes, obrigacaoPagaNoMes, faturaInfoDoMes,
-  despesasExibicaoDoMes, txDoMes, parcelaNoMes, variacaoPct, faturaPagaNoMes,
+  despesasExibicaoDoMes, parcelaNoMes, variacaoPct, faturaPagaNoMes,
 } from "@/lib/selectors"
 import { gerarInsights, type Severidade } from "@/lib/insights"
 import { statusLancamento } from "@/lib/parcelas"
+import { checklistFechamento } from "@/lib/checklist-fechamento"
 import type { TabId } from "@/components/layout/nav"
 import { LogoAvatar } from "@/components/logo-avatar"
 import { cn } from "@/lib/utils"
@@ -69,7 +70,6 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
     const semCategoria = exib.filter((t) => !t._virtual && (!t.categoria || t.categoria === "outro"))
 
     const rendaPrev = parseFloat(config.renda_projetada) || 0
-    const receitas = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "receita")
 
     // categorias este mês x anterior
     const somaCat = (m: string) => {
@@ -85,14 +85,7 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
 
     const insights = gerarInsights({ transacoes, cartoes, obrigacoes, tetos, config, mesRef }).filter((i) => i.id !== "vazio").slice(0, 5)
 
-    const checks = [
-      { id: "obrig", ok: naoPagas.length === 0, titulo: "Obrigações pagas", detalhe: naoPagas.length ? `${naoPagas.length} de ${ativas.length} ainda sem baixa` : `${ativas.length} de ${ativas.length} com baixa`, icon: ListChecks },
-      { id: "fatpg", ok: faturasAPagar.length === 0, titulo: "Faturas pagas", detalhe: faturasAPagar.length ? `${fmtR(totalFatAPagar)} em ${faturasAPagar.length} fatura(s) sem baixa` : faturas.length ? `${faturas.length} de ${faturas.length} com baixa` : "Nenhuma fatura neste mês", icon: CalendarClock },
-      { id: "fat", ok: indefinido <= 0, titulo: "Faturas detalhadas", detalhe: indefinido > 0 ? `${fmtR(indefinido)} sem detalhamento em ${faturasPendentes.length} fatura(s)` : "Todas as faturas abertas item a item", icon: CreditCard },
-      { id: "rec", ok: receita > 0 && (rendaPrev === 0 || receita >= rendaPrev * 0.9), titulo: "Receitas registradas", detalhe: receita === 0 ? "Nenhuma receita lançada" : rendaPrev > 0 && receita < rendaPrev * 0.9 ? `${fmtR(receita)} de ${fmtR(rendaPrev)} previstos` : `${fmtR(receita)} em ${receitas.length} lançamento(s)`, icon: Wallet },
-      { id: "pend", ok: pendentes.length === 0, titulo: "Lançamentos pendentes", detalhe: pendentes.length ? `${pendentes.length} com data futura (${fmtR(pendentes.reduce((s, t) => s + Number(t.valor), 0))})` : "Nada com data futura", icon: Clock },
-      { id: "cat", ok: semCategoria.length === 0, titulo: "Tudo categorizado", detalhe: semCategoria.length ? `${semCategoria.length} lançamento(s) em "Outro"` : "Nenhum lançamento solto em Outro", icon: Flag },
-    ]
+    const checks = checklistFechamento({ transacoes, cartoes, obrigacoes, faturaPagamentos, config, mesRef, hoje })
     const feitos = checks.filter((c) => c.ok).length
 
     return {

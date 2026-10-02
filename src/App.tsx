@@ -57,7 +57,7 @@ export default function App() {
               </div>
             </div>
           ) : tab === "dashboard" ? (
-            <DashboardPage mesRef={mesRef} />
+            <DashboardPage mesRef={mesRef} onNavigate={setTab} />
           ) : tab === "obrigacoes" ? (
             <ObrigacoesPage mesRef={mesRef} />
           ) : tab === "cartoes" ? (

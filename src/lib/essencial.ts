@@ -24,9 +24,9 @@ const CAT_ESSENCIAL = new Set(["moradia", "consorcio", "financiamento", "saude",
 const CAT_ESCOLHA = new Set(["lazer", "compras", "assinatura"])
 
 export const NATUREZA_INFO: Record<Natureza, { label: string; cor: string; curto: string; frase: string }> = {
-  essencial: { label: "Essencial", curto: "Essencial", cor: "#38bdf8", frase: "foi essencial" },
-  escolha: { label: "Por escolha", curto: "Escolha", cor: "#f472b6", frase: "foi por escolha" },
-  inutil: { label: "Gastos inúteis", curto: "Inútil", cor: "#fb923c", frase: "foi gasto inútil" },
+  essencial: { label: "Essencial", curto: "Essencial", cor: "#0f9e8c", frase: "foi essencial" },
+  escolha: { label: "Por escolha", curto: "Escolha", cor: "#3b82f6", frase: "foi por escolha" },
+  inutil: { label: "Gastos inúteis", curto: "Inútil", cor: "#c97a0e", frase: "foi gasto inútil" },
   indefinido: { label: "A classificar", curto: "A classificar", cor: "#8b93a7", frase: "a classificar" },
 }
 

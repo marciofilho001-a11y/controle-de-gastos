@@ -1,39 +1,40 @@
 import { useMemo, useState } from "react"
-import {
-  ArrowUp, ArrowDown, TrendingUp, Clock, Scale, Check, Inbox, PieChart, ChevronRight,
-} from "lucide-react"
 import { motion } from "motion/react"
 import { toast } from "sonner"
-import { StatCard } from "@/components/stat-card"
-import { CategoryDonut, type DonutSlice } from "./category-donut"
-import { PanoramaResumo } from "@/features/relatorio/panorama"
+import { Loader2 } from "lucide-react"
+import { type DonutSlice } from "./category-donut"
 import { LancamentosFiltravel } from "./lancamentos-filtravel"
+import { HeroResumo } from "./hero-resumo"
+import { FluxoMeses } from "./fluxo-meses"
+import { DespesasCategoria } from "./despesas-categoria"
+import { AtencaoCard } from "./atencao-card"
+import { ChecklistResumo } from "./checklist-resumo"
+import { UltimosLancamentos } from "./ultimos-lancamentos"
+import { EASE } from "./painel"
 import { TransacaoDialog } from "@/features/transacoes/nova-transacao-dialog"
 import { duplicarTransacao, excluirTransacao } from "@/lib/transacoes-actions"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Loader2 } from "lucide-react"
 import type { Transacao } from "@/lib/supabase"
-import { TrendPill } from "./trend-pill"
+import type { TabId } from "@/components/layout/nav"
 import { useFinData } from "@/hooks/use-fin-data"
-import { EssencialCard } from "@/features/essencial/essencial-card"
-import { registrarFaturaPaga, removerFaturaPaga } from "@/lib/pagamentos"
-import { supabase } from "@/lib/supabase"
-import { catInfo, catColor } from "@/lib/categorias"
-import { fmtR, addMonths , fmtData } from "@/lib/format"
-import { cn } from "@/lib/utils"
-import { LogoAvatar } from "@/components/logo-avatar"
+import { EssencialResumo } from "@/features/essencial/essencial-card"
+import { checklistFechamento } from "@/lib/checklist-fechamento"
+import { catInfo } from "@/lib/categorias"
+import { addMonths, fmtMesLongo } from "@/lib/format"
 import {
-  receitasDoMes, despesasDoMes, txDoMes, despesasExibicaoDoMes,
-  contasDoMes,
+  receitasDoMes, despesasDoMes, txDoMes, despesasExibicaoDoMes, contasDoMes,
 } from "@/lib/selectors"
 
-export function DashboardPage({ mesRef }: { mesRef: string }) {
-  const { obrigacoes, cartoes, transacoes, descricaoIcones, loadAll , faturaPagamentos } = useFinData()
-  const [busyObr, setBusyObr] = useState<number | null>(null)
-  const [verTodasCats, setVerTodasCats] = useState(false)
+function saudacao(): string {
+  const h = new Date().getHours()
+  return h < 5 ? "Boa noite" : h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"
+}
+
+export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNavigate: (t: TabId) => void }) {
+  const { obrigacoes, cartoes, transacoes, descricaoIcones, config, loadAll, faturaPagamentos } = useFinData()
   const [editTx, setEditTx] = useState<Transacao | null>(null)
   const [delTx, setDelTx] = useState<Transacao | null>(null)
   const [busyTx, setBusyTx] = useState(false)
@@ -53,252 +54,75 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
   const d = useMemo(() => {
     const receitas = receitasDoMes(transacoes, mesRef)
     const despesas = despesasDoMes(transacoes, mesRef)
-    const saldo = receitas - despesas
     const mesAnt = addMonths(mesRef, -1)
-    const receitasAnt = receitasDoMes(transacoes, mesAnt)
-    const despesasAnt = despesasDoMes(transacoes, mesAnt)
-    const saldoAnt = receitasAnt - despesasAnt
     const contas = contasDoMes(obrigacoes, cartoes, transacoes, mesRef, faturaPagamentos)
-    const itens = contas.itens
-    const pendentes = contas.totalPendente
-    const totalObr = contas.total
-    const pctComprometido = receitas > 0 ? Math.min(100, (totalObr / receitas) * 100) : 0
 
-    // donut de gastos por categoria (despesas do mês, SEM duplicação de cartão)
+    // categorias (despesas do mês, sem duplicar fatura de cartão)
     const despMes = despesasExibicaoDoMes(transacoes, mesRef)
     const porCat = new Map<string, number>()
-    for (const t of despMes) {
-      const k = t.categoria || "outro"
-      porCat.set(k, (porCat.get(k) || 0) + Number(t.valor))
-    }
+    for (const t of despMes) porCat.set(t.categoria || "outro", (porCat.get(t.categoria || "outro") || 0) + Number(t.valor))
     const slices: DonutSlice[] = [...porCat.entries()]
       .map(([catKey, value]) => ({ catKey, label: catInfo(catKey).l, value }))
       .sort((a, b) => b.value - a.value)
 
-    // histórico: receitas (cru) + despesas sem duplicação
+    // saldo dos últimos 6 meses (até o mês navegado)
+    const serieSaldo = Array.from({ length: 6 }, (_, i) => {
+      const m = addMonths(mesRef, i - 5)
+      return { mes: m, saldo: receitasDoMes(transacoes, m) - despesasDoMes(transacoes, m) }
+    })
+
+    // lançamentos do mês: receitas + despesas sem duplicação, mais recentes primeiro
     const receitasMes = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "receita")
-    const hist = [...receitasMes, ...despMes]
-    // agrupa por dia
-    const grupos = new Map<string, typeof hist>()
-    for (const t of hist) {
-      const arr = grupos.get(t.data) || []
-      arr.push(t)
-      grupos.set(t.data, arr)
+    const lancamentos = [...receitasMes, ...despMes].sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : b.id - a.id))
+
+    const checks = checklistFechamento({
+      transacoes, cartoes, obrigacoes, faturaPagamentos, config, mesRef, hoje: new Date().toISOString().slice(0, 10),
+    })
+
+    return {
+      receitas, despesas, saldo: receitas - despesas,
+      receitasAnt: receitasDoMes(transacoes, mesAnt), despesasAnt: despesasDoMes(transacoes, mesAnt),
+      contas, slices, serieSaldo, lancamentos, checks,
     }
-    const dias = [...grupos.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1))
+  }, [obrigacoes, cartoes, transacoes, faturaPagamentos, config, mesRef])
 
-    // sparkline do saldo: saldo acumulado dos últimos 6 meses (até o mês atual)
-    const sparkSaldo: { mes: string; saldo: number }[] = []
-    for (let i = 5; i >= 0; i--) {
-      const m = addMonths(mesRef, -i)
-      sparkSaldo.push({ mes: m, saldo: receitasDoMes(transacoes, m) - despesasDoMes(transacoes, m) })
-    }
-
-    // lista de lançamentos do mês (pra seção filtrável) — receitas + despesas sem duplicação
-    const lancamentos = hist.slice().sort((a, b) => (a.data < b.data ? 1 : -1))
-
-    // total de lançamentos do mês
-    const totalLanc = lancamentos.length
-
-    return { receitas, despesas, saldo, receitasAnt, despesasAnt, saldoAnt, itens, contas, pendentes, totalObr, pctComprometido, slices, despesas_total: despesas, dias, sparkSaldo, lancamentos, totalLanc }
-  }, [obrigacoes, cartoes, transacoes, mesRef])
-
-  async function toggleObrigacao(item: (typeof d.itens)[number]) {
-    setBusyObr(item.id)
-    try {
-      if (item.tipo === "cartao") {
-        if (item.paga) await removerFaturaPaga(item.id, mesRef)
-        else await registrarFaturaPaga(item.id, mesRef, item.valor)
-        toast.success(item.paga ? `Fatura reaberta` : `${item.nome} marcada como paga`)
-      } else if (item.paga) {
-        // remover a transação que marca como paga
-        const { error } = await supabase
-          .from("fin_transacoes")
-          .delete()
-          .eq("obrigacao_id", item.id)
-          .eq("mes_ref", mesRef)
-        if (error) throw error
-      } else {
-        const obr = obrigacoes.find((o) => o.id === item.id)
-        const { error } = await supabase.from("fin_transacoes").insert({
-          tipo: "despesa",
-          descricao: item.nome,
-          valor: item.valor,
-          categoria: item.categoria,
-          data: `${mesRef}-${String(item.dia || 1).padStart(2, "0")}`,
-          mes_ref: mesRef,
-          obrigacao_id: item.id,
-        })
-        void obr
-        if (error) throw error
-      }
-      await loadAll()
-    } catch (e) {
-      toast.error("Não foi possível atualizar", { description: e instanceof Error ? e.message : "" })
-    } finally {
-      setBusyObr(null)
-    }
-  }
+  const irParaLancamentos = () => document.getElementById("lancamentos")?.scrollIntoView({ behavior: "smooth", block: "start" })
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }}>
+        <h2 className="font-ui text-2xl font-semibold tracking-tight">{saudacao()}</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">Aqui está o resumo do seu mês financeiro · {fmtMesLongo(mesRef)}</p>
+      </motion.div>
 
-      {/* KPIs */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Saldo do Mês" value={d.saldo} icon={TrendingUp} tone={d.saldo >= 0 ? "teal" : "danger"} index={0}
-          valueClassName={d.saldo >= 0 ? "text-success" : "text-destructive"}
-          trend={<TrendPill atual={d.saldo} anterior={d.saldoAnt} mesRef={mesRef} />}
-          spark={d.sparkSaldo.map((s) => s.saldo)}
-        />
-        <StatCard
-          label="Receitas" value={d.receitas} icon={ArrowUp} tone="teal" index={1}
-          valueClassName="text-success"
-          trend={<TrendPill atual={d.receitas} anterior={d.receitasAnt} mesRef={mesRef} />}
-        />
-        <StatCard
-          label="Despesas" value={d.despesas} icon={ArrowDown} tone="danger" index={2}
-          valueClassName="text-destructive"
-          trend={<TrendPill atual={d.despesas} anterior={d.despesasAnt} mesRef={mesRef} invertido />}
-        />
-        <StatCard
-          label="Pendentes" value={d.pendentes} icon={Clock} tone="warning" index={3}
-          valueClassName="text-warning"
-        />
+      <HeroResumo
+        mesRef={mesRef} saldo={d.saldo} receitas={d.receitas} despesas={d.despesas}
+        receitasAnt={d.receitasAnt} despesasAnt={d.despesasAnt}
+        pendentes={d.contas.totalPendente} nPendentes={d.contas.pendentes.length} serie={d.serieSaldo}
+      />
+
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+        <FluxoMeses transacoes={transacoes} mesRef={mesRef} index={1} />
+        <DespesasCategoria slices={d.slices} total={d.despesas} index={2} />
       </div>
 
-      {/* Panorama do mês — o gestor em 3 frases */}
-      <PanoramaResumo mesRef={mesRef} />
-
-      {/* Essencial x por escolha */}
-      <EssencialCard mesRef={mesRef} />
-
-      {/* Donut + Obrigações do mês */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border bg-card p-5">
-          <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            <PieChart className="size-3.5" /> Gastos por Categoria
-          </div>
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-5 sm:grid-cols-[minmax(190px,230px)_minmax(0,1fr)] sm:items-center">
-            <CategoryDonut slices={d.slices} centerLabel="Despesas" centerValue={d.despesas} />
-            <div className="flex flex-col gap-1">
-              {(verTodasCats ? d.slices : d.slices.slice(0, 6)).map((s, i) => {
-                const info = catInfo(s.catKey)
-                const Icon = info.icon
-                const pct = d.despesas > 0 ? Math.round((s.value / d.despesas) * 100) : 0
-                return (
-                  <motion.div
-                    key={s.catKey}
-                    initial={{ opacity: 0, x: 6 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.24, delay: i * 0.025, ease: [0.23, 1, 0.32, 1] }}
-                    className="flex items-center gap-2.5 rounded-lg px-1.5 py-1"
-                  >
-                    <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: `${catColor(s.catKey)}1f`, color: catColor(s.catKey) }}>
-                      <Icon className="size-3.5" />
-                    </span>
-                    <span className="flex-1 truncate text-sm">{s.label}</span>
-                    <span className="tnum text-sm font-medium">{fmtR(s.value)}</span>
-                    <span className="tnum w-9 text-right text-xs text-muted-foreground">{pct}%</span>
-                  </motion.div>
-                )
-              })}
-              {d.slices.length > 6 && (
-                <button
-                  onClick={() => setVerTodasCats((v) => !v)}
-                  className="mt-1 flex items-center justify-center gap-1 rounded-lg border py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                >
-                  {verTodasCats ? "Ver menos" : `Ver todas as categorias (${d.slices.length})`}
-                  <ChevronRight className={cn("size-3.5 transition-transform", verTodasCats && "rotate-90")} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border bg-card p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              <Scale className="size-3.5" /> Contas do Mês
-            </div>
-            <span className="tnum text-xs text-muted-foreground">
-              {d.pctComprometido.toFixed(0)}% comprometido
-            </span>
-          </div>
-          <div className="mb-1 h-2 overflow-hidden rounded-full bg-secondary">
-            <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-primary to-series-previsto"
-              initial={{ width: 0 }}
-              animate={{ width: `${d.pctComprometido}%` }}
-              transition={{ duration: 0.5, ease: [0.2, 0, 0, 1] }}
-            />
-          </div>
-          <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <span>{fmtR(d.totalObr)} de {fmtR(d.receitas)}</span>
-            {d.contas.pendentes.length > 0 ? (
-              <span className="flex items-center gap-1.5 rounded-full bg-warning/15 px-2 py-0.5 font-semibold text-warning">
-                <Clock className="size-3" />
-                Falta pagar {fmtR(d.contas.totalPendente)} · {d.contas.pendentes.length} conta{d.contas.pendentes.length > 1 ? "s" : ""}
-                {d.contas.vencidas.length > 0 && <span className="text-destructive">({d.contas.vencidas.length} vencida{d.contas.vencidas.length > 1 ? "s" : ""})</span>}
-              </span>
-            ) : d.itens.length > 0 ? (
-              <span className="flex items-center gap-1.5 rounded-full bg-success/12 px-2 py-0.5 font-semibold text-success">
-                <Check className="size-3" /> Tudo pago neste mês
-              </span>
-            ) : null}
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {d.itens.length === 0 ? (
-              <Empty>Nenhuma obrigação ativa neste mês</Empty>
-            ) : (
-              d.itens.map((i) => {
-                const info = catInfo(i.categoria)
-                const Icon = info.icon
-                const cartao = i.tipo === "cartao" ? cartoes.find((c) => c.id === i.id) : null
-                return (
-                  <div
-                    key={`${i.tipo}-${i.id}`}
-                    className={cn("flex items-center gap-3 rounded-lg px-2 py-2", i.paga && "opacity-55")}
-                  >
-                    <button
-                      onClick={() => toggleObrigacao(i)}
-                      disabled={busyObr === i.id}
-                      className={cn(
-                        "grid size-5 shrink-0 place-items-center rounded-md border transition-colors",
-                        i.paga ? "border-success bg-success text-success-foreground" : "border-border hover:border-primary"
-                      )}
-                      aria-label={i.paga ? "Marcar como não paga" : "Marcar como paga"}
-                    >
-                      {i.paga && <Check className="size-3.5" />}
-                    </button>
-                    <LogoAvatar src={cartao?.logo} cor="var(--muted-foreground)" Icon={Icon} size={32} />
-                    <div className="min-w-0 flex-1">
-                      <p className={cn("truncate text-sm font-medium", i.paga && "line-through")}>
-                        {i.nome}
-                        {i.tipo === "cartao" && (
-                          <span className="ml-1.5 rounded bg-secondary px-1.5 py-px text-[0.6rem] uppercase text-muted-foreground">cartão</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {i.paga && i.pagoEm
-                          ? <>Pago em {fmtData(i.pagoEm)} · {i.parcTxt}</>
-                          : <>Dia {i.dia || "—"} · {i.parcTxt}</>}
-                      </p>
-                    </div>
-                    <span className="tnum text-sm font-medium">{fmtR(i.valor)}</span>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
+        <EssencialResumo mesRef={mesRef} index={3} />
+        <AtencaoCard contas={d.contas} receitas={d.receitas} mesRef={mesRef} index={4} />
       </div>
 
-      {/* Lançamentos filtráveis (carrossel / grade) */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <ChecklistResumo checks={d.checks} onVerTodos={() => onNavigate("fechamento")} index={5} />
+        <UltimosLancamentos lancamentos={d.lancamentos} onEditar={setEditTx} onVerTodos={irParaLancamentos} index={6} />
+      </div>
+
+      {/* Lançamentos filtráveis (carrossel / grade) — a lista completa */}
+      <div id="lancamentos" className="scroll-mt-4">
       <LancamentosFiltravel
         lancamentos={d.lancamentos} cartoes={cartoes} descricaoIcones={descricaoIcones}
         onEdit={(t) => setEditTx(t)} onDuplicar={duplicar} onDelete={(t) => setDelTx(t)}
       />
+      </div>
 
       <TransacaoDialog editar={editTx} open={!!editTx} onOpenChange={(o) => !o && setEditTx(null)} />
       <AlertDialog open={delTx != null} onOpenChange={(o) => !o && setDelTx(null)}>
@@ -316,15 +140,6 @@ export function DashboardPage({ mesRef }: { mesRef: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  )
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid place-items-center gap-2 py-8 text-center">
-      <Inbox className="size-7 text-muted-foreground/60" />
-      <p className="text-sm text-muted-foreground">{children}</p>
     </div>
   )
 }

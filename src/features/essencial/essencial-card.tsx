@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
-import { Scale, SlidersHorizontal, ArrowUp, ArrowDown, RotateCcw, Loader2, Search, Flame, CalendarClock } from "lucide-react"
+import { Scale, SlidersHorizontal, ArrowUp, ArrowDown, RotateCcw, Loader2, Search, Flame, CalendarClock, Tag, ArrowRight, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -13,7 +13,8 @@ import {
   resumoNatureza, serieNatureza, inutilFuturo, chaveDescricao, lerOverrides, NATUREZA_INFO, NATUREZAS,
   type Natureza, type NaturezaClassificada,
 } from "@/lib/essencial"
-import { nomeComercial } from "@/lib/temas"
+import { nomeComercial, temasComExtras } from "@/lib/temas"
+import { DESPESA_CATS } from "@/lib/categorias"
 import { cn } from "@/lib/utils"
 
 const EASE = [0.23, 1, 0.32, 1] as const
@@ -254,6 +255,145 @@ export function EssencialCard({ mesRef, compacto = false }: { mesRef: string; co
             )}
           </div>
         )}
+      </div>
+
+      <AjustarDialog
+        open={ajustar.open} filtroInicial={ajustar.filtro} mesRef={mesRef}
+        onOpenChange={(o) => setAjustar((a) => ({ ...a, open: o }))}
+      />
+    </motion.section>
+  )
+}
+
+// Versão do Dashboard: barra, as três faixas lado a lado (clicáveis) e para onde foi a faixa escolhida.
+// O histórico mês a mês e o seletor completo continuam no Fechamento.
+export function EssencialResumo({ mesRef, index = 0 }: { mesRef: string; index?: number }) {
+  const { transacoes, config } = useFinData()
+  const [foco, setFoco] = useState<NaturezaClassificada>("escolha")
+  const [ajustar, setAjustar] = useState<{ open: boolean; filtro: Natureza | "todos" }>({ open: false, filtro: "todos" })
+  const d = useMemo(() => ({
+    r: resumoNatureza(transacoes, mesRef, config.temas_extra, config.essencial_override),
+    futuro: inutilFuturo(transacoes, mesRef, config.temas_extra, config.essencial_override),
+    temas: temasComExtras(config.temas_extra),
+  }), [transacoes, mesRef, config.temas_extra, config.essencial_override])
+  const { r } = d
+  if (r.total <= 0) return null
+  const seg = (v: number) => (r.total > 0 ? (v / r.total) * 100 : 0)
+  const grupos = r.grupos[foco]
+  const iconeDe = (g: string) =>
+    d.temas.find((t) => t.titulo === g)?.icon ?? DESPESA_CATS.find((c) => c.l === g)?.icon ?? (foco === "inutil" ? Flame : Tag)
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: index * 0.05, ease: EASE }}
+      className="painel grid min-w-0 gap-6 rounded-2xl border bg-card p-5 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"
+    >
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex items-start gap-2.5">
+          <Wallet className="mt-0.5 size-[18px] shrink-0 text-primary" />
+          <div className="min-w-0 flex-1">
+            <h3 className="font-ui text-[15px] leading-tight font-semibold tracking-tight">Para onde foi o seu dinheiro?</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              <span className="tnum">{fmtR(r.classificado)}</span> classificados
+            </p>
+          </div>
+          <button
+            type="button" onClick={() => setAjustar({ open: true, filtro: foco })}
+            className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <SlidersHorizontal className="size-3.5" /> Ajustar
+          </button>
+        </div>
+
+        <div className="flex h-3 overflow-hidden rounded-full bg-secondary">
+          {(["essencial", "escolha", "inutil", "indefinido"] as const).map((k, i) =>
+            r[k] > 0 ? (
+              <motion.button
+                key={k} type="button" aria-label={NATUREZA_INFO[k].label} disabled={k === "indefinido"}
+                onClick={() => k !== "indefinido" && setFoco(k)}
+                className="h-full border-r-2 border-card last:border-r-0"
+                initial={{ width: 0 }} animate={{ width: `${seg(r[k])}%`, opacity: k === "indefinido" ? 0.35 : foco === k ? 1 : 0.75 }}
+                transition={{ duration: 0.55, delay: 0.05 + i * 0.06, ease: EASE }}
+                style={{ background: COR(k) }}
+              />
+            ) : null,
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 divide-x">
+          {NATUREZAS.map((n) => {
+            const ativo = foco === n
+            return (
+              <button
+                key={n} type="button" onClick={() => setFoco(n)}
+                className={cn("flex min-w-0 flex-col gap-1 px-3 text-left first:pl-0", !ativo && "opacity-70 hover:opacity-100")}
+              >
+                <span className="flex items-center gap-1.5 truncate text-[13px]">
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ background: COR(n), boxShadow: ativo ? `0 0 0 3px color-mix(in srgb, ${COR(n)} 30%, transparent)` : undefined }} />
+                  <span className={cn("truncate", ativo && "font-semibold")}><span className="sm:hidden">{ABA_CURTA[n]}</span><span className="hidden sm:inline">{NATUREZA_INFO[n].label}</span></span>
+                </span>
+                <span className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="tnum text-base font-bold">{Math.round(r.pct[n])}%</span>
+                  <span className="tnum text-xs text-muted-foreground">{fmtR(r[n])}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {r.indefinido > 0 && (
+          <button
+            type="button" onClick={() => setAjustar({ open: true, filtro: "indefinido" })}
+            className="mt-auto flex items-start gap-2 rounded-lg bg-secondary/50 px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <span className="mt-1 size-2 shrink-0 rounded-full" style={{ background: COR("indefinido") }} />
+            <span><b className="tnum text-foreground">{fmtR(r.indefinido)}</b> ainda estão em faturas sem detalhe ou em "Outro" e ficam fora da conta. Detalhar deixa o número mais preciso.</span>
+          </button>
+        )}
+      </div>
+
+      <div className="flex min-w-0 flex-col md:border-l md:pl-6">
+        <p className="mb-2 text-sm">
+          <span className="font-semibold">{NATUREZA_INFO[foco].label}</span>
+          <span className="text-muted-foreground"> · <span className="tnum">{fmtR(r[foco])}</span></span>
+        </p>
+        {foco === "inutil" && d.futuro.total > 0 && (
+          <p className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CalendarClock className="size-3.5 shrink-0" style={{ color: COR("inutil") }} />
+            Ainda vão sair <b className="tnum text-foreground">{fmtR(d.futuro.total)}</b> em {d.futuro.meses} {d.futuro.meses > 1 ? "meses" : "mês"}
+          </p>
+        )}
+        <AnimatePresence mode="wait">
+          <motion.div key={foco} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16, ease: EASE }} className="flex flex-col">
+            {grupos.length === 0 ? (
+              foco === "inutil" ? (
+                <button type="button" onClick={() => setAjustar({ open: true, filtro: "todos" })}
+                  className="rounded-lg border border-dashed px-3 py-4 text-left text-xs text-muted-foreground hover:text-foreground">
+                  Nenhum gasto inútil marcado. <span className="text-primary">Marcar parcelas e dívidas →</span>
+                </button>
+              ) : (
+                <p className="py-4 text-sm text-muted-foreground">Nada nesta faixa neste mês</p>
+              )
+            ) : (
+              grupos.slice(0, 3).map((g) => {
+                const Icon = iconeDe(g.grupo)
+                return (
+                  <div key={g.grupo} className="flex items-center gap-3 border-b border-border/60 py-2 text-sm last:border-b-0">
+                    <Icon className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate">{g.grupo}</span>
+                    <span className="tnum font-semibold">{fmtR(g.total)}</span>
+                  </div>
+                )
+              })
+            )}
+          </motion.div>
+        </AnimatePresence>
+        <button
+          type="button" onClick={() => setAjustar({ open: true, filtro: foco })}
+          className="mt-auto flex items-center gap-1 pt-2 text-xs font-medium text-primary hover:text-primary/80"
+        >
+          {grupos.length > 3 ? `Ver os ${grupos.length} grupos` : "Classificar lançamentos"} <ArrowRight className="size-3.5" />
+        </button>
       </div>
 
       <AjustarDialog
