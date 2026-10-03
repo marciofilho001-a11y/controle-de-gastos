@@ -69,3 +69,58 @@ export function diasParaFechar(cartao: DiasCartao | null, hojeISO: string): numb
   }
   return null
 }
+
+const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+const MESES_LONGO = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+
+export type CicloFatura = {
+  inicio: string          // primeiro dia de compras que entram nesta fatura (YYYY-MM-DD)
+  fim: string             // dia do fechamento
+  vencimento: string | null
+  estimado: boolean       // fechamento estimado (cartão sem dia de fechamento cadastrado)
+  mesGastos: string | null // "setembro" quando a maior parte do ciclo cai num mês só
+}
+
+// Período de compras da fatura que vence no mês `mesRef` (YYYY-MM).
+// Ex.: fecha 18 / vence 26 → fatura de outubro = compras de 19/09 a 18/10, vence 26/10.
+export function cicloDaFatura(cartao: DiasCartao | null, mesRef: string): CicloFatura {
+  const [a, m] = mesRef.split("-").map(Number)
+  const mes0 = m - 1
+  const f = fechamentoDoCartao(cartao)
+  let vencimento: number | null = null
+  let fechamento: number
+  if (f) {
+    if (cartao?.dia_vencimento) {
+      vencimento = noMes(a, mes0, cartao.dia_vencimento)
+      fechamento = noMes(a, mes0, f.dia)
+      if (fechamento >= vencimento) fechamento = noMes(a, mes0 - 1, f.dia)
+    } else {
+      fechamento = noMes(a, mes0 - 1, f.dia) // só fechamento: a fatura do mês fecha no mês anterior
+    }
+  } else {
+    fechamento = Date.UTC(a, mes0, 0) // sem dados: compras do mês anterior inteiro
+  }
+  const fd = new Date(fechamento)
+  const fechAnterior = f ? noMes(fd.getUTCFullYear(), fd.getUTCMonth() - 1, f.dia) : Date.UTC(a, mes0 - 1, 0)
+  const inicio = fechAnterior + 86400000
+
+  // mês dominante das compras (≥ 70% dos dias do ciclo)
+  const dias = new Map<number, number>()
+  for (let t = inicio; t <= fechamento; t += 86400000) {
+    const k = new Date(t).getUTCMonth()
+    dias.set(k, (dias.get(k) || 0) + 1)
+  }
+  const total = Math.round((fechamento - inicio) / 86400000) + 1
+  const [mesTop, qtd] = [...dias.entries()].sort((x, y) => y[1] - x[1])[0]
+  return {
+    inicio: iso(inicio), fim: iso(fechamento), vencimento: vencimento ? iso(vencimento) : null,
+    estimado: !cartao?.dia_fechamento, mesGastos: qtd / total >= 0.7 ? MESES_LONGO[mesTop] : null,
+  }
+}
+
+// Data sugerida para uma compra nova na fatura de `mesRef`: hoje, se cair no ciclo; senão o último dia do ciclo
+export function dataSugeridaNaFatura(cartao: DiasCartao | null, mesRef: string, hojeISO: string): string {
+  const c = cicloDaFatura(cartao, mesRef)
+  if (hojeISO >= c.inicio && hojeISO <= c.fim) return hojeISO
+  return hojeISO < c.inicio ? c.inicio : c.fim
+}

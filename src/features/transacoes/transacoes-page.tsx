@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import {
   Search, Download, Loader2, CalendarDays, Wallet, CalendarRange, X, Pencil, Copy, Trash2, Lock,
-  ArrowDownLeft, ArrowUpRight, MousePointerClick, Layers,
+  ArrowDownLeft, ArrowUpRight, MousePointerClick, Layers, CreditCard, ChevronDown,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
@@ -29,10 +29,13 @@ import { txDoMes, despesasExibicaoDoMes, normalizarDescricao, type LinhaExibicao
 import { emojiDoLancamento } from "@/lib/emoji-gasto"
 import { infoParcela } from "@/lib/parcelas"
 import { temasComExtras, type Tema } from "@/lib/temas"
+import { cicloDaFatura } from "@/lib/data-compra"
+import { LogoAvatar } from "@/components/logo-avatar"
 import { cn } from "@/lib/utils"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 const MESES = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"]
+const MESES_LONGO = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
 const DIAS = ["DOMINGO", "SEGUNDA-FEIRA", "TERÇA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA", "SEXTA-FEIRA", "SÁBADO"]
 
 function useDesktop() {
@@ -102,11 +105,29 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
     return l.sort((a, b2) => (a.data < b2.data ? 1 : a.data > b2.data ? -1 : b2.id - a.id))
   }, [transacoes, mesRef, filtTipo, filtOrigem, filtCat, busca, todosMeses])
 
+  // conta/dinheiro: pelo dia em que aconteceu
   const dias = useMemo(() => {
     const g = new Map<string, LinhaExibicao[]>()
-    for (const t of list) g.set(t.data, [...(g.get(t.data) || []), t])
+    for (const t of list) if (!t.cartao_id) g.set(t.data, [...(g.get(t.data) || []), t])
     return [...g.entries()]
   }, [list])
+
+  // cartão: agrupado por fatura (cartão + mês em que vence) — os gastos são do ciclo anterior
+  const faturas = useMemo(() => {
+    const g = new Map<string, { cartao: Cartao | undefined; mesRef: string; itens: LinhaExibicao[] }>()
+    for (const t of list) {
+      if (!t.cartao_id) continue
+      const k = `${t.cartao_id}|${t.mes_ref}`
+      const cur = g.get(k) || { cartao: cartoes.find((c) => c.id === t.cartao_id), mesRef: t.mes_ref, itens: [] }
+      cur.itens.push(t)
+      g.set(k, cur)
+    }
+    return [...g.entries()].map(([k, v]) => ({
+      k, ...v,
+      total: v.itens.reduce((s, t) => s + Number(t.valor), 0),
+      ciclo: cicloDaFatura(v.cartao ?? null, v.mesRef),
+    })).sort((a, b) => (a.mesRef < b.mesRef ? 1 : a.mesRef > b.mesRef ? -1 : b.total - a.total))
+  }, [list, cartoes])
 
   const totalDespesa = list.filter((t) => t.tipo === "despesa").reduce((s, t) => s + Number(t.valor), 0)
   const totalReceita = list.filter((t) => t.tipo === "receita").reduce((s, t) => s + Number(t.valor), 0)
@@ -267,33 +288,64 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                 <TransacoesBlocos list={list} cartoes={cartoes} onDelete={(id) => setDelId(id)} onEdit={(t) => setEditTx(t)} onDuplicar={duplicar} />
               </div>
             ) : (
-              dias.map(([data, itens]) => {
-                const c = cabecalhoDia(data)
-                const saida = itens.filter((t) => t.tipo === "despesa").reduce((s, t) => s + Number(t.valor), 0)
-                const entrada = itens.filter((t) => t.tipo === "receita").reduce((s, t) => s + Number(t.valor), 0)
-                return (
-                  <div key={data}>
-                    <div className="flex items-baseline gap-3 border-b border-border/70 pt-5 pb-2.5 text-xs">
-                      <span className="font-semibold tracking-wide">{c.dia}{todosMeses && <span className="text-muted-foreground"> {c.ano}</span>}</span>
-                      <span className="text-[0.68rem] font-medium tracking-wider text-muted-foreground">{c.semana}</span>
-                      <span className="tnum ml-auto text-muted-foreground">
-                        {entrada > 0 && <span className="text-success">+ {fmtR(entrada)}</span>}
-                        {entrada > 0 && saida > 0 && " · "}
-                        {saida > 0 && <>− {fmtR(saida)}</>}
-                      </span>
+              <>
+                {dias.length > 0 && (
+                  <TituloSecao
+                    icon={Wallet} titulo="Conta e dinheiro" sub="Pix, débito, entradas e contas fixas, no dia em que aconteceram"
+                    total={dias.flatMap(([, i]) => i).reduce((s, t) => s + (t.tipo === "receita" ? Number(t.valor) : -Number(t.valor)), 0)}
+                  />
+                )}
+                {dias.map(([data, itens]) => {
+                  const c = cabecalhoDia(data)
+                  const saida = itens.filter((t) => t.tipo === "despesa").reduce((s, t) => s + Number(t.valor), 0)
+                  const entrada = itens.filter((t) => t.tipo === "receita").reduce((s, t) => s + Number(t.valor), 0)
+                  return (
+                    <div key={data}>
+                      <div className="flex items-baseline gap-3 border-b border-border/70 pt-4 pb-2.5 text-xs">
+                        <span className="font-semibold tracking-wide">{c.dia}{todosMeses && <span className="text-muted-foreground"> {c.ano}</span>}</span>
+                        <span className="text-[0.68rem] font-medium tracking-wider text-muted-foreground">{c.semana}</span>
+                        <span className="tnum ml-auto text-muted-foreground">
+                          {entrada > 0 && <span className="text-success">+ {fmtR(entrada)}</span>}
+                          {entrada > 0 && saida > 0 && " · "}
+                          {saida > 0 && <>− {fmtR(saida)}</>}
+                        </span>
+                      </div>
+                      {itens.map((t) => (
+                        <LinhaTransacao
+                          key={t.id} t={t} cartoes={cartoes} temas={temas}
+                          iconeCustom={descricaoIcones[normalizarDescricao(t.descricao)]}
+                          ativo={t.id === selId}
+                          onSelecionar={() => setSelId((s) => (s === t.id ? null : t.id))}
+                          onEditar={() => setEditTx(t)} onDuplicar={() => duplicar(t)} onExcluir={() => setDelId(t.id)}
+                        />
+                      ))}
                     </div>
-                    {itens.map((t) => (
-                      <LinhaTransacao
-                        key={t.id} t={t} cartoes={cartoes} temas={temas}
-                        iconeCustom={descricaoIcones[normalizarDescricao(t.descricao)]}
-                        ativo={t.id === selId}
-                        onSelecionar={() => setSelId((s) => (s === t.id ? null : t.id))}
-                        onEditar={() => setEditTx(t)} onDuplicar={() => duplicar(t)} onExcluir={() => setDelId(t.id)}
-                      />
-                    ))}
-                  </div>
-                )
-              })
+                  )
+                })}
+
+                {faturas.length > 0 && (
+                  <TituloSecao
+                    icon={CreditCard} titulo="Faturas do cartão"
+                    sub="Contam no mês em que a fatura vence; os gastos são do ciclo anterior"
+                    total={-faturas.reduce((s, f) => s + f.total, 0)}
+                  />
+                )}
+                <div className="flex flex-col gap-3 pt-1">
+                  {faturas.map((f) => (
+                    <GrupoFatura key={f.k} fatura={f}>
+                      {f.itens.map((t) => (
+                        <LinhaTransacao
+                          key={t.id} t={t} cartoes={cartoes} temas={temas} naFatura
+                          iconeCustom={descricaoIcones[normalizarDescricao(t.descricao)]}
+                          ativo={t.id === selId}
+                          onSelecionar={() => setSelId((s) => (s === t.id ? null : t.id))}
+                          onEditar={() => setEditTx(t)} onDuplicar={() => duplicar(t)} onExcluir={() => setDelId(t.id)}
+                        />
+                      ))}
+                    </GrupoFatura>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </section>
@@ -377,9 +429,9 @@ function IconeLancamento({
 }
 
 function LinhaTransacao({
-  t, cartoes, temas, iconeCustom, ativo, onSelecionar, onEditar, onDuplicar, onExcluir,
+  t, cartoes, temas, iconeCustom, ativo, naFatura, onSelecionar, onEditar, onDuplicar, onExcluir,
 }: {
-  t: LinhaExibicao; cartoes: Cartao[]; temas: Tema[]; iconeCustom?: string; ativo: boolean
+  t: LinhaExibicao; cartoes: Cartao[]; temas: Tema[]; iconeCustom?: string; ativo: boolean; naFatura?: boolean
   onSelecionar: () => void; onEditar: () => void; onDuplicar: () => void; onExcluir: () => void
 }) {
   const receita = t.tipo === "receita"
@@ -406,7 +458,10 @@ function LinhaTransacao({
             )}
           </span>
           <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-            {catInfo(t.categoria).l} <span className="px-1 opacity-60">·</span> {formaDePagamento(t, cartoes)}
+            {catInfo(t.categoria).l}
+            {naFatura
+              ? dataCompraReal(t) && <><span className="px-1 opacity-60">·</span>comprado em {fmtData(t.data).slice(0, 5)}</>
+              : <><span className="px-1 opacity-60">·</span>{formaDePagamento(t, cartoes)}</>}
           </span>
         </span>
         <span className="tnum shrink-0 text-sm font-semibold" style={{ color: cor }}>
@@ -420,6 +475,77 @@ function LinhaTransacao({
           <Lock className="size-3.5 text-muted-foreground/50" />
         </span>
       )}
+    </div>
+  )
+}
+
+// dia 1º do mês da fatura = data não informada (lançado antes de existir o campo de data)
+function dataCompraReal(t: LinhaExibicao): boolean {
+  return t.id > 0 && t.data !== `${t.mes_ref}-01`
+}
+
+function TituloSecao({ icon: Icon, titulo, sub, total }: { icon: typeof Wallet; titulo: string; sub: string; total: number }) {
+  return (
+    <div className="mt-5 flex items-end gap-3 first:mt-4">
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/12 text-primary"><Icon className="size-4" /></span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold">{titulo}</p>
+        <p className="truncate text-xs text-muted-foreground">{sub}</p>
+      </div>
+      <span className={cn("tnum shrink-0 text-sm font-semibold", total >= 0 ? "text-success" : "text-foreground")}>
+        {total >= 0 ? "+ " : "− "}{fmtR(Math.abs(total))}
+      </span>
+    </div>
+  )
+}
+
+function GrupoFatura({
+  fatura, children,
+}: {
+  fatura: { cartao: Cartao | undefined; mesRef: string; itens: LinhaExibicao[]; total: number; ciclo: ReturnType<typeof cicloDaFatura> }
+  children: React.ReactNode
+}) {
+  const [aberto, setAberto] = useState(true)
+  const { cartao, mesRef, itens, total, ciclo } = fatura
+  const mes = MESES_LONGO[Number(mesRef.slice(5, 7)) - 1]
+  const periodo = `${fmtData(ciclo.inicio).slice(0, 5)} a ${fmtData(ciclo.fim).slice(0, 5)}`
+  return (
+    <div className="overflow-hidden rounded-xl border">
+      <button
+        type="button" onClick={() => setAberto((a) => !a)} aria-expanded={aberto}
+        className="flex w-full items-center gap-3 bg-secondary/30 px-3 py-3 text-left transition-colors hover:bg-secondary/50"
+      >
+        <LogoAvatar src={cartao?.logo} cor="var(--muted-foreground)" Icon={CreditCard} size={36} />
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-sm font-semibold">Fatura de {mes}</span>
+            <span className="text-xs text-muted-foreground">{cartao ? nomeCurtoCartao(cartao.nome) : "Cartão"}</span>
+          </span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground" title={ciclo.estimado ? "Fechamento estimado: cadastre o dia de fechamento no cartão" : undefined}>
+            <span className="rounded-md bg-primary/12 px-1.5 py-px font-medium text-primary">
+              gastos {ciclo.mesGastos ? `de ${ciclo.mesGastos}` : `de ${periodo}`}
+            </span>
+            {ciclo.mesGastos && <span>{periodo}</span>}
+            {ciclo.vencimento && <span>· vence {fmtData(ciclo.vencimento).slice(0, 5)}</span>}
+            {ciclo.estimado && <span>*</span>}
+          </span>
+        </span>
+        <span className="flex shrink-0 flex-col items-end">
+          <span className="tnum text-sm font-semibold">− {fmtR(total)}</span>
+          <span className="text-[0.7rem] text-muted-foreground">{itens.length} {itens.length === 1 ? "item" : "itens"}</span>
+        </span>
+        <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", !aberto && "-rotate-90")} />
+      </button>
+      <AnimatePresence initial={false}>
+        {aberto && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: EASE }} className="overflow-hidden"
+          >
+            <div className="px-3 pt-1 pb-1">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -438,6 +564,7 @@ function VisaoDoMes({
   }, [list])
   const maior = cats[0]
   const max = maior?.v || 1
+  const totalCartao = list.filter((t) => t.tipo === "despesa" && !!t.cartao_id).reduce((s, t) => s + Number(t.valor), 0)
   const visiveis = todas ? cats : cats.slice(0, 6)
 
   return (
@@ -459,6 +586,17 @@ function VisaoDoMes({
           <p className="tnum mt-1 text-sm font-semibold">{fmtR(totalDespesa)}</p>
         </div>
       </div>
+      {totalCartao > 0 && (
+        <div className="-mt-3 flex flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-xs">
+          <div className="flex h-1.5 overflow-hidden rounded-full bg-secondary">
+            <span className="h-full bg-primary" style={{ width: `${(totalCartao / Math.max(totalDespesa, 1)) * 100}%` }} />
+          </div>
+          <p className="flex justify-between gap-2 text-muted-foreground">
+            <span><span className="tnum font-semibold text-foreground">{fmtR(totalCartao)}</span> em faturas</span>
+            <span><span className="tnum font-semibold text-foreground">{fmtR(totalDespesa - totalCartao)}</span> na conta</span>
+          </p>
+        </div>
+      )}
 
       {maior && (
         <div className="flex items-center gap-3 rounded-xl border bg-secondary/30 px-4 py-3.5">
@@ -531,11 +669,13 @@ function DetalheTransacao({
   const c = cabecalhoDia(t.data)
   const virtual = t.id < 0
   const linhas: [string, React.ReactNode][] = [
-    ["Data", <>{fmtData(t.data)} <span className="text-muted-foreground">· {c.semana.toLowerCase()}</span></>],
+    [t.cartao_id ? "Comprado em" : "Data", t.cartao_id && !dataCompraReal(t)
+      ? <span className="text-muted-foreground">não informado</span>
+      : <>{fmtData(t.data)} <span className="text-muted-foreground">· {c.semana.toLowerCase()}</span></>],
     ["Categoria", catInfo(t.categoria).l],
     ["Forma", formaDePagamento(t, cartoes)],
   ]
-  if (t.cartao_id) linhas.push(["Fatura", fmtMesRef(t.mes_ref)])
+  if (t.cartao_id) linhas.push(["Fatura", <>{fmtMesRef(t.mes_ref)} <span className="text-muted-foreground">· paga em {MESES_LONGO[Number(t.mes_ref.slice(5, 7)) - 1]}</span></>])
   if (p) linhas.push(["Parcela", `${p.atual} de ${p.total}`])
 
   return (

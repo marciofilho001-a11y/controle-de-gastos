@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Clock, Plus, Search, Inbox, Sparkles, CheckCheck, CreditCard, CalendarClock, Layers, X, ArrowLeft,
 } from "lucide-react"
@@ -19,7 +19,7 @@ import { DESPESA_CATS, catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesRef, mesRefAtual, fmtData, addMonths } from "@/lib/format"
 import { faturaDoMes, faturaInfoDoMes, ehFaturaCheia, mesesDoCartao, sugestoesParcelasParaMes } from "@/lib/selectors"
 import { LogoAvatar } from "@/components/logo-avatar"
-import { fechamentoDoCartao } from "@/lib/data-compra"
+import { fechamentoDoCartao, cicloDaFatura, dataSugeridaNaFatura, dataLocal } from "@/lib/data-compra"
 import { cn } from "@/lib/utils"
 
 export function FaturaDetalhe({
@@ -39,6 +39,7 @@ export function FaturaDetalhe({
   const [novoCat, setNovoCat] = useState("outro")
   const [novoValor, setNovoValor] = useState("")
   const [novoParc, setNovoParc] = useState("1")
+  const [novaData, setNovaData] = useState("")
   const [busy, setBusy] = useState(false)
   const parcN = Math.max(1, Math.min(60, parseInt(novoParc) || 1))
   const [editTx, setEditTx] = useState<Transacao | null>(null)
@@ -86,6 +87,12 @@ export function FaturaDetalhe({
     return { valorFatura, ehFuturo, todosItens, somaItens, planejando, valor, restante, itens, slices, sugestoes }
   }, [cartao, transacoes, faturaItens, mesAtivo, catFiltro, busca])
 
+  // data da compra: já vem preenchida com hoje (ou o fim do ciclo, se hoje não cai nesta fatura)
+  const ciclo = useMemo(() => cicloDaFatura(cartao, mesAtivo), [cartao, mesAtivo])
+  useEffect(() => {
+    setNovaData(dataSugeridaNaFatura(cartao, mesAtivo, dataLocal(new Date().toISOString())))
+  }, [cartao, mesAtivo])
+
   async function addItem() {
     const v = parseFloat(novoValor)
     const n = Math.max(1, Math.min(60, parseInt(novoParc) || 1))
@@ -100,7 +107,8 @@ export function FaturaDetalhe({
         const mes = addMonths(mesAtivo, i)
         return {
           tipo: "despesa" as const, cartao_id: cartao.id, mes_ref: mes,
-          data: mes + "-01", descricao: novoDesc.trim(), valor: v, categoria: novoCat,
+          // 1ª parcela leva a data real da compra; as seguintes ficam no dia 1º do mês de cada fatura
+          data: i === 0 && novaData ? novaData : mes + "-01", descricao: novoDesc.trim(), valor: v, categoria: novoCat,
           parcela_atual: n > 1 ? i + 1 : null, parcela_total: n > 1 ? n : null,
         }
       })
@@ -233,6 +241,11 @@ export function FaturaDetalhe({
         <div className="flex flex-col gap-4">
           <div className="flex items-baseline gap-2">
             <h3 className="font-display text-xl font-semibold capitalize">{fmtMesRef(mesAtivo)}</h3>
+            <span className="text-xs text-muted-foreground" title={ciclo.estimado ? "Fechamento estimado — cadastre o dia de fechamento no cartão" : undefined}>
+              · {ciclo.mesGastos
+                ? `gastos de ${ciclo.mesGastos} (${fmtData(ciclo.inicio).slice(0, 5)} a ${fmtData(ciclo.fim).slice(0, 5)})`
+                : `gastos de ${fmtData(ciclo.inicio).slice(0, 5)} a ${fmtData(ciclo.fim).slice(0, 5)}`}{ciclo.estimado && "*"}
+            </span>
             <span className={cn("tnum text-sm", dados.planejando ? "text-[var(--cat-investimento)]" : "text-muted-foreground")}>
               · {dados.planejando ? "planejado: " : ""}{fmtR(dados.valor)}
             </span>
@@ -347,6 +360,10 @@ export function FaturaDetalhe({
                     </SelectGroup>
                   </SelectContent>
                 </Select>
+                <Input
+                  type="date" value={novaData} onChange={(e) => setNovaData(e.target.value)}
+                  aria-label="Data da compra" title="Data da compra" className="w-[140px]"
+                />
                 <Input
                   type="number" step="0.01" value={novoValor} onChange={(e) => setNovoValor(e.target.value)}
                   placeholder={parcN > 1 ? "Valor da parcela" : "Valor"} className={parcN > 1 ? "w-[132px]" : "w-[100px]"}
