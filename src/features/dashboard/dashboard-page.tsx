@@ -25,7 +25,7 @@ import { checklistFechamento } from "@/lib/checklist-fechamento"
 import { catInfo } from "@/lib/categorias"
 import { addMonths, fmtMesLongo } from "@/lib/format"
 import {
-  receitasDoMes, despesasDoMes, txDoMes, despesasExibicaoDoMes, contasDoMes,
+  receitasDoMes, despesasComContasDoMes, txDoMes, despesasExibicaoDoMes, contasDoMes, obrigacoesPendentesDoMes,
 } from "@/lib/selectors"
 
 function saudacao(): string {
@@ -53,14 +53,15 @@ export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNaviga
 
   const d = useMemo(() => {
     const receitas = receitasDoMes(transacoes, mesRef)
-    const despesas = despesasDoMes(transacoes, mesRef)
+    // despesas = o que foi lançado + contas fixas do mês que ainda vão ser pagas (custo real do mês)
+    const despesas = despesasComContasDoMes(obrigacoes, transacoes, mesRef)
     const mesAnt = addMonths(mesRef, -1)
     const contas = contasDoMes(obrigacoes, cartoes, transacoes, mesRef, faturaPagamentos)
 
     // categorias (despesas do mês, sem duplicar fatura de cartão)
     const despMes = despesasExibicaoDoMes(transacoes, mesRef)
     const porCat = new Map<string, number>()
-    for (const t of despMes) porCat.set(t.categoria || "outro", (porCat.get(t.categoria || "outro") || 0) + Number(t.valor))
+    for (const t of [...despMes, ...obrigacoesPendentesDoMes(obrigacoes, transacoes, mesRef)]) porCat.set(t.categoria || "outro", (porCat.get(t.categoria || "outro") || 0) + Number(t.valor))
     const slices: DonutSlice[] = [...porCat.entries()]
       .map(([catKey, value]) => ({ catKey, label: catInfo(catKey).l, value }))
       .sort((a, b) => b.value - a.value)
@@ -68,7 +69,7 @@ export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNaviga
     // saldo dos últimos 6 meses (até o mês navegado)
     const serieSaldo = Array.from({ length: 6 }, (_, i) => {
       const m = addMonths(mesRef, i - 5)
-      return { mes: m, saldo: receitasDoMes(transacoes, m) - despesasDoMes(transacoes, m) }
+      return { mes: m, saldo: receitasDoMes(transacoes, m) - despesasComContasDoMes(obrigacoes, transacoes, m) }
     })
 
     // lançamentos do mês: receitas + despesas sem duplicação, mais recentes primeiro
@@ -81,7 +82,7 @@ export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNaviga
 
     return {
       receitas, despesas, saldo: receitas - despesas,
-      receitasAnt: receitasDoMes(transacoes, mesAnt), despesasAnt: despesasDoMes(transacoes, mesAnt),
+      receitasAnt: receitasDoMes(transacoes, mesAnt), despesasAnt: despesasComContasDoMes(obrigacoes, transacoes, mesAnt),
       contas, slices, serieSaldo, lancamentos, checks,
     }
   }, [obrigacoes, cartoes, transacoes, faturaPagamentos, config, mesRef])
@@ -102,7 +103,7 @@ export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNaviga
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <FluxoMeses transacoes={transacoes} mesRef={mesRef} index={1} />
+        <FluxoMeses transacoes={transacoes} obrigacoes={obrigacoes} mesRef={mesRef} index={1} />
         <DespesasCategoria slices={d.slices} total={d.despesas} index={2} />
       </div>
 

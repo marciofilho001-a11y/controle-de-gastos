@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react"
 import { BarChart3 } from "lucide-react"
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import type { Transacao } from "@/lib/supabase"
-import { receitasDoMes, despesasDoMes } from "@/lib/selectors"
+import type { Obrigacao, Transacao } from "@/lib/supabase"
+import { receitasDoMes, despesasComContasDoMes } from "@/lib/selectors"
 import { addMonths, fmtMesCurto, fmtR } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Painel } from "./painel"
@@ -17,17 +17,17 @@ function compacto(v: number): string {
 }
 
 // Receitas x despesas por mês (barras) e o saldo (linha), terminando no mês navegado
-export function FluxoMeses({ transacoes, mesRef, index }: { transacoes: Transacao[]; mesRef: string; index?: number }) {
+export function FluxoMeses({ transacoes, obrigacoes, mesRef, index }: { transacoes: Transacao[]; obrigacoes: Obrigacao[]; mesRef: string; index?: number }) {
   const [n, setN] = useState<(typeof JANELAS)[number]>(4)
   const dados = useMemo<Linha[]>(() => {
     const out: Linha[] = []
     for (let i = n - 1; i >= 0; i--) {
       const m = addMonths(mesRef, -i)
-      const r = receitasDoMes(transacoes, m), d = despesasDoMes(transacoes, m)
+      const r = receitasDoMes(transacoes, m), d = despesasComContasDoMes(obrigacoes, transacoes, m)
       out.push({ mes: m, label: fmtMesCurto(m), receitas: r, despesas: d, saldo: r - d })
     }
     return out
-  }, [transacoes, mesRef, n])
+  }, [transacoes, obrigacoes, mesRef, n])
 
   return (
     <Painel

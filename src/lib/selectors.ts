@@ -367,7 +367,7 @@ export function sugestoesParcelasParaMes(
 // Lista de despesas do mês SEM duplicação de cartão, pronta pra exibir (histórico, donut).
 // Regra: pra cada cartão, se tem itens detalhados, esconde a "fatura cheia" e, se a cheia
 // for maior que os itens, injeta uma linha virtual "Fatura indefinida" com o restante.
-export type LinhaExibicao = Transacao & { _virtual?: boolean }
+export type LinhaExibicao = Transacao & { _virtual?: boolean; _pendente?: boolean }
 
 export function despesasExibicaoDoMes(transacoes: Transacao[], mesRef: string): LinhaExibicao[] {
   const doMes = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "despesa")
@@ -428,4 +428,28 @@ export function linhasDoMetodo(
   const todas = despesasExibicaoDoMes(transacoes, mesRef)
   if (metodo === "debito") return todas.filter((t) => !t.cartao_id)
   return todas.filter((t) => t.cartao_id === metodo.cartaoId)
+}
+
+
+// ---- Contas fixas ainda sem baixa ----
+// Uma obrigação ativa no mês é custo do mês mesmo antes de você marcar como paga.
+// Vira uma linha "a pagar" (id negativo, virtual). Só conta em meses que já têm lançamentos,
+// pra não inventar gasto em meses de antes de você começar a usar o app.
+export function obrigacoesPendentesDoMes(obrigacoes: Obrigacao[], transacoes: Transacao[], mesRef: string): LinhaExibicao[] {
+  if (!transacoes.some((t) => t.mes_ref === mesRef)) return []
+  return obrigacoesAtivasNoMes(obrigacoes, mesRef)
+    .filter((o) => !obrigacaoPagaNoMes(transacoes, o.id, mesRef))
+    .map((o) => ({
+      id: -(2_000_000 + o.id), tipo: "despesa" as const, descricao: o.nome, valor: Number(o.valor),
+      categoria: o.categoria, data: `${mesRef}-${String(Math.min(o.dia_vencimento || 1, 28)).padStart(2, "0")}`,
+      mes_ref: mesRef, cartao_id: null, obrigacao_id: o.id, compra_id: null,
+      parcela_atual: o.parcela_total ? parcelaNoMes(o, mesRef) : null, parcela_total: o.parcela_total,
+      criado_em: null, _virtual: true, _pendente: true,
+    }) as unknown as LinhaExibicao)
+}
+
+// Despesas do mês contando as contas fixas que ainda vão ser pagas (o custo real do mês)
+export function despesasComContasDoMes(obrigacoes: Obrigacao[], transacoes: Transacao[], mesRef: string): number {
+  return despesasDoMes(transacoes, mesRef) +
+    obrigacoesPendentesDoMes(obrigacoes, transacoes, mesRef).reduce((s, t) => s + Number(t.valor), 0)
 }
