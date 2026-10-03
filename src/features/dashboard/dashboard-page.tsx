@@ -25,7 +25,7 @@ import { checklistFechamento } from "@/lib/checklist-fechamento"
 import { catInfo } from "@/lib/categorias"
 import { addMonths, fmtMesLongo } from "@/lib/format"
 import {
-  receitasDoMes, despesasComContasDoMes, txDoMes, despesasExibicaoDoMes, contasDoMes, obrigacoesPendentesDoMes,
+  receitasDoMes, despesasComContasDoMes, txDoMes, despesasExibicaoDoMes, contasDoMes, obrigacoesPendentesDoMes, type LinhaExibicao,
 } from "@/lib/selectors"
 
 function saudacao(): string {
@@ -60,8 +60,10 @@ export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNaviga
 
     // categorias (despesas do mês, sem duplicar fatura de cartão)
     const despMes = despesasExibicaoDoMes(transacoes, mesRef)
+    // contas fixas ainda não pagas também são despesa do mês: entram nas categorias e na lista (como "a pagar")
+    const fixasAPagar = obrigacoesPendentesDoMes(obrigacoes, transacoes, mesRef)
     const porCat = new Map<string, number>()
-    for (const t of [...despMes, ...obrigacoesPendentesDoMes(obrigacoes, transacoes, mesRef)]) porCat.set(t.categoria || "outro", (porCat.get(t.categoria || "outro") || 0) + Number(t.valor))
+    for (const t of [...despMes, ...fixasAPagar]) porCat.set(t.categoria || "outro", (porCat.get(t.categoria || "outro") || 0) + Number(t.valor))
     const slices: DonutSlice[] = [...porCat.entries()]
       .map(([catKey, value]) => ({ catKey, label: catInfo(catKey).l, value }))
       .sort((a, b) => b.value - a.value)
@@ -74,7 +76,7 @@ export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNaviga
 
     // lançamentos do mês: receitas + despesas sem duplicação, mais recentes primeiro
     const receitasMes = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "receita")
-    const lancamentos = [...receitasMes, ...despMes].sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : b.id - a.id))
+    const lancamentos = [...receitasMes, ...despMes, ...fixasAPagar].sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : b.id - a.id))
 
     const checks = checklistFechamento({
       transacoes, cartoes, obrigacoes, faturaPagamentos, config, mesRef, hoje: new Date().toISOString().slice(0, 10),
@@ -114,7 +116,7 @@ export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNaviga
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <ChecklistResumo checks={d.checks} onVerTodos={() => onNavigate("fechamento")} index={5} />
-        <UltimosLancamentos lancamentos={d.lancamentos} onEditar={setEditTx} onVerTodos={irParaLancamentos} index={6} />
+        <UltimosLancamentos lancamentos={d.lancamentos.filter((t) => !(t as LinhaExibicao)._pendente)} onEditar={setEditTx} onVerTodos={irParaLancamentos} index={6} />
       </div>
 
       {/* Lançamentos filtráveis (carrossel / grade) — a lista completa */}

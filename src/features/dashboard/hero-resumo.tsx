@@ -61,15 +61,22 @@ export function HeroResumo({
             rodape={<Variacao atual={receitas} anterior={receitasAnt} mesRef={mesRef} />}
           />
           <Kpi
-            icon={ArrowDown} tom="destructive" rotulo="Despesas" valor={esconder(fmtR(despesas))} valorCls="text-destructive"
+            icon={ArrowDown} tom="destructive" rotulo="Despesas do mês" valor={esconder(fmtR(despesas))} valorCls="text-destructive"
             rodape={<Variacao atual={despesas} anterior={despesasAnt} mesRef={mesRef} invertido />}
           />
           <Kpi
-            icon={Clock} tom="warning" rotulo="Pendentes" valor={esconder(fmtR(pendentes))} valorCls="text-warning"
+            icon={Clock} tom="warning" rotulo="Dessas, falta pagar" valor={esconder(fmtR(pendentes))} valorCls="text-warning"
             rodape={
-              nPendentes > 0
-                ? <span className="rounded-md bg-warning/12 px-2 py-0.5 text-xs font-medium text-warning">{nPendentes} conta{nPendentes > 1 ? "s" : ""}</span>
-                : <span className="text-xs text-muted-foreground">tudo pago</span>
+              nPendentes > 0 ? (
+                <span className="flex flex-col gap-1">
+                  <span className="h-1 w-full max-w-36 overflow-hidden rounded-full bg-warning/15">
+                    <span className="block h-full rounded-full bg-success" style={{ width: `${despesas > 0 ? Math.min(100, ((despesas - pendentes) / despesas) * 100) : 0}%` }} />
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    <span className="text-success">{esconder(fmtR(Math.max(0, despesas - pendentes)))} já pago</span> · {nPendentes} conta{nPendentes > 1 ? "s" : ""}
+                  </span>
+                </span>
+              ) : <span className="text-xs text-success">tudo pago</span>
             }
           />
         </div>

@@ -150,7 +150,9 @@ export function LancamentosFiltravel({
         const info = catInfo(filtroCat); const Icon = info.icon; const cor = catColor(filtroCat)
         const total = daCategoria.reduce((s, t) => s + Number(t.valor), 0)
         const maior = daCategoria.reduce((m, t) => Math.max(m, Number(t.valor)), 0)
-        const totalGeral = porPagamento.reduce((s, t) => s + Number(t.valor), 0)
+        // % sobre as despesas do mês (receitas não entram na base); receita compara com receitas
+        const ehReceita = daCategoria.every((t) => t.tipo === "receita")
+        const totalGeral = porPagamento.filter((t) => t.tipo === (ehReceita ? "receita" : "despesa")).reduce((s, t) => s + Number(t.valor), 0)
         return (
           <motion.div
             key={filtroCat}
@@ -303,7 +305,7 @@ function PctMes({ pct, cor }: { pct: number; cor: string }) {
       className="ml-auto w-full min-w-[180px] max-w-[230px] rounded-xl border px-3.5 py-2.5"
       style={{ borderColor: `color-mix(in srgb, ${cor} 35%, transparent)`, background: `color-mix(in srgb, ${cor} 6%, transparent)` }}
     >
-      <p className="tnum text-sm font-semibold" style={{ color: cor }}>{txt}% <span className="font-medium text-muted-foreground">do mês</span></p>
+      <p className="tnum text-sm font-semibold" style={{ color: cor }}>{txt}% <span className="font-medium text-muted-foreground">das despesas</span></p>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full" style={{ background: "color-mix(in srgb, var(--foreground) 10%, transparent)" }}>
         <motion.div
           className="h-full rounded-full"
@@ -433,7 +435,10 @@ function LancCard({
 
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Calendar className="size-3.5" /> <span className="tnum">{fmtData(t.data)}</span>
+          <Calendar className="size-3.5" />
+          {t._pendente
+            ? <span className="font-medium text-warning">a pagar · vence {fmtData(t.data).slice(0, 5)}</span>
+            : <span className="tnum">{fmtData(t.data)}</span>}
         </span>
         <span className="flex items-center gap-1">
           <ValorPill receita={receita} valor={Number(t.valor)} />
@@ -478,7 +483,8 @@ function LancRow({
         </p>
       </div>
       <span className="tnum hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
-        <Calendar className="size-3.5" /> {fmtData(t.data)}
+        <Calendar className="size-3.5" />
+        {t._pendente ? <span className="font-medium text-warning">a pagar · {fmtData(t.data).slice(0, 5)}</span> : fmtData(t.data)}
       </span>
       <TipoIcone tipo={tipo} className="size-5 opacity-80" />
       <ValorPill receita={receita} valor={Number(t.valor)} />
