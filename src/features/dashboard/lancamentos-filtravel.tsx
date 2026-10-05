@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { logoDoLancamento } from "@/lib/marcas"
 import { motion } from "motion/react"
 import {
   LayoutGrid, List, Inbox, TrendingUp, Calendar, ArrowUp, ArrowDown, Layers, Receipt, BarChart3, Trophy, ChevronDown,
@@ -374,7 +375,7 @@ function useVisual(t: LinhaExibicao, cartoes: Cartao[], descricaoIcones: Record<
   const cor = catColor(t.categoria)
   const receita = t.tipo === "receita"
   const cartaoTx = t.cartao_id ? cartoes.find((c) => c.id === t.cartao_id) : null
-  const iconeCustom = descricaoIcones[(t.descricao || "").trim().toLowerCase()]
+  const iconeCustom = logoDoLancamento(t.descricao, descricaoIcones)
   const imagem = iconeCustom || cartaoTx?.logo || null
   return { info, cor, receita, cartaoTx, imagem }
 }

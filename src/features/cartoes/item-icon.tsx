@@ -1,16 +1,17 @@
-import { useRef } from "react"
+import { useState } from "react"
 import { RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { useFinData } from "@/hooks/use-fin-data"
 import { catInfo, catColor } from "@/lib/categorias"
 import { normalizarDescricao } from "@/lib/selectors"
-import { comprimirImagemParaIcone } from "@/lib/image"
+import { logoDoLancamento, SEM_LOGO } from "@/lib/marcas"
+import { SeletorLogo } from "@/components/seletor-logo"
 import { cn } from "@/lib/utils"
 import { useCorLogo } from "@/components/logo-avatar"
 
-// Ícone de um lançamento: imagem custom (vinculada ao nome) OU ícone da categoria.
-// Clicar abre o seletor de imagem; se já tem imagem própria, mostra botão de restaurar.
+// Ícone de um lançamento: imagem escolhida > logo da marca (Simple Icons) > imagem da categoria > ícone da categoria.
+// Clicar abre o seletor de logo; se tem imagem da categoria, mostra botão de restaurar.
 export function ItemIcon({
   descricao,
   categoria,
@@ -21,39 +22,15 @@ export function ItemIcon({
   size?: number
 }) {
   const { descricaoIcones, categoriaIcones, loadAll } = useFinData()
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [seletor, setSeletor] = useState(false)
   const dn = normalizarDescricao(descricao)
-  const imgCustom = dn ? descricaoIcones[dn] : undefined
+  const imgCustom = logoDoLancamento(descricao, descricaoIcones)
+  const semLogo = dn ? descricaoIcones[dn] === SEM_LOGO : false
   const imgCategoria = categoriaIcones[categoria]
   const cor = catColor(categoria)
   const Icon = catInfo(categoria).icon
-  const temImagemPropria = !!imgCustom
+  const temImagemPropria = !!(dn && descricaoIcones[dn])
   const temImagemCategoria = !!imgCategoria
-
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ""
-    if (!file) return
-    if (!file.type.startsWith("image/")) {
-      toast.error("Escolha uma imagem (PNG ou JPG)")
-      return
-    }
-    if (!dn) {
-      toast.error("Esse lançamento não tem nome pra vincular o ícone")
-      return
-    }
-    try {
-      const imagem = await comprimirImagemParaIcone(file, 192)
-      const { error } = await supabase
-        .from("fin_descricao_icones")
-        .upsert({ descricao_norm: dn, imagem, atualizado_em: new Date().toISOString() })
-      if (error) throw error
-      toast.success(`Ícone de "${descricao}" salvo! Vale pra qualquer lançamento com esse nome.`)
-      await loadAll()
-    } catch (err) {
-      toast.error("Erro ao processar a imagem", { description: err instanceof Error ? err.message : "" })
-    }
-  }
 
   async function restaurar(ev: React.MouseEvent) {
     ev.stopPropagation()
@@ -73,7 +50,7 @@ export function ItemIcon({
     }
   }
 
-  const img = imgCustom || imgCategoria
+  const img = imgCustom || (semLogo ? undefined : imgCategoria)
   const info = useCorLogo(img)
   const glow = img ? info?.cor || "transparent" : cor
 
@@ -81,8 +58,8 @@ export function ItemIcon({
     <span className="relative inline-flex shrink-0">
       <button
         type="button"
-        onClick={() => inputRef.current?.click()}
-        title="Clique pra usar sua própria imagem nesse lançamento (vale pra todos com o mesmo nome)"
+        onClick={() => (dn ? setSeletor(true) : toast.error("Esse lançamento não tem nome pra vincular o logo"))}
+        title="Trocar logo (vale pra todos com o mesmo nome)"
         className={cn("grid place-items-center overflow-hidden rounded-full transition-transform hover:scale-105")}
         style={{
           width: size, height: size,
@@ -107,7 +84,7 @@ export function ItemIcon({
           <RotateCcw className="size-2.5" />
         </button>
       )}
-      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onFile} />
+      {seletor && <SeletorLogo descricao={descricao} open={seletor} onOpenChange={setSeletor} />}
     </span>
   )
 }

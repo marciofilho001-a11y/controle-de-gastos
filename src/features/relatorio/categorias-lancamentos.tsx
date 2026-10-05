@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { logoDoLancamento } from "@/lib/marcas"
 import { motion, AnimatePresence } from "motion/react"
 import { LayoutGrid, ReceiptText, Inbox, Layers, CheckCircle2, Clock, FileText } from "lucide-react"
 import {
@@ -230,7 +231,7 @@ function Linha({ t, i, cartoes, descricaoIcones, acoes, hoje }: {
 }) {
   const info = catInfo(t.categoria); const Icon = info.icon; const cor = catColor(t.categoria)
   const cartao = t.cartao_id ? cartoes.find((c) => c.id === t.cartao_id) : null
-  const imagem = descricaoIcones[(t.descricao || "").trim().toLowerCase()] || cartao?.logo || null
+  const imagem = logoDoLancamento(t.descricao, descricaoIcones) || cartao?.logo || null
   const st = statusLancamento(t, hoje)
   const editavel = t.id > 0
   const cell = "border-b border-border/60 py-2.5 align-middle"

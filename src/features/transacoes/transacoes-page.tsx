@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { NovaTransacaoDialog, TransacaoDialog } from "./nova-transacao-dialog"
+import { logoDoLancamento, corDoLogo } from "@/lib/marcas"
+import { SeletorLogo } from "@/components/seletor-logo"
 import { RowActions } from "@/components/row-actions"
 import { Emoji } from "@/components/emoji"
 import { duplicarTransacao } from "@/lib/transacoes-actions"
@@ -25,7 +27,7 @@ import { useFinData } from "@/hooks/use-fin-data"
 import { supabase, type Cartao, type Transacao } from "@/lib/supabase"
 import { catInfo, catColor, DESPESA_CATS, RECEITA_CATS } from "@/lib/categorias"
 import { fmtR, fmtData, fmtMesCurto, fmtMesRef } from "@/lib/format"
-import { txDoMes, despesasExibicaoDoMes, normalizarDescricao, obrigacoesPendentesDoMes, type LinhaExibicao } from "@/lib/selectors"
+import { txDoMes, despesasExibicaoDoMes, obrigacoesPendentesDoMes, type LinhaExibicao } from "@/lib/selectors"
 import { emojiDoLancamento } from "@/lib/emoji-gasto"
 import { infoParcela } from "@/lib/parcelas"
 import { temasComExtras, type Tema } from "@/lib/temas"
@@ -214,7 +216,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
 
   const detalhe = selecionado && (
     <DetalheTransacao
-      t={selecionado} cartoes={cartoes} temas={temas} iconeCustom={descricaoIcones[normalizarDescricao(selecionado.descricao)]}
+      t={selecionado} cartoes={cartoes} temas={temas} iconeCustom={logoDoLancamento(selecionado.descricao, descricaoIcones)}
       onFechar={() => setSelId(null)}
       onEditar={() => { setEditTx(selecionado); if (!desktop) setSelId(null) }}
       onDuplicar={() => duplicar(selecionado)}
@@ -323,7 +325,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                     {entradas.map((t) => (
                         <LinhaTransacao
                           key={t.id} t={t} cartoes={cartoes} temas={temas}
-                          iconeCustom={descricaoIcones[normalizarDescricao(t.descricao)]}
+                          iconeCustom={logoDoLancamento(t.descricao, descricaoIcones)}
                           ativo={t.id === selId}
                           onSelecionar={() => setSelId((s) => (s === t.id ? null : t.id))}
                           onEditar={() => setEditTx(t)} onDuplicar={() => duplicar(t)} onExcluir={() => setDelId(t.id)}
@@ -342,7 +344,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                     {fixas.map((t) => (
                         <LinhaTransacao
                           key={t.id} t={t} cartoes={cartoes} temas={temas}
-                          iconeCustom={descricaoIcones[normalizarDescricao(t.descricao)]}
+                          iconeCustom={logoDoLancamento(t.descricao, descricaoIcones)}
                           ativo={t.id === selId}
                           onSelecionar={() => setSelId((s) => (s === t.id ? null : t.id))}
                           onEditar={() => setEditTx(t)} onDuplicar={() => duplicar(t)} onExcluir={() => setDelId(t.id)}
@@ -366,7 +368,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                     {itens.map((t) => (
                         <LinhaTransacao
                           key={t.id} t={t} cartoes={cartoes} temas={temas}
-                          iconeCustom={descricaoIcones[normalizarDescricao(t.descricao)]}
+                          iconeCustom={logoDoLancamento(t.descricao, descricaoIcones)}
                           ativo={t.id === selId}
                           onSelecionar={() => setSelId((s) => (s === t.id ? null : t.id))}
                           onEditar={() => setEditTx(t)} onDuplicar={() => duplicar(t)} onExcluir={() => setDelId(t.id)}
@@ -393,7 +395,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                           {itens.map((t) => (
                         <LinhaTransacao
                           key={t.id} t={t} cartoes={cartoes} temas={temas} naFatura
-                          iconeCustom={descricaoIcones[normalizarDescricao(t.descricao)]}
+                          iconeCustom={logoDoLancamento(t.descricao, descricaoIcones)}
                           ativo={t.id === selId}
                           onSelecionar={() => setSelId((s) => (s === t.id ? null : t.id))}
                           onEditar={() => setEditTx(t)} onDuplicar={() => duplicar(t)} onExcluir={() => setDelId(t.id)}
@@ -473,12 +475,14 @@ function IconeLancamento({
   t, temas, iconeCustom, tamanho = "md",
 }: { t: LinhaExibicao; temas: Tema[]; iconeCustom?: string; tamanho?: "md" | "lg" }) {
   const grande = tamanho === "lg"
+  const corMarca = corDoLogo(iconeCustom)
   return (
     <span
       className={cn(
-        "grid shrink-0 place-items-center overflow-hidden bg-secondary/70 ring-1 ring-border/80",
-        grande ? "size-14 rounded-2xl" : "size-10 rounded-xl",
+        "grid shrink-0 place-items-center overflow-hidden rounded-full bg-secondary/70 ring-1 ring-border/80",
+        grande ? "size-14" : "size-10",
       )}
+      style={corMarca ? { boxShadow: `0 0 ${grande ? 18 : 12}px color-mix(in srgb, ${corMarca} 40%, transparent)` } : undefined}
     >
       {iconeCustom
         ? <img src={iconeCustom} alt="" className="size-full object-cover" />
@@ -808,6 +812,7 @@ function DetalheTransacao({
   const p = infoParcela(t)
   const c = cabecalhoDia(t.data)
   const virtual = t.id < 0
+  const [seletor, setSeletor] = useState(false)
   const linhas: [string, React.ReactNode][] = [
     [t.cartao_id ? "Comprado em" : t._pendente ? "Vence" : "Data", t.cartao_id && !dataCompraReal(t)
       ? <span className="text-muted-foreground">não informado</span>
@@ -827,7 +832,17 @@ function DetalheTransacao({
         className="rounded-xl border bg-secondary/20 p-4"
       >
         <div className="flex items-start gap-3">
-          <IconeLancamento t={t} temas={temas} iconeCustom={iconeCustom} tamanho="lg" />
+          {virtual || !t.descricao ? (
+            <IconeLancamento t={t} temas={temas} iconeCustom={iconeCustom} tamanho="lg" />
+          ) : (
+            <button type="button" onClick={() => setSeletor(true)} title="Trocar logo" className="group/logo relative shrink-0 rounded-full">
+              <IconeLancamento t={t} temas={temas} iconeCustom={iconeCustom} tamanho="lg" />
+              <span className="absolute -right-1 -bottom-1 grid size-5 place-items-center rounded-full bg-card text-muted-foreground ring-1 ring-border transition-colors group-hover/logo:text-foreground">
+                <Pencil className="size-2.5" />
+              </span>
+            </button>
+          )}
+          {seletor && <SeletorLogo descricao={t.descricao || ""} open={seletor} onOpenChange={setSeletor} />}
           <div className="min-w-0 flex-1">
             <p className="text-sm leading-snug font-semibold">{t.descricao || "—"}</p>
             <p className={cn("tnum mt-1 text-xl font-bold", receita ? "text-success" : "text-foreground")}>

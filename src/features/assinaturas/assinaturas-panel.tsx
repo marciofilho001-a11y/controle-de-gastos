@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { logoDoLancamento } from "@/lib/marcas"
 import { motion } from "motion/react"
 import { toast } from "sonner"
 import { Repeat, TrendingUp, AlertTriangle, CheckCircle2, Clock, Plus, X, Sparkles, Ghost, Smartphone } from "lucide-react"
@@ -97,7 +98,7 @@ export function AssinaturasPanel({ mesRef }: { mesRef: string }) {
           {d.assinaturas.map((a, i) => {
             const st = STATUS[a.status]
             const cartao = a.cartaoId ? cartoes.find((c) => c.id === a.cartaoId) : null
-            const logo = descricaoIcones[(a.ultimaTx.descricao || "").trim().toLowerCase()] || cartao?.logo || null
+            const logo = logoDoLancamento(a.ultimaTx.descricao, descricaoIcones) || cartao?.logo || null
             return (
               <motion.div
                 key={a.chave}
