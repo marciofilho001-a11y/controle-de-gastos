@@ -82,7 +82,7 @@ export function TransacoesBlocos({
                 <p className="font-display text-sm font-semibold">{g.nome}</p>
                 <p className="text-xs text-muted-foreground">{g.itens.length} lançamento(s)</p>
               </div>
-              <span className="tnum text-sm font-semibold" style={{ color: g.cor }}>{fmtR(total)}</span>
+              <span className="tnum text-sm font-semibold">{fmtR(total)}</span>
               <motion.span animate={{ rotate: aberto ? 180 : 0 }} transition={SPRING} className="text-muted-foreground">
                 <ChevronDown className="size-4" />
               </motion.span>
@@ -117,7 +117,7 @@ export function TransacoesBlocos({
                               <p className="truncate text-sm font-medium">{t.descricao || "—"}</p>
                               {t.cartao_id && <p className="truncate text-[0.7rem] text-muted-foreground">{cartaoNome(t.cartao_id)}</p>}
                             </div>
-                            <span className={cn("tnum shrink-0 text-sm font-semibold", receita ? "text-success" : "text-destructive")}>
+                            <span className={cn("tnum shrink-0 text-sm font-semibold", receita ? "text-success" : "text-foreground")}>
                               {receita ? "+ " : "− "}{fmtR(Number(t.valor))}
                             </span>
                             {t.id > 0 && (

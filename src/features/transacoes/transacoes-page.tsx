@@ -319,6 +319,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                   <>
                     <TituloSecao icon={ArrowDownLeft} tom="entrada" titulo="Entradas" sub="Salário, vendas e o que mais entrou"
                       total={entradas.reduce((s, t) => s + Number(t.valor), 0)} />
+                    <BlocoDia className="mt-3">
                     {entradas.map((t) => (
                         <LinhaTransacao
                           key={t.id} t={t} cartoes={cartoes} temas={temas}
@@ -329,6 +330,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                           onPagar={() => pagarConta(t)} pagando={pagando === t.id}
                         />
                     ))}
+                    </BlocoDia>
                   </>
                 )}
 
@@ -336,6 +338,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                   <>
                     <TituloSecao icon={Repeat} titulo="Contas fixas" sub="Obrigações do mês: as pagas e as que ainda vencem"
                       total={-fixas.reduce((s, t) => s + Number(t.valor), 0)} />
+                    <BlocoDia className="mt-3">
                     {fixas.map((t) => (
                         <LinhaTransacao
                           key={t.id} t={t} cartoes={cartoes} temas={temas}
@@ -346,6 +349,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                           onPagar={() => pagarConta(t)} pagando={pagando === t.id}
                         />
                     ))}
+                    </BlocoDia>
                   </>
                 )}
 
@@ -355,8 +359,9 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                     total={-dias.flatMap(([, i]) => i).reduce((s, t) => s + Number(t.valor), 0)}
                   />
                 )}
+                {dias.length > 0 && <div className="flex flex-col gap-3 pt-3">
                 {dias.map(([data, itens]) => (
-                  <div key={data}>
+                  <BlocoDia key={data}>
                     <CabecalhoDia data={data} itens={itens} comAno={todosMeses} />
                     {itens.map((t) => (
                         <LinhaTransacao
@@ -368,8 +373,9 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                           onPagar={() => pagarConta(t)} pagando={pagando === t.id}
                         />
                     ))}
-                  </div>
+                  </BlocoDia>
                 ))}
+                </div>}
 
                 {faturas.length > 0 && (
                   <TituloSecao
@@ -382,8 +388,8 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                   {faturas.map((f) => (
                     <GrupoFatura key={f.k} fatura={f}>
                       {porDiaDaCompra(f.itens).map(([data, itens]) => (
-                        <div key={data}>
-                          <CabecalhoDia data={data} itens={itens} comAno={todosMeses} compacto />
+                        <BlocoDia key={data}>
+                          <CabecalhoDia data={data} itens={itens} comAno={todosMeses} />
                           {itens.map((t) => (
                         <LinhaTransacao
                           key={t.id} t={t} cartoes={cartoes} temas={temas} naFatura
@@ -393,7 +399,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
                           onEditar={() => setEditTx(t)} onDuplicar={() => duplicar(t)} onExcluir={() => setDelId(t.id)}
                         />
                           ))}
-                        </div>
+                        </BlocoDia>
                       ))}
                     </GrupoFatura>
                   ))}
@@ -490,16 +496,16 @@ function LinhaTransacao({
 }) {
   const receita = t.tipo === "receita"
   const p = infoParcela(t)
-  // cor da categoria, puxada um pouco pro texto pra ter contraste no tema claro e no escuro
-  const cor = receita ? "var(--success)" : `color-mix(in srgb, ${catColor(t.categoria)} 82%, var(--foreground))`
+  // valor neutro: saída na cor do texto, só entrada em verde (padrão de extrato bancário)
+  const cor = receita ? "var(--success)" : "var(--foreground)"
   return (
     <div
       className={cn(
-        "group/linha relative -mx-2 flex items-center gap-3 rounded-xl border-b border-border/50 px-2 py-2.5 transition-colors last:border-b-0",
-        ativo ? "bg-primary/[0.07]" : "hover:bg-secondary/40",
+        "group/linha relative flex items-center gap-3 border-b border-border/50 px-3 py-2.5 transition-colors last:border-b-0",
+        ativo ? "bg-primary/[0.07]" : "hover:bg-secondary/50",
       )}
     >
-      {ativo && <motion.span layoutId="linha-ativa" className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-primary" transition={{ duration: 0.25, ease: EASE }} />}
+      {ativo && <motion.span layoutId="linha-ativa" className="absolute inset-y-0 left-0 w-[3px] bg-primary" transition={{ duration: 0.25, ease: EASE }} />}
       <button type="button" onClick={onSelecionar} className="flex min-w-0 flex-1 items-center gap-3 text-left">
         <IconeLancamento t={t} temas={temas} iconeCustom={iconeCustom} />
         <span className="min-w-0 flex-1">
@@ -554,28 +560,46 @@ function porDiaDaCompra(itens: LinhaExibicao[]): [string, LinhaExibicao[]][] {
   return [...g.entries()].sort(([a], [b]) => (a === SEM_DATA ? 1 : b === SEM_DATA ? -1 : a < b ? 1 : -1))
 }
 
-function CabecalhoDia({ data, itens, comAno, compacto }: { data: string; itens: LinhaExibicao[]; comAno?: boolean; compacto?: boolean }) {
+// cada dia é um cartão próprio: faixa de cabeçalho + lançamentos, com espaço entre os dias
+function BlocoDia({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn("overflow-hidden rounded-xl border border-border/70 bg-secondary/15", className)}>{children}</div>
+}
+
+const SEMANA_LEGIVEL = (s: string) => s.charAt(0) + s.slice(1).toLowerCase()
+
+function CabecalhoDia({ data, itens, comAno }: { data: string; itens: LinhaExibicao[]; comAno?: boolean; compacto?: boolean }) {
   const saida = itens.filter((t) => t.tipo === "despesa").reduce((s, t) => s + Number(t.valor), 0)
   const entrada = itens.filter((t) => t.tipo === "receita").reduce((s, t) => s + Number(t.valor), 0)
+  const qtd = `${itens.length} ${itens.length === 1 ? "lançamento" : "lançamentos"}`
+  const faixa = "flex items-center gap-3 border-b border-border/70 bg-secondary/50 px-3 py-2"
   if (data === SEM_DATA) {
     return (
-      <div className={cn("flex items-baseline gap-3 border-b border-border/70 pb-2.5 text-xs", compacto ? "pt-3" : "pt-4")}>
-        <span className="font-semibold tracking-wide text-muted-foreground">SEM DATA DA COMPRA</span>
-        <span className="text-[0.68rem] text-muted-foreground">lançadas antes do campo de data · edite pra informar</span>
-        <span className="tnum ml-auto text-muted-foreground">− {fmtR(saida)}</span>
+      <div className={faixa}>
+        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-background text-sm font-semibold text-muted-foreground ring-1 ring-border">?</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-muted-foreground">Sem data da compra</span>
+          <span className="block truncate text-xs text-muted-foreground">lançadas antes do campo de data · edite pra informar</span>
+        </span>
+        <span className="tnum shrink-0 text-sm font-semibold">− {fmtR(saida)}</span>
       </div>
     )
   }
   const c = cabecalhoDia(data)
+  const [num, mes] = c.dia.split(" ")
   return (
-    <div className={cn("flex items-baseline gap-3 border-b border-border/70 pb-2.5 text-xs", compacto ? "pt-3" : "pt-4")}>
-      <span className="font-semibold tracking-wide">{c.dia}{comAno && <span className="text-muted-foreground"> {c.ano}</span>}</span>
-      <span className="text-[0.68rem] font-medium tracking-wider text-muted-foreground">{c.semana}</span>
-      <span className="tnum ml-auto text-muted-foreground">
-        {entrada > 0 && <span className="text-success">+ {fmtR(entrada)}</span>}
-        {entrada > 0 && saida > 0 && " · "}
-        {saida > 0 && <>− {fmtR(saida)}</>}
+    <div className={faixa}>
+      <span className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg bg-background leading-none ring-1 ring-border">
+        <span className="tnum text-[0.95rem] font-semibold">{num}</span>
+        <span className="mt-0.5 text-[0.58rem] font-medium tracking-wider text-muted-foreground">{mes}</span>
       </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{SEMANA_LEGIVEL(c.semana)}{comAno && <span className="font-normal text-muted-foreground"> · {c.ano}</span>}</span>
+        <span className="block text-xs text-muted-foreground">{qtd}</span>
+      </span>
+      {itens.length > 1 && <span className="tnum flex shrink-0 flex-col items-end text-sm font-semibold">
+        {saida > 0 && <span>− {fmtR(saida)}</span>}
+        {entrada > 0 && <span className={cn("text-success", saida > 0 && "text-xs font-medium")}>+ {fmtR(entrada)}</span>}
+      </span>}
     </div>
   )
 }
@@ -643,7 +667,7 @@ function GrupoFatura({
             initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.22, ease: EASE }} className="overflow-hidden"
           >
-            <div className="px-3 pt-1 pb-1">{children}</div>
+            <div className="flex flex-col gap-3 p-3">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
