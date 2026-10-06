@@ -2,7 +2,8 @@ import { useEffect, useState } from "react"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Header } from "@/components/layout/header"
-import { NavBar, TabBar, type TabId } from "@/components/layout/nav"
+import { TabBar, TABS, type TabId } from "@/components/layout/nav"
+import { Sidebar } from "@/components/layout/sidebar"
 import { RelatorioPage } from "@/features/relatorio/relatorio-page"
 import { DashboardPage } from "@/features/dashboard/dashboard-page"
 import { TransacoesPage } from "@/features/transacoes/transacoes-page"
@@ -16,6 +17,10 @@ import { LancarRapido } from "@/features/lancar/lancar-rapido"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
 import { Loader2 } from "@/lib/icons"
+
+function tituloDaAba(t: TabId): string {
+  return t === "dashboard" ? "Início" : TABS.find((x) => x.id === t)?.label ?? ""
+}
 
 export default function App() {
   const [tab, setTab] = useState<TabId>("dashboard")
@@ -54,49 +59,51 @@ export default function App() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="app-bar sticky top-0 z-40" data-scrolled={rolou}>
-        <div className="mx-auto w-full max-w-[1440px] px-4 pt-3 pb-2.5 sm:px-6 lg:px-8">
-          <Header mesRef={mesRef} onMonthChange={(d) => setMesRef((m) => addMonths(m, d))} />
-          <div className="mt-2.5 hidden md:block">
-            <NavBar active={tab} onChange={irPara} />
+      {/* desktop: barra lateral fixa; celular: barra de abas inferior */}
+      <Sidebar active={tab} onChange={irPara} />
+
+      <div className="md:pl-[232px]">
+        <div className="app-bar sticky top-0 z-30" data-scrolled={rolou}>
+          <div className="mx-auto w-full max-w-[1280px] px-4 py-2.5 sm:px-6 lg:px-8">
+            <Header mesRef={mesRef} onMonthChange={(d) => setMesRef((m) => addMonths(m, d))} titulo={tituloDaAba(tab)} />
           </div>
         </div>
-      </div>
 
-      <div className="mx-auto min-h-[100dvh] w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
-        <main className="pt-5 pb-32 md:pb-24">
-          {loading ? (
-            <div className="grid min-h-[50vh] place-items-center">
-              <Loader2 className="size-6 animate-spin text-primary" />
-            </div>
-          ) : error ? (
-            <div className="grid min-h-[40vh] place-items-center rounded-xl border border-destructive/30 bg-destructive/5">
-              <div className="text-center">
-                <p className="font-medium text-destructive">Erro ao carregar dados</p>
-                <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+        <div className="mx-auto min-h-[100dvh] w-full max-w-[1280px] px-4 sm:px-6 lg:px-8">
+          <main className="pt-5 pb-32 md:pb-16">
+            {loading ? (
+              <div className="grid min-h-[50vh] place-items-center">
+                <Loader2 className="size-6 animate-spin text-primary" />
               </div>
-            </div>
-          ) : tab === "dashboard" ? (
-            <DashboardPage mesRef={mesRef} onNavigate={irPara} />
-          ) : tab === "obrigacoes" ? (
-            <ObrigacoesPage mesRef={mesRef} />
-          ) : tab === "cartoes" ? (
-            <CartoesPage mesRef={mesRef} />
-          ) : tab === "projecao" ? (
-            <ProjecaoPage mesRef={mesRef} />
-          ) : tab === "transacoes" ? (
-            <TransacoesPage mesRef={mesRef} />
-          ) : tab === "fechamento" ? (
-            <FechamentoPage mesRef={mesRef} onNavigate={irPara} />
-          ) : tab === "historico" ? (
-            <HistoricoPage mesRef={mesRef} />
-          ) : tab === "relatorio" ? (
-            <RelatorioPage mesRef={mesRef} />
-          ) : null}
-        </main>
+            ) : error ? (
+              <div className="grid min-h-[40vh] place-items-center rounded-xl border border-destructive/30 bg-destructive/5">
+                <div className="text-center">
+                  <p className="font-medium text-destructive">Erro ao carregar dados</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+                </div>
+              </div>
+            ) : tab === "dashboard" ? (
+              <DashboardPage mesRef={mesRef} onNavigate={irPara} />
+            ) : tab === "obrigacoes" ? (
+              <ObrigacoesPage mesRef={mesRef} onNavigate={irPara} />
+            ) : tab === "cartoes" ? (
+              <CartoesPage mesRef={mesRef} />
+            ) : tab === "projecao" ? (
+              <ProjecaoPage mesRef={mesRef} />
+            ) : tab === "transacoes" ? (
+              <TransacoesPage mesRef={mesRef} />
+            ) : tab === "fechamento" ? (
+              <FechamentoPage mesRef={mesRef} onNavigate={irPara} />
+            ) : tab === "historico" ? (
+              <HistoricoPage mesRef={mesRef} />
+            ) : tab === "relatorio" ? (
+              <RelatorioPage mesRef={mesRef} />
+            ) : null}
+          </main>
+        </div>
       </div>
       <TabBar active={tab} onChange={irPara} />
-      {!loading && !error && <ChatAssistente mesRef={mesRef} />}
+      {!loading && !error && <ChatAssistente mesRef={mesRef} esconderBotao />}
       <Toaster position="bottom-center" richColors offset={24} mobileOffset={{ bottom: 92 }} />
     </TooltipProvider>
   )

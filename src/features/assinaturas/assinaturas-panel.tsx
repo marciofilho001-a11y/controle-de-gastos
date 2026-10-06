@@ -20,7 +20,7 @@ const STATUS: Record<StatusAssinatura, { label: string; dot: string }> = {
   sumiu: { label: "Sumiu", dot: "bg-muted-foreground" },
 }
 
-export function AssinaturasPanel({ mesRef }: { mesRef: string }) {
+export function AssinaturasPanel({ mesRef, compacto = false }: { mesRef: string; compacto?: boolean }) {
   const { transacoes, cartoes, config, descricaoIcones, saveConfig } = useFinData()
   const [busy, setBusy] = useState(false)
 
@@ -61,10 +61,10 @@ export function AssinaturasPanel({ mesRef }: { mesRef: string }) {
           <span className="grid size-9 place-items-center rounded-xl bg-secondary text-primary"><Repeat className="size-4" /></span>
           <div>
             <h3 className="font-display text-lg font-semibold leading-tight">Assinaturas</h3>
-            <p className="text-xs text-muted-foreground">Cobranças que se repetem e não são parcelamento</p>
+            <p className="text-xs text-muted-foreground">{compacto ? `${d.vivas.length} ativas · ${fmtR(d.mensal)}/mês` : "Cobranças que se repetem e não são parcelamento"}</p>
           </div>
         </div>
-        <div className="ml-auto flex flex-wrap gap-2">
+        <div className={cn("ml-auto flex flex-wrap gap-2", compacto && "hidden")}>
           <Resumo label="Por mês" valor={fmtR(d.mensal)} destaque />
           <Resumo label="Por ano" valor={fmtR(d.mensal * 12)} />
           <Resumo label="Ativas" valor={String(d.vivas.length)} />

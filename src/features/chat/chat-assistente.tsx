@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
+import { create } from "zustand"
 import { useFinData } from "@/hooks/use-fin-data"
 import { parseEntrada, type ParseResult } from "./parser"
 import { salvarEntrada } from "./salvar"
@@ -21,9 +22,15 @@ type Msg =
   | { autor: "bot"; texto: string }
   | { autor: "preview"; parse: ParseResult }
 
-export function ChatAssistente({ mesRef }: { mesRef: string }) {
+// estado do painel do assistente, acessível de fora (botão "Lançar" da barra lateral)
+export const useChatUI = create<{ aberto: boolean; setAberto: (v: boolean) => void }>((set) => ({
+  aberto: false,
+  setAberto: (aberto) => set({ aberto }),
+}))
+
+export function ChatAssistente({ mesRef, esconderBotao = false }: { mesRef: string; esconderBotao?: boolean }) {
   const { cartoes, transacoes, faturaItens, loadAll } = useFinData()
-  const [aberto, setAberto] = useState(false)
+  const { aberto, setAberto } = useChatUI()
   const [texto, setTexto] = useState("")
   const [msgs, setMsgs] = useState<Msg[]>([
     { autor: "bot", texto: 'Oi! Escreva um gasto ou receita em linguagem natural. Ex: "Koch 10 comida débito" ou "3x de 70 Nubank jaqueta Nike".' },
@@ -84,8 +91,8 @@ export function ChatAssistente({ mesRef }: { mesRef: string }) {
     <>
       {/* botão flutuante */}
       <motion.button
-        onClick={() => setAberto((v) => !v)}
-        className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 grid size-14 md:right-5 md:bottom-5 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/30"
+        onClick={() => setAberto(!aberto)}
+        className={cn("fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 grid size-14 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/30 md:right-5 md:bottom-5", esconderBotao && "md:hidden")}
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
         aria-label="Assistente de lançamento"
