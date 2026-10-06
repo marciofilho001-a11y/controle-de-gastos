@@ -5,7 +5,7 @@ import {
 } from "recharts"
 import {
   ShoppingBag, CheckCircle2, AlertTriangle, XCircle, Layers, CalendarClock, CreditCard, Lightbulb, Info,
-} from "lucide-react"
+} from "@/lib/icons"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {

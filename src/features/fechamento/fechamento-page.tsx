@@ -3,7 +3,7 @@ import { motion } from "motion/react"
 import {
   CheckCircle2, Circle, AlertTriangle, Lock, Unlock, Loader2, ListChecks, CreditCard, Wallet,
   Clock, Sparkles, ArrowRight, TrendingUp, TrendingDown, Minus, Scale, Landmark, Receipt,
-} from "lucide-react"
+} from "@/lib/icons"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { PageHeader, SectionTitle } from "@/components/page-header"

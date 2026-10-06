@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Gauge, Copy, Banknote, CreditCard, Shapes, AlertTriangle, Loader2 } from "lucide-react"
+import { Gauge, Copy, Banknote, CreditCard, Shapes, AlertTriangle, Loader2 } from "@/lib/icons"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"

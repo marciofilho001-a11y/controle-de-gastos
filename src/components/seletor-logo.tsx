@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { SimpleIcon } from "simple-icons"
-import { Ban, Loader2, RotateCcw, Search, Upload } from "lucide-react"
+import { Ban, Loader2, RotateCcw, Search, Upload } from "@/lib/icons"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { BarChart3 } from "lucide-react"
+import { BarChart3 } from "@/lib/icons"
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import type { Obrigacao, Transacao } from "@/lib/supabase"
 import { receitasDoMes, despesasComContasDoMes } from "@/lib/selectors"

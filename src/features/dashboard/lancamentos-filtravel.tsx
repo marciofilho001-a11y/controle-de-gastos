@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react"
 import { logoDoLancamento } from "@/lib/marcas"
+import { temaDaDescricao } from "@/lib/temas"
 import { motion } from "motion/react"
 import {
-  LayoutGrid, List, Inbox, TrendingUp, Calendar, ArrowUp, ArrowDown, Layers, Receipt, BarChart3, Trophy, ChevronDown,
-} from "lucide-react"
+  LayoutGrid, List, Inbox, TrendingUp, Calendar, Layers, Receipt, BarChart3, Trophy, ChevronDown,
+} from "@/lib/icons"
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
@@ -159,10 +160,10 @@ export function LancamentosFiltravel({
             key={filtroCat}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16, ease: EASE_OUT }}
             className="relative mb-4 flex flex-wrap items-center gap-x-6 gap-y-3 overflow-hidden rounded-xl border p-4"
-            style={{ background: `linear-gradient(90deg, ${cor}1f, transparent 60%)`, borderColor: `${cor}55` }}
+            style={{ background: `linear-gradient(90deg, ${cor}14, transparent 60%)` }}
           >
             <div className="flex items-center gap-3">
-              <span className="grid size-12 place-items-center rounded-full" style={{ background: `${cor}2a`, color: cor, boxShadow: `0 0 18px ${cor}55` }}>
+              <span className="grid size-12 place-items-center rounded-full" style={{ background: `${cor}2a`, color: cor }}>
                 <Icon className="size-6" />
               </span>
               <div>
@@ -172,7 +173,7 @@ export function LancamentosFiltravel({
                 </button>
               </div>
             </div>
-            <p className="tnum font-display text-3xl font-bold" style={{ color: cor }}>{fmtR(total)}</p>
+            <p className="tnum font-display text-3xl font-semibold tracking-[-0.02em]">{fmtR(total)}</p>
             <div className="hidden h-8 w-px bg-border sm:block" />
             <Stat icon={Receipt} cor={cor} big={String(daCategoria.length)} small="lançamentos" />
             <Stat icon={BarChart3} cor={cor} big={fmtR(total / daCategoria.length)} small="média por gasto" />
@@ -375,19 +376,20 @@ function useVisual(t: LinhaExibicao, cartoes: Cartao[], descricaoIcones: Record<
   const cor = catColor(t.categoria)
   const receita = t.tipo === "receita"
   const cartaoTx = t.cartao_id ? cartoes.find((c) => c.id === t.cartao_id) : null
-  const iconeCustom = logoDoLancamento(t.descricao, descricaoIcones)
-  const imagem = iconeCustom || cartaoTx?.logo || null
-  return { info, cor, receita, cartaoTx, imagem }
+  // avatar = logo da marca do lançamento (o cartão já aparece no subtítulo, não repete 20x a mesma logo)
+  const imagem = logoDoLancamento(t.descricao, descricaoIcones) || null
+  // sem logo: ícone do tema da descrição (cerveja → garrafa), senão o da categoria
+  const tema = receita ? null : temaDaDescricao(t.descricao)
+  const AvatarIcon = tema ? tema.icon : info.icon
+  const corAvatar = tema ? tema.cor : cor
+  return { info, cor, receita, cartaoTx, imagem, AvatarIcon, corAvatar }
 }
 
+// valor neutro: só entrada fica verde (padrão de extrato)
 function ValorPill({ receita, valor }: { receita: boolean; valor: number }) {
   return (
-    <span className={cn(
-      "tnum flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-bold",
-      receita ? "bg-success/12 text-success" : "bg-destructive/12 text-destructive"
-    )}>
-      {receita ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}
-      {fmtR(valor)}
+    <span className={cn("tnum whitespace-nowrap text-sm font-semibold", receita ? "text-success" : "text-foreground")}>
+      {receita ? "+ " : "− "}{fmtR(valor)}
     </span>
   )
 }
@@ -396,7 +398,7 @@ function TipoIcone({ tipo, className }: { tipo: TipoGasto | null; className?: st
   if (!tipo) return null
   const I = tipo.icon
   return (
-    <span title={tipo.grupo} className={cn("grid shrink-0 place-items-center", className)} style={{ color: tipo.cor, filter: `drop-shadow(0 0 6px color-mix(in srgb, ${tipo.cor} 45%, transparent))` }}>
+    <span title={tipo.grupo} className={cn("grid shrink-0 place-items-center", className)} style={{ color: tipo.cor }}>
       <I className="size-full" />
     </span>
   )
@@ -407,8 +409,7 @@ function LancCard({
 }: {
   t: LinhaExibicao; tipo: TipoGasto | null; cartoes: Cartao[]; descricaoIcones: Record<string, string>; index: number; acoes: Acoes
 }) {
-  const { info, cor, receita, cartaoTx, imagem } = useVisual(t, cartoes, descricaoIcones)
-  const Icon = info.icon
+  const { info, cor, receita, cartaoTx, imagem, AvatarIcon, corAvatar } = useVisual(t, cartoes, descricaoIcones)
   const editavel = t.id > 0
 
   return (
@@ -416,22 +417,19 @@ function LancCard({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.16, ease: EASE_OUT }}
-      className="relative flex flex-col gap-3 overflow-hidden rounded-xl border bg-background/40 p-3.5 pl-4 transition-colors hover:border-primary/30"
+      className="relative flex flex-col gap-3 overflow-hidden rounded-xl border bg-card p-3.5 transition-colors hover:border-foreground/20"
     >
-      {/* barra de acento à esquerda, na cor da categoria */}
-      <span className="absolute inset-y-0 left-0 w-1" style={{ background: cor }} aria-hidden />
-
       <div className="flex items-start gap-3">
-        <LogoAvatar src={imagem} cor={cor} Icon={Icon} />
+        <LogoAvatar src={imagem} cor={corAvatar} Icon={AvatarIcon} />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-[15px] font-semibold leading-tight">{t.descricao || info.l}</p>
-          <p className="mt-1 flex items-center gap-1.5 truncate text-xs font-medium" style={{ color: cor }}>
-            <Icon className="size-3.5 shrink-0" />
+          <p className="truncate text-[15px] font-semibold leading-tight">{t.descricao || info.l}</p>
+          <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+            <span className="size-1.5 shrink-0 rounded-full" style={{ background: cor }} />
             {info.l}
-            {cartaoTx && <span className="truncate text-muted-foreground">· {cartaoTx.nome}</span>}
+            {cartaoTx && <span className="truncate">· {cartaoTx.nome}</span>}
           </p>
         </div>
-        <TipoIcone tipo={tipo} className="size-7 opacity-80" />
+        <TipoIcone tipo={tipo} className="size-5 opacity-70" />
       </div>
 
       <div className="flex items-center justify-between gap-2">
@@ -463,8 +461,7 @@ function LancRow({
 }: {
   t: LinhaExibicao; tipo: TipoGasto | null; cartoes: Cartao[]; descricaoIcones: Record<string, string>; index: number; acoes: Acoes
 }) {
-  const { info, cor, receita, cartaoTx, imagem } = useVisual(t, cartoes, descricaoIcones)
-  const Icon = info.icon
+  const { info, cor, receita, cartaoTx, imagem, AvatarIcon, corAvatar } = useVisual(t, cartoes, descricaoIcones)
   const editavel = t.id > 0
 
   return (
@@ -472,15 +469,14 @@ function LancRow({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.16, ease: EASE_OUT }}
-      className="relative flex items-center gap-3 overflow-hidden rounded-lg border bg-background/40 py-2 pl-4 pr-2 transition-colors hover:border-primary/30"
+      className="relative flex items-center gap-3 border-b border-border/60 py-2 pl-1 pr-1 transition-colors last:border-b-0 hover:bg-secondary/40"
     >
-      <span className="absolute inset-y-0 left-0 w-1" style={{ background: cor }} aria-hidden />
-      <LogoAvatar src={imagem} cor={cor} Icon={Icon} size={34} />
+      <LogoAvatar src={imagem} cor={corAvatar} Icon={AvatarIcon} size={34} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{t.descricao || info.l}</p>
-        <p className="flex items-center gap-1.5 truncate text-xs" style={{ color: cor }}>
-          <Icon className="size-3 shrink-0" /> {info.l}
-          {cartaoTx && <span className="truncate text-muted-foreground">· {cartaoTx.nome}</span>}
+        <p className="truncate text-sm font-medium">{t.descricao || info.l}</p>
+        <p className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+          <span className="size-1.5 shrink-0 rounded-full" style={{ background: cor }} /> {info.l}
+          {cartaoTx && <span className="truncate">· {cartaoTx.nome}</span>}
         </p>
       </div>
       <span className="tnum hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">

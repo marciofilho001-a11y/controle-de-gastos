@@ -6,7 +6,7 @@ import {
 import {
   TrendingUp, Calendar, Wallet,
   ChevronRight, PartyPopper, Settings2, PiggyBank, CalendarCheck, CreditCard, Link as LinkIcon, ShoppingBag, Info,
-} from "lucide-react"
+} from "@/lib/icons"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {

@@ -3,7 +3,7 @@ import { motion } from "motion/react"
 import {
   LayoutDashboard, ListChecks, CreditCard, ArrowLeftRight, TrendingUp,
   FileText, CalendarCheck, History, MoreHorizontal, type LucideIcon,
-} from "lucide-react"
+} from "@/lib/icons"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -47,7 +47,7 @@ export function NavBar({ active, onChange }: { active: TabId; onChange: (t: TabI
             {isActive && (
               <motion.span layoutId="nav-pill" transition={SPRING} className="absolute inset-0 rounded-full bg-secondary ring-1 ring-border" />
             )}
-            <Icon className={cn("relative size-4", isActive && "text-primary")} />
+            <Icon className={cn("relative size-4", isActive && "text-primary")} weight={isActive ? "fill" : "regular"} />
             <span className="relative">{t.label}</span>
           </button>
         )
@@ -77,7 +77,7 @@ export function TabBar({ active, onChange }: { active: TabId; onChange: (t: TabI
               className={cn("press flex flex-col items-center gap-0.5 rounded-lg py-1 text-[0.68rem] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring", isActive ? "text-primary" : "text-muted-foreground")}
               aria-current={isActive ? "page" : undefined}
             >
-              <Icon className="size-[1.35rem]" strokeWidth={isActive ? 2.2 : 1.8} />
+              <Icon className="size-[1.35rem]" weight={isActive ? "fill" : "regular"} />
               {t.curto}
             </button>
           )
@@ -85,7 +85,7 @@ export function TabBar({ active, onChange }: { active: TabId; onChange: (t: TabI
         <DropdownMenu open={menu} onOpenChange={setMenu}>
           <DropdownMenuTrigger asChild>
             <button className={cn("press flex flex-col items-center gap-0.5 rounded-lg py-1 text-[0.68rem] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring", outraAtiva ? "text-primary" : "text-muted-foreground")}>
-              {outraAtiva ? <outraAtiva.icon className="size-[1.35rem]" strokeWidth={2.2} /> : <MoreHorizontal className="size-[1.35rem]" strokeWidth={1.8} />}
+              {outraAtiva ? <outraAtiva.icon className="size-[1.35rem]" weight="fill" /> : <MoreHorizontal className="size-[1.35rem]" />}
               {outraAtiva ? outraAtiva.curto : "Mais"}
             </button>
           </DropdownMenuTrigger>

@@ -1,4 +1,7 @@
 import { useMemo, useState } from "react"
+import { toast } from "sonner"
+import { LancamentosFiltravel } from "./lancamentos-filtravel"
+import { duplicarTransacao, excluirComDesfazer } from "@/lib/transacoes-actions"
 import { motion } from "motion/react"
 import { type DonutSlice } from "./category-donut"
 import { HeroResumo } from "./hero-resumo"
@@ -26,7 +29,12 @@ function saudacao(): string {
 }
 
 export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNavigate: (t: TabId) => void }) {
-  const { obrigacoes, cartoes, transacoes, config, faturaPagamentos } = useFinData()
+  const { obrigacoes, cartoes, transacoes, descricaoIcones, config, loadAll, faturaPagamentos } = useFinData()
+
+  async function duplicar(t: Transacao) {
+    try { await duplicarTransacao(t, mesRef); toast.success("Lançamento duplicado neste mês"); await loadAll() }
+    catch (e) { toast.error("Erro ao duplicar", { description: e instanceof Error ? e.message : "" }) }
+  }
   const [editTx, setEditTx] = useState<Transacao | null>(null)
 
   const d = useMemo(() => {
@@ -93,7 +101,15 @@ export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNaviga
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <ChecklistResumo checks={d.checks} onVerTodos={() => onNavigate("fechamento")} index={5} />
-        <UltimosLancamentos lancamentos={d.lancamentos.filter((t) => !(t as LinhaExibicao)._pendente)} onEditar={setEditTx} onVerTodos={() => onNavigate("transacoes")} index={6} max={6} />
+        <UltimosLancamentos lancamentos={d.lancamentos.filter((t) => !(t as LinhaExibicao)._pendente)} onEditar={setEditTx} onVerTodos={() => document.getElementById("lancamentos")?.scrollIntoView({ behavior: "smooth", block: "start" })} index={6} max={6} />
+      </div>
+
+      {/* Lançamentos do mês com filtro por categoria (carrossel / grade) */}
+      <div id="lancamentos" className="scroll-mt-28">
+        <LancamentosFiltravel
+          lancamentos={d.lancamentos} cartoes={cartoes} descricaoIcones={descricaoIcones}
+          onEdit={(t) => setEditTx(t)} onDuplicar={duplicar} onDelete={(t) => excluirComDesfazer(t)}
+        />
       </div>
 
       <TransacaoDialog editar={editTx} open={!!editTx} onOpenChange={(o) => !o && setEditTx(null)} />

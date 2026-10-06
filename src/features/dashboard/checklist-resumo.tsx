@@ -1,5 +1,5 @@
 import { motion } from "motion/react"
-import { ClipboardCheck, Check } from "lucide-react"
+import { ClipboardCheck, Check } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import type { CheckFechamento } from "@/lib/checklist-fechamento"
 import { cn } from "@/lib/utils"

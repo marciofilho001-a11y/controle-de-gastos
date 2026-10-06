@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { Banknote, CreditCard, ChevronRight } from "lucide-react"
+import { Banknote, CreditCard, ChevronRight } from "@/lib/icons"
 import { CategoryDonut } from "@/features/dashboard/category-donut"
 import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR } from "@/lib/format"

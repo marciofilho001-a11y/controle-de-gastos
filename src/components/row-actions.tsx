@@ -1,4 +1,4 @@
-import { MoreHorizontal, Pencil, Copy, Trash2 } from "lucide-react"
+import { MoreHorizontal, Pencil, Copy, Trash2 } from "@/lib/icons"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"

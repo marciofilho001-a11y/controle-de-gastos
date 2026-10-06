@@ -16,7 +16,7 @@ import {
   ShoppingBag,
   ReceiptText,
   type LucideIcon,
-} from "lucide-react"
+} from "@/lib/icons"
 
 export type CatDef = { v: string; l: string; icon: LucideIcon }
 

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { motion } from "motion/react"
-import { PieChart } from "lucide-react"
+import { PieChart } from "@/lib/icons"
 import { catColor } from "@/lib/categorias"
 import { fmtR } from "@/lib/format"
 import { CategoryDonut, type DonutSlice } from "./category-donut"

@@ -15,7 +15,7 @@ import { ChatAssistente } from "@/features/chat/chat-assistente"
 import { LancarRapido } from "@/features/lancar/lancar-rapido"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
-import { Loader2 } from "lucide-react"
+import { Loader2 } from "@/lib/icons"
 
 export default function App() {
   const [tab, setTab] = useState<TabId>("dashboard")

@@ -1,10 +1,10 @@
 import type { Transacao, Cartao, Obrigacao, Teto } from "@/lib/supabase"
-import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from "@/lib/icons"
 import {
   Wallet, LayoutGrid, FileText, ListChecks, Sparkles, CheckCircle2, Lightbulb, Link as LinkIcon,
   CreditCard, ReceiptText, Beer, GraduationCap, SprayCan, HeartPulse, UtensilsCrossed,
   ShoppingBag, Gamepad2, Car, TrendingUp,
-} from "lucide-react"
+} from "@/lib/icons"
 import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesLongo, fmtData } from "@/lib/format"
 import {

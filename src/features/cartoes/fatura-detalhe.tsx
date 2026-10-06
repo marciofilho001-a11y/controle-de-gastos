@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   Clock, Plus, Search, Inbox, Sparkles, CheckCheck, CreditCard, CalendarClock, Layers, X, ArrowLeft,
-} from "lucide-react"
+} from "@/lib/icons"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

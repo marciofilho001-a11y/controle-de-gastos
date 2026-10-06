@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import {
   Flame, AlertTriangle, CheckCircle2, Info, Sparkles, ChevronDown, ArrowRight,
-} from "lucide-react"
+} from "@/lib/icons"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog"

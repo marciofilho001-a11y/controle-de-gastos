@@ -5,7 +5,7 @@ import {
   useYAxisScale, usePlotArea,
 } from "recharts"
 import { BarChart3, Wallet, Trophy, TrendingDown, ArrowUp, ArrowDown, Check, ChartColumnStacked, ChartSpline,
-} from "lucide-react"
+} from "@/lib/icons"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR } from "@/lib/format"

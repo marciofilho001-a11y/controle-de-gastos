@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { logoDoLancamento } from "@/lib/marcas"
 import { motion, AnimatePresence } from "motion/react"
-import { LayoutGrid, ReceiptText, Inbox, Layers, CheckCircle2, Clock, FileText } from "lucide-react"
+import { LayoutGrid, ReceiptText, Inbox, Layers, CheckCircle2, Clock, FileText } from "@/lib/icons"
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"

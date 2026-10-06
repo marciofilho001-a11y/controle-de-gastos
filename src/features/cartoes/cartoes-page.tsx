@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { CreditCard, Pencil, Loader2, Inbox, Check, Undo2, FileCheck2 } from "lucide-react"
+import { CreditCard, Pencil, Loader2, Inbox, Check, Undo2, FileCheck2 } from "@/lib/icons"
 import { RowActions } from "@/components/row-actions"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { GraduationCap, Plus, X } from "lucide-react"
+import { GraduationCap, Plus, X } from "@/lib/icons"
 import { toast } from "sonner"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { RotateCcw } from "lucide-react"
+import { RotateCcw } from "@/lib/icons"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { useFinData } from "@/hooks/use-fin-data"

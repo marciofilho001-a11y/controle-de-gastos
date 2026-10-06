@@ -1,4 +1,4 @@
-import { ListChecks, CalendarClock, CreditCard, Wallet, Clock, Flag, type LucideIcon } from "lucide-react"
+import { ListChecks, CalendarClock, CreditCard, Wallet, Clock, Flag, type LucideIcon } from "@/lib/icons"
 import type { Cartao, FaturaPagamento, Obrigacao, Transacao } from "@/lib/supabase"
 import { fmtR } from "@/lib/format"
 import {

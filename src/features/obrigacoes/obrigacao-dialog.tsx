@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Plus, Loader2, Pencil } from "lucide-react"
+import { Plus, Loader2, Pencil } from "@/lib/icons"
 import { toast } from "sonner"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose,

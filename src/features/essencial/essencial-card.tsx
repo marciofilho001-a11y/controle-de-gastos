@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
-import { Scale, SlidersHorizontal, ArrowUp, ArrowDown, RotateCcw, Loader2, Search, Flame, CalendarClock, Tag, ArrowRight, Wallet } from "lucide-react"
+import { Scale, SlidersHorizontal, ArrowUp, ArrowDown, RotateCcw, Loader2, Search, Flame, CalendarClock, Tag, ArrowRight, Wallet } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {

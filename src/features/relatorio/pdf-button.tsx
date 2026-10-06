@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { FileDown, Loader2 } from "lucide-react"
+import { FileDown, Loader2 } from "@/lib/icons"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useFinData } from "@/hooks/use-fin-data"

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { logoDoLancamento } from "@/lib/marcas"
 import { toast } from "sonner"
-import { Repeat, TrendingUp, AlertTriangle, Plus, X, Smartphone } from "lucide-react"
+import { Repeat, TrendingUp, AlertTriangle, Plus, X, Smartphone } from "@/lib/icons"
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"

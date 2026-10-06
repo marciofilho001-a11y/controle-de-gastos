@@ -2,7 +2,7 @@ import {
   Beer, Wine, Martini, CupSoda, PartyPopper, TreePalm, Goal, Gamepad2, FlaskRound, HandCoins,
   Scissors, Flame, Plane, Popcorn, Music, Coffee, Pizza, IceCream, Zap, Gift, Cake, Ticket, Dumbbell,
   type LucideIcon,
-} from "lucide-react"
+} from "@/lib/icons"
 import { normalizarTexto, temaDaDescricao, temasComExtras, type Tema } from "@/lib/temas"
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
-import { ArrowRight, ListOrdered } from "lucide-react"
+import { ArrowRight, ListOrdered } from "@/lib/icons"
 import type { Transacao } from "@/lib/supabase"
-import { catInfo, catColor, RECEITA_CATS } from "@/lib/categorias"
+import { catInfo, RECEITA_CATS } from "@/lib/categorias"
+import { IconeLancamento } from "@/components/icone-lancamento"
 import { fmtR } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Painel, LinkAcao } from "./painel"
@@ -29,7 +30,6 @@ export function UltimosLancamentos({
             {linhas.map((t) => {
               const receita = t.tipo === "receita"
               const info = receita ? RECEITA_CATS.find((c) => c.v === t.categoria) ?? catInfo(t.categoria) : catInfo(t.categoria)
-              const Icon = info.icon
               const virtual = t.id < 0
               return (
                 <tr
@@ -37,10 +37,10 @@ export function UltimosLancamentos({
                   onClick={virtual ? undefined : () => onEditar(t)}
                   className={cn("border-t border-border/60", !virtual && "cursor-pointer hover:bg-secondary/40")}
                 >
-                  <td className="tnum px-1 py-2.5 whitespace-nowrap text-muted-foreground">{t.data.slice(8, 10)}/{t.data.slice(5, 7)}</td>
-                  <td className="max-w-0 px-1 py-2.5">
+                  <td className="tnum px-1 py-2 whitespace-nowrap text-muted-foreground">{t.data.slice(8, 10)}/{t.data.slice(5, 7)}</td>
+                  <td className="max-w-0 px-1 py-2">
                     <span className="flex min-w-0 items-center gap-2.5">
-                      <Icon className="size-4 shrink-0" style={{ color: receita ? "var(--success)" : catColor(t.categoria) }} />
+                      <IconeLancamento descricao={t.descricao} categoria={t.categoria} tipo={receita ? "receita" : "despesa"} size={28} />
                       <span className="truncate">{t.descricao}</span>
                     </span>
                   </td>

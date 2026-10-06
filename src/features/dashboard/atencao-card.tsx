@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { motion } from "motion/react"
 import { toast } from "sonner"
-import { Bell, ArrowRight, Check, Clock, Inbox, Sparkles } from "lucide-react"
+import { Bell, ArrowRight, Check, Clock, Inbox, Sparkles } from "@/lib/icons"
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"

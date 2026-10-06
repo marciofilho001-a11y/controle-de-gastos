@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from "@/lib/icons"
 import { motion } from "motion/react"
 import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts"
 import { cn } from "@/lib/utils"

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Zap, Archive, Loader2, Inbox, ChevronDown } from "lucide-react"
+import { Zap, Archive, Loader2, Inbox, ChevronDown } from "@/lib/icons"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import {

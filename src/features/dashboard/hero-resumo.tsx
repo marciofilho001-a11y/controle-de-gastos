@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { motion } from "motion/react"
-import { ArrowUp, ArrowDown, Clock, Eye, EyeOff, CircleCheck, TrendingDown } from "lucide-react"
+import { ArrowUp, ArrowDown, Clock, Eye, EyeOff, CircleCheck, TrendingDown } from "@/lib/icons"
 import { Bar, ComposedChart, Line, ResponsiveContainer, Tooltip as RTooltip, YAxis } from "recharts"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { fmtR, fmtMesCurto, fmtMesRef, addMonths } from "@/lib/format"

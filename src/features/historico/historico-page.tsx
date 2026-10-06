@@ -3,7 +3,7 @@ import { motion } from "motion/react"
 import {
   ComposedChart, Bar, Line, Area, AreaChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
 } from "recharts"
-import { BarChart3, Trophy, ThumbsDown, Wallet, Receipt, Sigma, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { BarChart3, Trophy, ThumbsDown, Wallet, Receipt, Sigma, ArrowUpRight, ArrowDownRight } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import { PageHeader, SectionTitle } from "@/components/page-header"
 import { StatCard } from "@/components/stat-card"

@@ -1,4 +1,4 @@
-import { Wallet } from "lucide-react"
+import { Wallet } from "@/lib/icons"
 import { MonthNav } from "@/components/layout/month-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
 

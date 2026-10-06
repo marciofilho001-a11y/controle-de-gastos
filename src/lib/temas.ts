@@ -2,7 +2,7 @@ import {
   Beer, GraduationCap, School, BookOpen, SprayCan, Scissors, Pill, Stethoscope, Dumbbell,
   UtensilsCrossed, ShoppingCart, Laptop, Shirt, Home, Gamepad2, Tv, Car, Fuel, ParkingCircle,
   type LucideIcon,
-} from "lucide-react"
+} from "@/lib/icons"
 
 // ---------------------------------------------------------------------------
 // Temas de gasto: agrupamento por PALAVRAS DA DESCRIÇÃO, transversal às

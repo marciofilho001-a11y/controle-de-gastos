@@ -1,8 +1,8 @@
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from "@/lib/icons"
 
-// Converte um ícone Lucide em PNG (círculo colorido + ícone branco) pra usar no jsPDF.
+// Converte um ícone Phosphor em PNG (círculo colorido + ícone branco) pra usar no jsPDF.
 // Cache por ícone+cor, resolução 128px (nítido em impressão A4).
 
 const cache = new Map<string, Promise<string>>()
@@ -12,7 +12,7 @@ export function iconePng(Icon: LucideIcon, cor: string, forma: "circulo" | "quad
   const hit = cache.get(key)
   if (hit) return hit
   const p = (async () => {
-    const inner = renderToStaticMarkup(createElement(Icon, { color: "#ffffff", size: 34, strokeWidth: 2.25 }))
+    const inner = renderToStaticMarkup(createElement(Icon, { color: "#ffffff", size: 36, weight: "bold" }))
       .replace("<svg ", '<svg x="15" y="15" ')
     const bg = forma === "circulo"
       ? `<circle cx="32" cy="32" r="32" fill="${cor}"/>`

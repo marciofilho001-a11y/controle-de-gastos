@@ -128,15 +128,16 @@ export function LogoAvatar({
         width: size, height: size,
         background: src ? info?.fundo || "var(--background)" : `${cor}1f`,
         color: cor,
-        boxShadow: led && (info || !src)
+        // LED só nas logos de marca; o ícone de fallback fica plano e discreto
+        boxShadow: led && src && info
           ? `0 0 0 1px color-mix(in srgb, ${glow} 55%, transparent), 0 0 ${Math.round(size * 0.42)}px color-mix(in srgb, ${glow} 45%, transparent)`
-          : "0 0 0 1px var(--border)",
+          : src ? "0 0 0 1px var(--border)" : "none",
       }}
     >
       {src ? (
         info ? <img src={info.img} alt="" className="size-full object-cover" draggable={false} /> : null
       ) : (
-        <Icon className="size-[45%]" />
+        <Icon className="size-[52%]" />
       )}
     </span>
   )

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import {
   Sparkles, X, Send, Check, Pencil, CreditCard, Wallet, Loader2, CircleAlert,
-} from "lucide-react"
+} from "@/lib/icons"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

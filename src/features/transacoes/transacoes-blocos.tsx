@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { Banknote, CreditCard, Link as LinkIcon, ChevronDown, TrendingUp } from "lucide-react"
+import { Banknote, CreditCard, Link as LinkIcon, ChevronDown, TrendingUp } from "@/lib/icons"
 import type { Cartao } from "@/lib/supabase"
 import type { LinhaExibicao } from "@/lib/selectors"
 import { catInfo, catColor } from "@/lib/categorias"

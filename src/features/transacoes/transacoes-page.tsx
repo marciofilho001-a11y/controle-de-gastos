@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react"
 import {
   Search, Download, Loader2, CalendarDays, Wallet, CalendarRange, X, Pencil, Copy, Trash2, Lock,
   ArrowDownLeft, ArrowUpRight, MousePointerClick, Layers, CreditCard, ChevronDown, Repeat, Check,
-} from "lucide-react"
+} from "@/lib/icons"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"

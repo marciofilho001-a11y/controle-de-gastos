@@ -4,7 +4,7 @@ import {
 } from "recharts"
 import {
   Landmark, TrendingUp, Sparkles, CircleDollarSign, Plus, Loader2, Inbox, Save,
-} from "lucide-react"
+} from "@/lib/icons"
 import { toast } from "sonner"
 import { StatCard } from "@/components/stat-card"
 import { Button } from "@/components/ui/button"

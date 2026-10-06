@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
-import { Plus, Send, CheckCircle2, ArrowUpRight, Mic, Loader2, CircleAlert } from "lucide-react"
+import { Plus, Send, CheckCircle2, ArrowUpRight, Mic, Loader2, CircleAlert } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import { PreviewCard } from "@/features/chat/chat-assistente"
 import { parseEntrada, type ParseResult } from "@/features/chat/parser"
@@ -81,7 +81,7 @@ export function LancarRapido() {
       {/* cabeçalho */}
       <div className="flex items-center gap-3">
         <span className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/30">
-          <Plus className="size-6" strokeWidth={2.5} />
+          <Plus className="size-6" weight="bold" />
         </span>
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-2xl font-semibold leading-tight">Lançar</h1>

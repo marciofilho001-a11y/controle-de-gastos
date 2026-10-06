@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { Drawer } from "vaul"
-import { X } from "lucide-react"
+import { X } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 
 // Painel deslizante (Vaul): no celular sobe de baixo e fecha arrastando (com momento e
