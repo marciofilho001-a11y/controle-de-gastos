@@ -18,7 +18,7 @@ export function UltimosLancamentos({
       <div className="-mx-1 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-[0.68rem] font-medium tracking-wider text-muted-foreground uppercase">
+            <tr className="text-left text-xs font-medium text-muted-foreground">
               <th className="w-14 px-1 pb-2 font-medium">Data</th>
               <th className="px-1 pb-2 font-medium">Descrição</th>
               <th className="hidden px-1 pb-2 font-medium sm:table-cell">Categoria</th>
@@ -45,7 +45,7 @@ export function UltimosLancamentos({
                     </span>
                   </td>
                   <td className="hidden px-1 py-2.5 text-muted-foreground sm:table-cell">{info.l}</td>
-                  <td className={cn("tnum px-1 py-2.5 text-right font-semibold whitespace-nowrap", receita ? "text-success" : "text-destructive")}>
+                  <td className={cn("tnum px-1 py-2.5 text-right font-semibold whitespace-nowrap", receita ? "text-success" : "text-foreground")}>
                     {receita ? "+ " : "- "}{fmtR(Number(t.valor))}
                   </td>
                 </tr>

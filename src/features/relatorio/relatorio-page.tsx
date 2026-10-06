@@ -1,12 +1,7 @@
 import { useMemo, useState } from "react"
-import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { TransacaoDialog } from "@/features/transacoes/nova-transacao-dialog"
-import { duplicarTransacao, excluirTransacao } from "@/lib/transacoes-actions"
+import { duplicarTransacao, excluirComDesfazer } from "@/lib/transacoes-actions"
 import type { Transacao } from "@/lib/supabase"
 import { DollarSign, Calculator, CreditCard, Wallet, CircleGauge, Shapes, Banknote } from "lucide-react"
 import { StatCard } from "@/components/stat-card"
@@ -21,7 +16,7 @@ import { catColor, catInfo } from "@/lib/categorias"
 import { fmtMesLongo, fmtR } from "@/lib/format"
 import { useChartColors, ChartLegend } from "@/lib/chart-theme"
 import {
-  obrigacoesAtivasNoMes, receitasDoMes, despesasDoMes,
+  obrigacoesAtivasNoMes, receitasDoMes, despesasComContasDoMes,
   gastoVariavelTotalNoMes, totalCartoesNoMes, gastoDebitoNoMes, faturaDoMes,
   getTeto, mediaCategoriaMeses, statusPrevisto, despesasExibicaoDoMes,
 } from "@/lib/selectors"
@@ -30,20 +25,12 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
   const { obrigacoes, transacoes, cartoes, tetos, config, descricaoIcones, loadAll } = useFinData()
   const cores = useChartColors()
   const [editTx, setEditTx] = useState<Transacao | null>(null)
-  const [delTx, setDelTx] = useState<Transacao | null>(null)
-  const [busyTx, setBusyTx] = useState(false)
 
   async function duplicar(t: Transacao) {
     try { await duplicarTransacao(t, mesRef); toast.success("Lançamento duplicado neste mês"); await loadAll() }
     catch (e) { toast.error("Erro ao duplicar", { description: e instanceof Error ? e.message : "" }) }
   }
-  async function confirmarExcluir() {
-    if (!delTx) return
-    setBusyTx(true)
-    try { await excluirTransacao(delTx.id); toast.success("Lançamento removido"); setDelTx(null); await loadAll() }
-    catch (e) { toast.error("Erro ao remover", { description: e instanceof Error ? e.message : "" }) }
-    finally { setBusyTx(false) }
-  }
+
 
   const calc = useMemo(() => {
     const rendaPrevista = parseFloat(config.renda_projetada) || 0
@@ -52,7 +39,8 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
     const ativas = obrigacoesAtivasNoMes(obrigacoes, mesRef)
     const custosFixos = ativas.reduce((s, o) => s + Number(o.valor), 0)
     const gastosVariaveis = gastoVariavelTotalNoMes(cartoes, transacoes, mesRef)
-    const despesaReal = despesasDoMes(transacoes, mesRef)
+    // mesma base do Dashboard/Fechamento: contas fixas a pagar contam como despesa do mês
+    const despesaReal = despesasComContasDoMes(obrigacoes, transacoes, mesRef)
     const despesaPrevista = custosFixos + totalCartoesNoMes(cartoes, transacoes, mesRef)
     const saldoPrevisto = rendaPrevista - despesaPrevista
     const saldoReal = rendaReal - despesaReal
@@ -107,7 +95,7 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
         <SectionTitle icon={CircleGauge}>Cockpit Financeiro</SectionTitle>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            label="Receita Líquida" value={calc.rendaReal} icon={DollarSign} tone="teal" index={0}
+            label="Receita líquida" value={calc.rendaReal} icon={DollarSign} tone="teal" index={0}
             trend={
               calc.rendaPrevista > 0 ? (
                 <span className={calc.diffRenda >= 0 ? "text-success" : "text-destructive"}>
@@ -117,16 +105,16 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
             }
           />
           <StatCard
-            label="Custos Fixos" value={calc.custosFixos} icon={Calculator} tone="slate" index={1}
+            label="Custos fixos" value={calc.custosFixos} icon={Calculator} tone="slate" index={1}
             trend={calc.despesaReal > 0 ? `${Math.round((calc.custosFixos / calc.despesaReal) * 100)}% do total gasto` : undefined}
           />
           <StatCard
-            label="Gastos Variáveis / Cartão" value={calc.gastosVariaveis} icon={CreditCard} tone="slate" index={2}
+            label="Gastos variáveis / cartão" value={calc.gastosVariaveis} icon={CreditCard} tone="slate" index={2}
             trend={calc.despesaReal > 0 ? `${Math.round((calc.gastosVariaveis / calc.despesaReal) * 100)}% do total gasto` : undefined}
           />
           <StatCard
-            label="Sobra Real" value={calc.saldoReal} icon={Wallet} tone="teal" index={3}
-            valueClassName={calc.saldoReal >= 0 ? "text-success" : "text-destructive"}
+            label="Saldo do mês" value={calc.saldoReal} icon={Wallet} tone="teal" index={3}
+            valueClassName={calc.saldoReal < 0 ? "text-destructive" : undefined}
             trend={calc.rendaPrevista > 0 ? `previsto: ${fmtR(calc.saldoPrevisto)}` : undefined}
           />
         </div>
@@ -150,7 +138,7 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
         <SectionTitle icon={Shapes}>Categorias e Lançamentos</SectionTitle>
         <CategoriasLancamentos
           lancamentos={calc.despesasMes} cartoes={cartoes} descricaoIcones={descricaoIcones}
-          onEdit={(t) => setEditTx(t)} onDuplicar={duplicar} onDelete={(t) => setDelTx(t)}
+          onEdit={(t) => setEditTx(t)} onDuplicar={duplicar} onDelete={(t) => excluirComDesfazer(t)}
         />
       </section>
 
@@ -161,21 +149,6 @@ export function RelatorioPage({ mesRef }: { mesRef: string }) {
       </section>
 
       <TransacaoDialog editar={editTx} open={!!editTx} onOpenChange={(o) => !o && setEditTx(null)} />
-      <AlertDialog open={delTx != null} onOpenChange={(o) => !o && setDelTx(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover este lançamento?</AlertDialogTitle>
-            <AlertDialogDescription>{delTx?.descricao} — esta ação não pode ser desfeita.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={(e) => { e.preventDefault(); confirmarExcluir() }} disabled={busyTx}>
-              {busyTx && <Loader2 data-icon="inline-start" className="animate-spin" />}
-              Remover
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

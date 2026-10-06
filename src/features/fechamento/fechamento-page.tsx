@@ -14,7 +14,7 @@ import { supabase } from "@/lib/supabase"
 import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesCurto, fmtMesLongo, addMonths, fmtData } from "@/lib/format"
 import {
-  receitasDoMes, despesasDoMes, obrigacoesAtivasNoMes, obrigacaoPagaNoMes, faturaInfoDoMes,
+  receitasDoMes, despesasComContasDoMes, obrigacoesAtivasNoMes, obrigacaoPagaNoMes, faturaInfoDoMes,
   despesasExibicaoDoMes, parcelaNoMes, variacaoPct, faturaPagaNoMes,
 } from "@/lib/selectors"
 import { gerarInsights, type Severidade } from "@/lib/insights"
@@ -25,11 +25,11 @@ import { LogoAvatar } from "@/components/logo-avatar"
 import { cn } from "@/lib/utils"
 
 const EASE = [0.23, 1, 0.32, 1] as const
-const SEV: Record<Severidade, { label: string; cls: string }> = {
-  vilao: { label: "Vilão", cls: "bg-destructive/12 text-destructive" },
-  atencao: { label: "Atenção", cls: "bg-warning/15 text-warning" },
-  ok: { label: "Bom sinal", cls: "bg-success/12 text-success" },
-  info: { label: "Panorama", cls: "bg-secondary text-muted-foreground" },
+const SEV: Record<Severidade, { label: string; dot: string }> = {
+  vilao: { label: "Vilão", dot: "bg-destructive" },
+  atencao: { label: "Atenção", dot: "bg-warning" },
+  ok: { label: "Bom sinal", dot: "bg-success" },
+  info: { label: "Panorama", dot: "bg-muted-foreground" },
 }
 
 // Tela de "virar o mês": checklist do que falta, comparação com o mês anterior,
@@ -43,10 +43,11 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
 
   const d = useMemo(() => {
     const receita = receitasDoMes(transacoes, mesRef)
-    const despesa = despesasDoMes(transacoes, mesRef)
+    // mesma conta do Dashboard: despesas lançadas + contas fixas que ainda vão ser pagas
+    const despesa = despesasComContasDoMes(obrigacoes, transacoes, mesRef)
     const sobra = receita - despesa
     const recAnt = receitasDoMes(transacoes, anterior)
-    const despAnt = despesasDoMes(transacoes, anterior)
+    const despAnt = despesasComContasDoMes(obrigacoes, transacoes, anterior)
     const sobraAnt = recAnt - despAnt
 
     const ativas = obrigacoesAtivasNoMes(obrigacoes, mesRef)
@@ -140,21 +141,21 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
 
       {/* veredito */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: EASE }}
-        className={cn("relative overflow-hidden rounded-xl border p-5", d.sobra >= 0 ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5")}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16, ease: EASE }}
+        className="relative overflow-hidden rounded-2xl border bg-card p-5"
       >
         <div className="flex flex-wrap items-center gap-5">
-          <span className={cn("grid size-14 shrink-0 place-items-center rounded-2xl", d.sobra >= 0 ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
+          <span className={cn("hidden size-14 shrink-0 place-items-center rounded-2xl sm:grid", d.sobra >= 0 ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
             {d.sobra >= 0 ? <TrendingUp className="size-7" /> : <TrendingDown className="size-7" />}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               {fechadoEm ? `Mês fechado em ${fmtData(fechadoEm)}` : `${d.feitos} de ${d.checks.length} itens do checklist concluídos`}
             </p>
             <p className="mt-0.5 font-display text-2xl font-semibold tracking-[-0.01em]">
-              {d.sobra >= 0 ? "Mês no azul: " : "Mês no vermelho: "}
-              <span className={cn("tnum", d.sobra >= 0 ? "text-success" : "text-destructive")}>{fmtR(d.sobra)}</span>
-              {d.receita > 0 && <span className="text-base font-normal text-muted-foreground"> · {pctRenda.toFixed(0)}% da renda</span>}
+              {d.sobra >= 0 ? "Saldo do mês: " : "Mês no vermelho: "}
+              <span className={cn("tnum whitespace-nowrap", d.sobra < 0 && "text-destructive")}>{fmtR(d.sobra)}</span>
+              {d.receita > 0 && <span className="text-base font-normal text-muted-foreground"> · {pctRenda >= 0 ? `${pctRenda.toFixed(0)}% da renda` : `${Math.abs(pctRenda).toFixed(0)}% acima da renda`}</span>}
             </p>
             {d.aPagar > 0 && (
               <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
@@ -170,14 +171,20 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
             )}
             <p className="mt-1 text-sm text-muted-foreground">
               {d.recAnt > 0 || d.despAnt > 0
-                ? `Em ${fmtMesCurto(anterior)} a sobra foi ${fmtR(d.sobraAnt)} (${d.sobra >= d.sobraAnt ? "+" : ""}${fmtR(d.sobra - d.sobraAnt)} agora).`
+                ? `Em ${fmtMesCurto(anterior)} o saldo foi ${fmtR(d.sobraAnt)} (${d.sobra >= d.sobraAnt ? "+" : ""}${fmtR(d.sobra - d.sobraAnt)} agora).`
                 : "Sem dados do mês anterior pra comparar."}
             </p>
           </div>
-          <div className="flex gap-1 self-stretch">
-            {d.checks.map((c) => (
-              <span key={c.id} className={cn("w-2.5 rounded-full", c.ok ? "bg-success" : "bg-border")} title={c.titulo} />
-            ))}
+          <div className="w-full sm:w-44">
+            <div className="mb-1.5 flex items-baseline justify-between text-xs text-muted-foreground">
+              <span>Checklist</span>
+              <span className="tnum font-medium text-foreground">{d.feitos}/{d.checks.length}</span>
+            </div>
+            <div className="flex gap-1">
+              {d.checks.map((c) => (
+                <span key={c.id} className={cn("h-1.5 flex-1 rounded-full", c.ok ? "bg-success" : "bg-secondary")} title={c.titulo} />
+              ))}
+            </div>
           </div>
         </div>
       </motion.div>
@@ -187,9 +194,9 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
         <SectionTitle icon={Scale}>{fmtMesCurto(mesRef)} x {fmtMesCurto(anterior)}</SectionTitle>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Comparativo label="Receitas" atual={d.receita} ant={d.recAnt} icon={Wallet} bomQuandoSobe index={0} />
-          <Comparativo label="Despesas" atual={d.despesa} ant={d.despAnt} icon={Receipt} bomQuandoSobe={false} index={1} />
+          <Comparativo label="Despesas (com contas fixas)" atual={d.despesa} ant={d.despAnt} icon={Receipt} bomQuandoSobe={false} index={1} />
           <Comparativo label="Obrigações + faturas" atual={comprometido} ant={obrigacoesAtivasNoMes(obrigacoes, anterior).reduce((s, o) => s + Number(o.valor), 0) + cartoes.reduce((s, c) => s + faturaInfoDoMes(transacoes, c.id, anterior).valor, 0)} icon={Landmark} bomQuandoSobe={false} index={2} />
-          <Comparativo label="Sobra" atual={d.sobra} ant={d.sobraAnt} icon={TrendingUp} bomQuandoSobe index={3} />
+          <Comparativo label="Saldo" atual={d.sobra} ant={d.sobraAnt} icon={TrendingUp} bomQuandoSobe index={3} />
         </div>
       </section>
 
@@ -201,16 +208,16 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
         <section>
           <SectionTitle icon={ListChecks}>Checklist de fechamento</SectionTitle>
           <div className="flex flex-col gap-2.5">
-            {d.checks.map((c, i) => {
+            {d.checks.map((c) => {
               const Icon = c.icon
               return (
                 <motion.div
-                  key={c.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25, delay: i * 0.05, ease: EASE }}
-                  className={cn("rounded-xl border bg-card p-4", c.ok ? "border-success/25" : "border-warning/30")}
+                  key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16, ease: EASE }}
+                  className="rounded-xl border bg-card p-4"
                 >
                   <div className="flex items-center gap-3">
                     {c.ok ? <CheckCircle2 className="size-5 shrink-0 text-success" /> : <Circle className="size-5 shrink-0 text-warning" />}
-                    <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", c.ok ? "bg-success/12 text-success" : "bg-warning/15 text-warning")}><Icon className="size-4" /></span>
+                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground"><Icon className="size-4" /></span>
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold">{c.titulo}</p>
                       <p className="text-xs text-muted-foreground">{c.detalhe}</p>
@@ -244,7 +251,7 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
                   {c.id === "obrig" && d.naoPagas.length > 0 && (
                     <div className="mt-3 flex flex-col gap-1.5 border-t pt-3">
                       {d.naoPagas.map(({ o }) => (
-                        <div key={o.id} className="flex items-center gap-3 rounded-lg bg-background/40 px-3 py-2">
+                        <div key={o.id} className="flex items-center gap-3 px-1 py-1.5">
                           <span className="grid size-7 place-items-center rounded-md" style={{ background: `${catColor(o.categoria)}22`, color: catColor(o.categoria) }}>
                             {(() => { const I = catInfo(o.categoria).icon; return <I className="size-3.5" /> })()}
                           </span>
@@ -263,11 +270,11 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
                   {c.id === "fat" && d.faturasPendentes.length > 0 && (
                     <div className="mt-3 flex flex-col gap-1.5 border-t pt-3">
                       {d.faturasPendentes.map(({ c: cartao, f }) => (
-                        <div key={cartao.id} className="flex items-center gap-3 rounded-lg bg-background/40 px-3 py-2 text-sm">
+                        <div key={cartao.id} className="flex items-center gap-3 px-1 py-1.5 text-sm">
                           <LogoAvatar src={cartao.logo} cor="var(--muted-foreground)" Icon={CreditCard} size={28} />
                           <p className="min-w-0 flex-1 truncate font-medium">{cartao.nome}</p>
                           <span className="text-xs text-muted-foreground">{fmtR(f.detalhado)} de {fmtR(f.valor)} detalhado</span>
-                          <span className="tnum font-semibold text-warning">{fmtR(f.indefinido)}</span>
+                          <span className="tnum font-semibold">{fmtR(f.indefinido)}</span>
                         </div>
                       ))}
                     </div>
@@ -285,7 +292,7 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
             <div className="rounded-xl border bg-card p-2">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-[0.68rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <tr className="text-xs font-medium text-muted-foreground">
                     <th className="px-2 pb-2 pt-1 text-left">Categoria</th>
                     <th className="px-2 pb-2 pt-1 text-right">{fmtMesCurto(mesRef)}</th>
                     <th className="hidden px-2 pb-2 pt-1 text-right sm:table-cell">{fmtMesCurto(anterior)}</th>
@@ -319,11 +326,12 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
 
           <section>
             <SectionTitle icon={Sparkles}>Leitura do gestor</SectionTitle>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col rounded-xl border bg-card px-3">
               {d.insights.map((i) => (
-                <div key={i.id} className="flex gap-3 rounded-xl border bg-card p-3.5">
-                  <span className={cn("mt-0.5 h-fit shrink-0 rounded-full px-2 py-0.5 text-[0.68rem] font-bold", SEV[i.severidade].cls)}>{SEV[i.severidade].label}</span>
+                <div key={i.id} className="flex gap-3 border-b border-border/60 px-1 py-3 last:border-b-0">
+                  <span className={cn("mt-[0.45rem] size-2 shrink-0 rounded-full", SEV[i.severidade].dot)} title={SEV[i.severidade].label} />
                   <div className="min-w-0 text-sm">
+                    <p className="text-xs text-muted-foreground">{SEV[i.severidade].label}</p>
                     <p className="font-medium">{i.frase}</p>
                     {i.detalhe && <p className="mt-0.5 text-xs text-muted-foreground">{i.detalhe}</p>}
                   </div>
@@ -340,17 +348,17 @@ export function FechamentoPage({ mesRef, onNavigate }: { mesRef: string; onNavig
   )
 }
 
-function Comparativo({ label, atual, ant, icon: Icon, bomQuandoSobe, index }: {
+function Comparativo({ label, atual, ant, icon: Icon, bomQuandoSobe, index: _index }: {
   label: string; atual: number; ant: number; icon: React.ComponentType<{ className?: string }>; bomQuandoSobe: boolean; index: number
 }) {
   const v = variacaoPct(atual, ant)
   const bom = v ? (v.subiu === bomQuandoSobe) : null
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05, ease: EASE }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16, ease: EASE }}
       className="rounded-xl border bg-card p-4"
     >
-      <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center gap-2 text-[0.8rem] text-muted-foreground">
         <Icon className="size-3.5" /> {label}
       </div>
       <p className="tnum mt-2 font-display text-2xl font-semibold">{fmtR(atual)}</p>

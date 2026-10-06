@@ -10,19 +10,18 @@ export function Header({
   onMonthChange: (delta: number) => void
 }) {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
-        <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/20">
-          <Wallet className="size-5" />
+    <header className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <div className="grid size-9 shrink-0 place-items-center rounded-[0.7rem] bg-primary text-primary-foreground">
+          <Wallet className="size-[1.1rem]" />
         </div>
-        <div className="leading-tight">
-          <h1 className="font-display text-xl font-semibold">
+        <div className="hidden leading-tight sm:block">
+          <h1 className="font-display text-lg font-semibold tracking-[-0.02em]">
             FinFlow <span className="text-primary">Pro</span>
           </h1>
-          <p className="text-xs text-muted-foreground">Controle financeiro pessoal</p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <MonthNav mesRef={mesRef} onChange={onMonthChange} />
         <ThemeToggle />
       </div>

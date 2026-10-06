@@ -10,17 +10,13 @@ import { Button } from "@/components/ui/button"
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { SheetDrawer } from "@/components/ui/sheet-drawer"
 import { NovaTransacaoDialog, TransacaoDialog } from "./nova-transacao-dialog"
 import { logoDoLancamento, corDoLogo } from "@/lib/marcas"
 import { SeletorLogo } from "@/components/seletor-logo"
 import { RowActions } from "@/components/row-actions"
 import { Emoji } from "@/components/emoji"
-import { duplicarTransacao } from "@/lib/transacoes-actions"
+import { duplicarTransacao, excluirComDesfazer } from "@/lib/transacoes-actions"
 import { TransacoesBlocos } from "./transacoes-blocos"
 import { PageHeader } from "@/components/page-header"
 import { useFinData } from "@/hooks/use-fin-data"
@@ -81,8 +77,11 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
   const [filtTipo, setFiltTipo] = useState("todos")
   const [filtOrigem, setFiltOrigem] = useState("todas")
   const [filtCat, setFiltCat] = useState("todas")
-  const [delId, setDelId] = useState<number | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  // excluir: some na hora, com "Desfazer" no aviso (sem diálogo de confirmação)
+  const setDelId = (id: number) => {
+    const t = transacoes.find((x) => x.id === id)
+    if (t) { excluirComDesfazer(t); setSelId((s) => (s === id ? null : s)) }
+  }
   const [editTx, setEditTx] = useState<Transacao | null>(null)
   const [todosMeses, setTodosMeses] = useState(false)
   const [selId, setSelId] = useState<number | null>(null)
@@ -188,21 +187,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
     URL.revokeObjectURL(url)
   }
 
-  async function confirmarDelete() {
-    if (delId == null) return
-    setDeleting(true)
-    try {
-      const { error } = await supabase.from("fin_transacoes").delete().eq("id", delId)
-      if (error) throw error
-      toast.success("Transação removida")
-      setDelId(null)
-      await loadAll()
-    } catch (e) {
-      toast.error("Erro ao remover", { description: e instanceof Error ? e.message : "" })
-    } finally {
-      setDeleting(false)
-    }
-  }
+
 
   async function duplicar(t: Transacao) {
     try {
@@ -412,7 +397,7 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
         </section>
 
         {/* ---------------- visão do mês ---------------- */}
-        <aside className="lg:sticky lg:top-4">
+        <aside className="lg:sticky lg:top-[7.5rem]">
           <VisaoDoMes
             list={list} totalReceita={totalReceita} totalDespesa={totalDespesa}
             titulo={todosMeses ? "Visão geral" : "Visão do mês"}
@@ -424,31 +409,13 @@ export function TransacoesPage({ mesRef }: { mesRef: string }) {
 
       {/* no celular o detalhe abre por cima */}
       {!desktop && (
-        <Dialog open={!!selecionado} onOpenChange={(o) => !o && setSelId(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader><DialogTitle className="sr-only">Detalhes da transação</DialogTitle></DialogHeader>
-            {detalhe}
-          </DialogContent>
-        </Dialog>
+        <SheetDrawer open={!!selecionado} onOpenChange={(o) => !o && setSelId(null)} titulo="Detalhes">
+          {detalhe}
+        </SheetDrawer>
       )}
 
       <TransacaoDialog editar={editTx} open={!!editTx} onOpenChange={(o) => !o && setEditTx(null)} />
 
-      <AlertDialog open={delId != null} onOpenChange={(o) => !o && setDelId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover esta transação?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={(e) => { e.preventDefault(); confirmarDelete() }} disabled={deleting}>
-              {deleting && <Loader2 data-icon="inline-start" className="animate-spin" />}
-              Remover
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
@@ -509,7 +476,7 @@ function LinhaTransacao({
         ativo ? "bg-primary/[0.07]" : "hover:bg-secondary/50",
       )}
     >
-      {ativo && <motion.span layoutId="linha-ativa" className="absolute inset-y-0 left-0 w-[3px] bg-primary" transition={{ duration: 0.25, ease: EASE }} />}
+      {ativo && <motion.span layoutId="linha-ativa" className="absolute inset-y-0 left-0 w-[3px] bg-primary" transition={{ duration: 0.16, ease: EASE }} />}
       <button type="button" onClick={onSelecionar} className="flex min-w-0 flex-1 items-center gap-3 text-left">
         <IconeLancamento t={t} temas={temas} iconeCustom={iconeCustom} />
         <span className="min-w-0 flex-1">
@@ -575,11 +542,10 @@ function CabecalhoDia({ data, itens, comAno }: { data: string; itens: LinhaExibi
   const saida = itens.filter((t) => t.tipo === "despesa").reduce((s, t) => s + Number(t.valor), 0)
   const entrada = itens.filter((t) => t.tipo === "receita").reduce((s, t) => s + Number(t.valor), 0)
   const qtd = `${itens.length} ${itens.length === 1 ? "lançamento" : "lançamentos"}`
-  const faixa = "flex items-center gap-3 border-b border-border/70 bg-secondary/50 px-3 py-2"
+  const faixa = "flex items-center gap-3 border-b border-border/70 bg-secondary/40 px-3 py-1.5"
   if (data === SEM_DATA) {
     return (
       <div className={faixa}>
-        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-background text-sm font-semibold text-muted-foreground ring-1 ring-border">?</span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold text-muted-foreground">Sem data da compra</span>
           <span className="block truncate text-xs text-muted-foreground">lançadas antes do campo de data · edite pra informar</span>
@@ -590,19 +556,18 @@ function CabecalhoDia({ data, itens, comAno }: { data: string; itens: LinhaExibi
   }
   const c = cabecalhoDia(data)
   const [num, mes] = c.dia.split(" ")
+  // faixa fina: dia em destaque + dia da semana; o bloco do dia continua separado dos outros
   return (
-    <div className={faixa}>
-      <span className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg bg-background leading-none ring-1 ring-border">
+    <div className="flex items-center gap-2 border-b border-border/70 bg-secondary/40 px-3 py-1.5">
+      <span className="flex items-baseline gap-1.5">
         <span className="tnum text-[0.95rem] font-semibold">{num}</span>
-        <span className="mt-0.5 text-[0.58rem] font-medium tracking-wider text-muted-foreground">{mes}</span>
+        <span className="text-xs font-medium text-muted-foreground lowercase">{mes}{comAno ? ` ${c.ano}` : ""}</span>
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{SEMANA_LEGIVEL(c.semana)}{comAno && <span className="font-normal text-muted-foreground"> · {c.ano}</span>}</span>
-        <span className="block text-xs text-muted-foreground">{qtd}</span>
-      </span>
-      {itens.length > 1 && <span className="tnum flex shrink-0 flex-col items-end text-sm font-semibold">
+      <span className="text-xs text-muted-foreground">· {SEMANA_LEGIVEL(c.semana)}</span>
+      {itens.length > 1 && <span className="hidden text-xs text-muted-foreground/70 sm:inline">· {qtd}</span>}
+      {itens.length > 1 && <span className="tnum ml-auto flex shrink-0 items-baseline gap-2 text-xs font-medium text-muted-foreground">
+        {entrada > 0 && <span className="text-success">+ {fmtR(entrada)}</span>}
         {saida > 0 && <span>− {fmtR(saida)}</span>}
-        {entrada > 0 && <span className={cn("text-success", saida > 0 && "text-xs font-medium")}>+ {fmtR(entrada)}</span>}
       </span>}
     </div>
   )
@@ -613,10 +578,10 @@ function dataCompraReal(t: LinhaExibicao): boolean {
   return t.id > 0 && t.data !== `${t.mes_ref}-01`
 }
 
-function TituloSecao({ icon: Icon, titulo, sub, total, tom }: { icon: typeof Wallet; titulo: string; sub: string; total: number; tom?: "entrada" }) {
+function TituloSecao({ icon: Icon, titulo, sub, total }: { icon: typeof Wallet; titulo: string; sub: string; total: number; tom?: "entrada" }) {
   return (
     <div className="mt-6 flex items-end gap-3 border-b pb-2.5 first:mt-4">
-      <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", tom === "entrada" ? "bg-success/12 text-success" : "bg-primary/12 text-primary")}><Icon className="size-4" /></span>
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground"><Icon className="size-4" /></span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{titulo}</p>
         <p className="truncate text-xs text-muted-foreground">{sub}</p>
@@ -669,7 +634,7 @@ function GrupoFatura({
         {aberto && (
           <motion.div
             initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: EASE }} className="overflow-hidden"
+            transition={{ duration: 0.16, ease: EASE }} className="overflow-hidden"
           >
             <div className="flex flex-col gap-3 p-3">{children}</div>
           </motion.div>
@@ -707,7 +672,7 @@ function VisaoDoMes({
   return (
     <section className="painel flex flex-col gap-5 rounded-2xl border bg-card p-5">
       <div>
-        <h3 className="font-ui text-lg font-semibold tracking-tight">{titulo}</h3>
+        <h3 className="font-display text-base font-semibold tracking-[-0.015em]">{titulo}</h3>
         <p className="text-xs text-muted-foreground">Como suas transações estão distribuídas</p>
       </div>
 
@@ -715,11 +680,11 @@ function VisaoDoMes({
 
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl border px-3 py-2.5">
-          <p className="flex items-center gap-1.5 text-[0.7rem] tracking-wider text-muted-foreground uppercase"><ArrowDownLeft className="size-3.5 text-success" /> Entradas</p>
+          <p className="flex items-center gap-1.5 text-[0.8rem] text-muted-foreground"><ArrowDownLeft className="size-3.5 text-success" /> Entradas</p>
           <p className="tnum mt-1 text-sm font-semibold text-success">{fmtR(totalReceita)}</p>
         </div>
         <div className="rounded-xl border px-3 py-2.5">
-          <p className="flex items-center gap-1.5 text-[0.7rem] tracking-wider text-muted-foreground uppercase"><ArrowUpRight className="size-3.5 text-destructive" /> Saídas</p>
+          <p className="flex items-center gap-1.5 text-[0.8rem] text-muted-foreground"><ArrowUpRight className="size-3.5 text-destructive" /> Saídas</p>
           <p className="tnum mt-1 text-sm font-semibold">{fmtR(totalDespesa)}</p>
         </div>
       </div>
@@ -745,12 +710,14 @@ function VisaoDoMes({
       {maior && (
         <div className="flex items-center gap-3 rounded-xl border bg-secondary/30 px-4 py-3.5">
           <div className="min-w-0 flex-1">
-            <p className="text-[0.68rem] font-medium tracking-wider text-muted-foreground uppercase">Maior categoria</p>
-            <p className="mt-1 truncate text-lg font-semibold text-primary">{catInfo(maior.k).l}</p>
+            <p className="text-xs font-medium text-muted-foreground">Maior categoria</p>
+            <p className="mt-1 truncate text-lg font-semibold">{catInfo(maior.k).l}</p>
             <p className="tnum text-sm">{fmtR(maior.v)}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <Emoji nome={emojiDoLancamento({ categoria: maior.k, tipo: "despesa" })} className="size-8" />
+            {(() => { const I = catInfo(maior.k).icon; return (
+              <span className="grid size-9 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${catColor(maior.k)} 16%, transparent)`, color: catColor(maior.k) }}><I className="size-[1.1rem]" /></span>
+            ) })()}
             <p className="tnum text-xs text-muted-foreground">{totalDespesa > 0 ? ((maior.v / totalDespesa) * 100).toFixed(1).replace(".", ",") : 0}% das despesas</p>
           </div>
         </div>
@@ -767,7 +734,7 @@ function VisaoDoMes({
             )}
           </div>
           <div className="flex flex-col gap-1">
-            {visiveis.map((c, i) => {
+            {visiveis.map((c) => {
               const ativo = filtCat === c.k
               return (
                 <button
@@ -783,7 +750,7 @@ function VisaoDoMes({
                     <motion.span
                       className="block h-full rounded-full" style={{ background: catColor(c.k) }}
                       initial={{ width: 0 }} animate={{ width: `${(c.v / max) * 100}%` }}
-                      transition={{ duration: 0.5, delay: i * 0.04, ease: EASE }}
+                      transition={{ duration: 0.35, ease: EASE }}
                     />
                   </span>
                 </button>
@@ -827,8 +794,8 @@ function DetalheTransacao({
     <AnimatePresence mode="wait">
       <motion.div
         key={t.id}
-        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-        transition={{ duration: 0.2, ease: EASE }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        transition={{ duration: 0.16, ease: EASE }}
         className="rounded-xl border bg-secondary/20 p-4"
       >
         <div className="flex items-start gap-3">

@@ -28,7 +28,7 @@ const VEREDITO: Record<Veredito, { titulo: string; cls: string; cor: string; ico
   nao: { titulo: "Não cabe agora", cls: "border-destructive/45 bg-destructive/8 text-destructive", cor: "var(--destructive)", icon: XCircle },
 }
 
-export function SimuladorCompra({ mesRef }: { mesRef: string }) {
+export function SimuladorCompra({ mesRef, embutido = false }: { mesRef: string; embutido?: boolean }) {
   const { obrigacoes, cartoes, transacoes, config, faturaPagamentos } = useFinData()
   const c = useChartColors()
   const ativos = cartoes.filter((x) => x.ativo !== false)
@@ -69,9 +69,8 @@ export function SimuladorCompra({ mesRef }: { mesRef: string }) {
   })) ?? []
 
   return (
-    <section className="relative overflow-hidden rounded-xl border bg-card p-5">
-      <div className="pointer-events-none absolute -right-24 -top-24 size-64 rounded-full bg-primary/10 blur-3xl" aria-hidden />
-      <div className="relative mb-4 flex flex-wrap items-center gap-3">
+    <section className={cn("relative", !embutido && "overflow-hidden rounded-xl border bg-card p-5")}>
+      <div className={cn("relative mb-4 flex flex-wrap items-center gap-3", embutido && "hidden")}>
         <span className="grid size-10 place-items-center rounded-lg bg-primary/15 text-primary"><ShoppingBag className="size-5" /></span>
         <div>
           <h3 className="font-display text-xl font-semibold leading-tight">Posso comprar?</h3>
@@ -79,7 +78,7 @@ export function SimuladorCompra({ mesRef }: { mesRef: string }) {
         </div>
       </div>
 
-      <div className="relative grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="relative grid gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
         {/* formulário */}
         <div className="flex flex-col gap-3.5">
           <div className="flex flex-col gap-1.5">
@@ -149,8 +148,8 @@ export function SimuladorCompra({ mesRef }: { mesRef: string }) {
             </motion.div>
           ) : (
             <motion.div
-              key="res" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.25, ease: EASE }} className="flex min-w-0 flex-col gap-4"
+              key="res" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.16, ease: EASE }} className="flex min-w-0 flex-col gap-4"
             >
               <Banner sim={sim.r} descricao={descricao} cartaoNome={cartao?.nome} />
 

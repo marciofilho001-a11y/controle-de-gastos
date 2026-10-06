@@ -18,12 +18,18 @@ import { mesRefAtual } from "@/lib/format"
 export function ObrigacaoDialog({
   editar,
   trigger,
+  open: openCtl,
+  onOpenChange,
 }: {
   editar?: Obrigacao
   trigger?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (v: boolean) => void
 }) {
   const { loadAll } = useFinData()
-  const [open, setOpen] = useState(false)
+  const [openInt, setOpenInt] = useState(false)
+  const open = openCtl ?? openInt
+  const setOpen = (v: boolean) => { setOpenInt(v); onOpenChange?.(v) }
   const [saving, setSaving] = useState(false)
   const [nome, setNome] = useState("")
   const [valor, setValor] = useState("")

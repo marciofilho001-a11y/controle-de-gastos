@@ -85,7 +85,7 @@ export function ChatAssistente({ mesRef }: { mesRef: string }) {
       {/* botão flutuante */}
       <motion.button
         onClick={() => setAberto((v) => !v)}
-        className="fixed bottom-5 right-5 z-50 grid size-14 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/30"
+        className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 grid size-14 md:right-5 md:bottom-5 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/30"
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
         aria-label="Assistente de lançamento"
@@ -110,8 +110,8 @@ export function ChatAssistente({ mesRef }: { mesRef: string }) {
             initial={{ opacity: 0, y: 20, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.96 }}
-            transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
-            className="fixed bottom-24 right-5 z-50 flex h-[min(560px,75vh)] w-[min(400px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
+            transition={{ duration: 0.16, ease: [0.2, 0, 0, 1] }}
+            className="fixed right-4 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-50 flex md:right-5 md:bottom-24 h-[min(560px,75vh)] w-[min(400px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
           >
             {/* header */}
             <div className="flex items-center gap-2.5 border-b bg-gradient-to-r from-primary/10 to-transparent px-4 py-3">

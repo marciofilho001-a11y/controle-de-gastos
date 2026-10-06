@@ -94,14 +94,14 @@ export function CategoriasLancamentos({
           </button>
         </div>
         <div className="flex flex-col gap-2">
-          {categorias.map((c, i) => {
+          {categorias.map((c) => {
             const info = catInfo(c.key); const Icon = info.icon; const cor = catColor(c.key)
             const ativo = cat === c.key
             return (
               <motion.button
                 key={c.key}
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24, delay: Math.min(i * 0.04, 0.3), ease: EASE_OUT }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                transition={{ duration: 0.16, ease: EASE_OUT }}
                 onClick={() => setCat(ativo ? null : c.key)}
                 aria-pressed={ativo}
                 className={cn(
@@ -124,7 +124,7 @@ export function CategoriasLancamentos({
                     className="h-full rounded-full"
                     style={{ background: cor }}
                     initial={{ width: 0 }} animate={{ width: `${(c.valor / maxCat) * 100}%` }}
-                    transition={{ duration: 0.6, delay: 0.1 + Math.min(i * 0.04, 0.3), ease: EASE_OUT }}
+                    transition={{ duration: 0.35, ease: EASE_OUT }}
                   />
                 </div>
               </motion.button>
@@ -172,7 +172,7 @@ export function CategoriasLancamentos({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] border-separate border-spacing-0 text-sm">
               <thead>
-                <tr className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                <tr className="text-xs font-medium text-muted-foreground">
                   <th className="pb-2 pl-2 text-left font-semibold">Data</th>
                   <th className="pb-2 text-left font-semibold">Descrição</th>
                   <th className="hidden pb-2 text-left font-semibold md:table-cell">Categoria</th>
@@ -197,7 +197,7 @@ export function CategoriasLancamentos({
           <span className="text-sm text-muted-foreground">
             {cat ? "Total da categoria" : status === "todos" ? "Total dos lançamentos" : status === "pago" ? "Total pago" : "Total pendente"}
           </span>
-          <span className="tnum ml-auto font-display text-base font-bold text-success">{fmtR(totalFiltrado)}</span>
+          <span className="tnum ml-auto font-display text-base font-semibold">{fmtR(totalFiltrado)}</span>
         </div>
       </section>
     </div>
@@ -221,12 +221,12 @@ function Chip({ ativo, onClick, icon: Icon, label, n }: {
 }
 
 const STATUS_CLS = {
-  pago: "bg-success/12 text-success",
+  pago: "bg-secondary text-muted-foreground",
   pendente: "bg-warning/15 text-warning",
   detalhar: "bg-secondary text-muted-foreground",
 } as const
 
-function Linha({ t, i, cartoes, descricaoIcones, acoes, hoje }: {
+function Linha({ t, i: _i, cartoes, descricaoIcones, acoes, hoje }: {
   t: LinhaExibicao; i: number; cartoes: Cartao[]; descricaoIcones: Record<string, string>; acoes: Acoes; hoje: string
 }) {
   const info = catInfo(t.categoria); const Icon = info.icon; const cor = catColor(t.categoria)
@@ -238,8 +238,8 @@ function Linha({ t, i, cartoes, descricaoIcones, acoes, hoje }: {
   return (
     <motion.tr
       layout
-      initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-      transition={{ duration: 0.2, delay: Math.min(i * 0.015, 0.2), ease: EASE_OUT }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.16, ease: EASE_OUT }}
       className="group transition-colors hover:bg-secondary/40"
     >
       <td className={cn(cell, "pl-2 whitespace-nowrap")}>
@@ -250,17 +250,18 @@ function Linha({ t, i, cartoes, descricaoIcones, acoes, hoje }: {
         <div className="flex items-center gap-2.5">
           <LogoAvatar src={imagem} cor={cor} Icon={Icon} size={32} />
           <div className="min-w-0">
-            <p className="truncate font-semibold">{t.descricao || info.l}</p>
+            <p className="truncate font-medium">{t.descricao || info.l}</p>
             <p className="truncate text-[0.7rem] text-muted-foreground">{cartao?.nome || (t.obrigacao_id ? "Obrigação fixa" : "Pix / Débito")}</p>
           </div>
         </div>
       </td>
       <td className={cn(cell, "hidden md:table-cell")}>
-        <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold" style={{ background: `${cor}1f`, color: cor }}>
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="size-1.5 rounded-full" style={{ background: cor }} />
           {info.l}
         </span>
       </td>
-      <td className={cn(cell, "tnum whitespace-nowrap text-right font-bold", t.tipo === "receita" ? "text-success" : "text-destructive")}>
+      <td className={cn(cell, "tnum whitespace-nowrap text-right font-semibold", t.tipo === "receita" ? "text-success" : "text-foreground")}>
         {t.tipo === "receita" ? "+" : ""}{fmtR(Number(t.valor))}
       </td>
       <td className={cn(cell, "pl-3 whitespace-nowrap")}>

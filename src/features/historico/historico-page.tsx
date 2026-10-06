@@ -9,7 +9,7 @@ import { PageHeader, SectionTitle } from "@/components/page-header"
 import { StatCard } from "@/components/stat-card"
 import { useFinData } from "@/hooks/use-fin-data"
 import { fmtR, fmtMesCurto, addMonths } from "@/lib/format"
-import { receitasDoMes, despesasDoMes, despesasExibicaoDoMes } from "@/lib/selectors"
+import { receitasDoMes, despesasComContasDoMes, despesasExibicaoDoMes } from "@/lib/selectors"
 import {
   useChartColors, fmtAxis, axisProps, gridProps, cursorProps, ChartTooltip, ChartLegend, CHART_ANIM,
 } from "@/lib/chart-theme"
@@ -23,7 +23,7 @@ const EASE = [0.23, 1, 0.32, 1] as const
 // Evolução mês a mês: receitas x despesas x sobra, categorias ao longo do tempo,
 // ranking do período e sobra acumulada. Só meses com lançamento; nada estimado.
 export function HistoricoPage({ mesRef }: { mesRef: string }) {
-  const { transacoes } = useFinData()
+  const { transacoes, obrigacoes } = useFinData()
   const c = useChartColors()
   const [range, setRange] = useState(12)
   const [catSel, setCatSel] = useState<string | null>(null)
@@ -36,9 +36,14 @@ export function HistoricoPage({ mesRef }: { mesRef: string }) {
     // por mês: receita, despesa, sobra, categorias
     const porMes = lista.map((m) => {
       const receita = receitasDoMes(transacoes, m)
-      const despesa = despesasDoMes(transacoes, m)
+      // mesma conta do Dashboard/Fechamento (contas fixas a pagar entram no mês)
+      const despesa = despesasComContasDoMes(obrigacoes, transacoes, m)
       const cats = new Map<string, number>()
-      for (const t of despesasExibicaoDoMes(transacoes, m)) cats.set(t.categoria || "outro", (cats.get(t.categoria || "outro") || 0) + Number(t.valor))
+      // "Cartão" (fatura paga de uma vez, sem itens) não é categoria de gasto: junta com "Faturas a detalhar"
+      for (const t of despesasExibicaoDoMes(transacoes, m)) {
+        const k = !t.categoria ? "outro" : t.categoria === "cartao" ? "fatura_indefinida" : t.categoria
+        cats.set(k, (cats.get(k) || 0) + Number(t.valor))
+      }
       return { m, receita, despesa, sobra: receita - despesa, cats }
     })
 
@@ -98,14 +103,14 @@ export function HistoricoPage({ mesRef }: { mesRef: string }) {
 
     return {
       porMes, lista, ranking, top, stack, panorama, acumulado, mediaRec, mediaDesp, mediaSobra, melhor, pior, tend, totalDesp, n,
-      grafico: porMes.map((pm) => ({ mes: fmtMesCurto(pm.m), Receitas: Math.round(pm.receita), Despesas: Math.round(pm.despesa), Sobra: Math.round(pm.sobra) })),
+      grafico: porMes.map((pm) => ({ mes: fmtMesCurto(pm.m), Receitas: Math.round(pm.receita), Despesas: Math.round(pm.despesa), Saldo: Math.round(pm.sobra) })),
     }
-  }, [transacoes, mesRef, range])
+  }, [transacoes, obrigacoes, mesRef, range])
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Histórico e evolução"
+        title="Histórico"
         accent={d.n > 1 ? `${fmtMesCurto(d.lista[0])} a ${fmtMesCurto(d.lista[d.lista.length - 1])}` : fmtMesCurto(mesRef)}
         description={`${d.n} ${d.n === 1 ? "mês" : "meses"} com lançamentos. Tudo calculado dos seus dados reais, sem estimativa.`}
         actions={
@@ -128,14 +133,14 @@ export function HistoricoPage({ mesRef }: { mesRef: string }) {
             </span>
           ) : undefined}
         />
-        <StatCard label="Sobra média / mês" value={d.mediaSobra} icon={Sigma} tone={d.mediaSobra >= 0 ? "teal" : "warning"} index={2} valueClassName={d.mediaSobra >= 0 ? "text-success" : "text-destructive"} spark={d.porMes.map((x) => x.sobra)} />
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.15, ease: EASE }} className="flex flex-col justify-between gap-2 rounded-xl border bg-card p-5 shadow-sm">
+        <StatCard label="Saldo médio / mês" value={d.mediaSobra} icon={Sigma} tone={d.mediaSobra >= 0 ? "teal" : "warning"} index={2} valueClassName={d.mediaSobra < 0 ? "text-destructive" : undefined} spark={d.porMes.map((x) => x.sobra)} />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16, ease: EASE }} className="flex flex-col justify-between gap-2 rounded-xl border bg-card p-5">
           <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground"><Trophy className="size-3.5 text-success" /> Melhor mês</span>
+            <span className="flex items-center gap-1.5 text-[0.8rem] text-muted-foreground"><Trophy className="size-3.5 text-success" /> Melhor mês</span>
             <span className="text-sm font-semibold">{fmtMesCurto(d.melhor.m)} <span className="tnum text-success">{fmtR(d.melhor.sobra)}</span></span>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground"><ThumbsDown className="size-3.5 text-destructive" /> Pior mês</span>
+            <span className="flex items-center gap-1.5 text-[0.8rem] text-muted-foreground"><ThumbsDown className="size-3.5 text-destructive" /> Pior mês</span>
             <span className="text-sm font-semibold">{fmtMesCurto(d.pior.m)} <span className="tnum text-destructive">{fmtR(d.pior.sobra)}</span></span>
           </div>
           <p className="text-xs text-muted-foreground">Total gasto no período: <span className="tnum font-semibold text-foreground">{fmtR(d.totalDesp)}</span></p>
@@ -144,10 +149,10 @@ export function HistoricoPage({ mesRef }: { mesRef: string }) {
 
       {/* receitas x despesas + sobra */}
       <section>
-        <SectionTitle icon={BarChart3} right={<ChartLegend items={[{ color: c.receita, label: "Receitas" }, { color: c.despesa, label: "Despesas" }, { color: c.primary, label: "Sobra" }]} />}>
-          Receitas x Despesas x Sobra
+        <SectionTitle icon={BarChart3} right={<ChartLegend items={[{ color: c.receita, label: "Receitas" }, { color: c.despesa, label: "Despesas" }, { color: c.primary, label: "Saldo" }]} />}>
+          Receitas, despesas e saldo
         </SectionTitle>
-        <div className="rounded-xl border bg-card p-5">
+        <div className="rounded-2xl border bg-card p-5">
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={d.grafico} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barGap={4} barCategoryGap="30%">
@@ -155,9 +160,9 @@ export function HistoricoPage({ mesRef }: { mesRef: string }) {
                 <XAxis dataKey="mes" {...axisProps(c)} />
                 <YAxis tickFormatter={fmtAxis} {...axisProps(c)} width={72} />
                 <Tooltip content={<ChartTooltip />} cursor={cursorProps(c)} />
-                <Bar dataKey="Receitas" fill={c.receita} radius={[6, 6, 2, 2]} maxBarSize={30} animationDuration={CHART_ANIM} />
-                <Bar dataKey="Despesas" fill={c.despesa} radius={[6, 6, 2, 2]} maxBarSize={30} animationDuration={CHART_ANIM} />
-                <Line type="monotone" dataKey="Sobra" stroke={c.primary} strokeWidth={2.5} dot={{ r: 3.5, fill: c.card, strokeWidth: 2 }} activeDot={{ r: 5 }} animationDuration={CHART_ANIM} />
+                <Bar dataKey="Receitas" fill={c.receita} fillOpacity={0.85} radius={[6, 6, 2, 2]} maxBarSize={26} animationDuration={CHART_ANIM} />
+                <Bar dataKey="Despesas" fill={c.despesa} fillOpacity={0.85} radius={[6, 6, 2, 2]} maxBarSize={26} animationDuration={CHART_ANIM} />
+                <Line type="monotone" dataKey="Saldo" stroke={c.primary} strokeWidth={2.5} dot={{ r: 3.5, fill: c.card, strokeWidth: 2 }} activeDot={{ r: 5 }} animationDuration={CHART_ANIM} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -175,7 +180,7 @@ export function HistoricoPage({ mesRef }: { mesRef: string }) {
 
       {/* sobra acumulada */}
       <section>
-        <SectionTitle icon={Sigma}>Sobra acumulada no período</SectionTitle>
+        <SectionTitle icon={Sigma}>Saldo acumulado no período</SectionTitle>
         <div className="rounded-xl border bg-card p-5">
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
@@ -195,7 +200,7 @@ export function HistoricoPage({ mesRef }: { mesRef: string }) {
             </ResponsiveContainer>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            Soma das sobras mês a mês desde {fmtMesCurto(d.lista[0])}. Se a curva cai, o mês fechou no vermelho.
+            Soma dos saldos mês a mês desde {fmtMesCurto(d.lista[0])}. Se a curva cai, o mês fechou no vermelho.
             {d.n > 1 && ` Projetando a média atual, em ${fmtMesCurto(addMonths(mesRef, 12))} você teria ${fmtR((d.acumulado.at(-1)?.Acumulado || 0) + d.mediaSobra * 12)} acumulados.`}
           </p>
         </div>

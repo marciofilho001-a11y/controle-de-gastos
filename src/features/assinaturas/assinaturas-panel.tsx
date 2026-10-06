@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react"
 import { logoDoLancamento } from "@/lib/marcas"
-import { motion } from "motion/react"
 import { toast } from "sonner"
-import { Repeat, TrendingUp, AlertTriangle, CheckCircle2, Clock, Plus, X, Sparkles, Ghost, Smartphone } from "lucide-react"
+import { Repeat, TrendingUp, AlertTriangle, Plus, X, Smartphone } from "lucide-react"
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
@@ -13,13 +12,12 @@ import { fmtR, fmtMesCurto } from "@/lib/format"
 import { detectarAssinaturas, lerLista, type Assinatura, type StatusAssinatura } from "@/lib/assinaturas"
 import { cn } from "@/lib/utils"
 
-const EASE = [0.23, 1, 0.32, 1] as const
 
-const STATUS: Record<StatusAssinatura, { label: string; cls: string; icon: React.ComponentType<{ className?: string }> }> = {
-  ativa: { label: "Ativa", cls: "bg-success/12 text-success", icon: CheckCircle2 },
-  nova: { label: "1ª cobrança", cls: "bg-primary/12 text-primary", icon: Sparkles },
-  pendente: { label: "Ainda não cobrou", cls: "bg-warning/15 text-warning", icon: Clock },
-  sumiu: { label: "Sumiu", cls: "bg-secondary text-muted-foreground", icon: Ghost },
+const STATUS: Record<StatusAssinatura, { label: string; dot: string }> = {
+  ativa: { label: "Ativa", dot: "bg-success" },
+  nova: { label: "1ª cobrança", dot: "bg-primary" },
+  pendente: { label: "Ainda não cobrou", dot: "bg-warning" },
+  sumiu: { label: "Sumiu", dot: "bg-muted-foreground" },
 }
 
 export function AssinaturasPanel({ mesRef }: { mesRef: string }) {
@@ -57,10 +55,10 @@ export function AssinaturasPanel({ mesRef }: { mesRef: string }) {
   }
 
   return (
-    <section className="rounded-xl border bg-card p-5">
+    <section className="rounded-2xl border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="flex items-center gap-2.5">
-          <span className="grid size-9 place-items-center rounded-lg bg-primary/15 text-primary"><Repeat className="size-4.5" /></span>
+          <span className="grid size-9 place-items-center rounded-xl bg-secondary text-primary"><Repeat className="size-4" /></span>
           <div>
             <h3 className="font-display text-lg font-semibold leading-tight">Assinaturas</h3>
             <p className="text-xs text-muted-foreground">Cobranças que se repetem e não são parcelamento</p>
@@ -94,51 +92,39 @@ export function AssinaturasPanel({ mesRef }: { mesRef: string }) {
           Nenhuma assinatura detectada ainda. Marque abaixo as que você tem.
         </p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {d.assinaturas.map((a, i) => {
+        <div className="-mx-2 flex flex-col">
+          {d.assinaturas.map((a) => {
             const st = STATUS[a.status]
             const cartao = a.cartaoId ? cartoes.find((c) => c.id === a.cartaoId) : null
             const logo = logoDoLancamento(a.ultimaTx.descricao, descricaoIcones) || cartao?.logo || null
             return (
-              <motion.div
+              <div
                 key={a.chave}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: Math.min(i * 0.04, 0.3), ease: EASE }}
-                className={cn("group relative flex flex-col gap-3 rounded-xl border bg-background/40 p-3.5", a.status === "sumiu" && "opacity-60")}
+                className={cn("group flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-secondary/40", a.status === "sumiu" && "opacity-60")}
               >
-                <div className="flex items-start gap-3">
-                  <LogoAvatar src={logo} cor={catColor(a.categoria)} Icon={Smartphone} size={40} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-display text-[15px] font-semibold leading-tight">{a.nome}</p>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {cartao ? cartao.nome : "Débito / Pix"} · {a.meses.length} cobrança{a.meses.length > 1 ? "s" : ""}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => ignorar(a)} disabled={busy}
-                    className="-mr-1 -mt-1 grid size-7 place-items-center rounded-md text-muted-foreground opacity-60 transition hover:bg-secondary hover:text-foreground group-hover:opacity-100"
-                    title="Não é assinatura" aria-label={`${a.nome} não é assinatura`}
-                  >
-                    <X className="size-4" />
-                  </button>
-                </div>
-                <div className="flex items-end justify-between gap-2">
-                  <div>
-                    <p className="tnum text-lg font-bold leading-none">{fmtR(a.valor)}<span className="text-xs font-normal text-muted-foreground">/mês</span></p>
-                    <p className="tnum mt-1 text-[11px] text-muted-foreground">{fmtR(a.valor * 12)} por ano</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className={cn("flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
-                      <st.icon className="size-3" /> {st.label}
+                <LogoAvatar src={logo} cor={catColor(a.categoria)} Icon={Smartphone} size={36} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium leading-tight">{a.nome}</p>
+                  <p className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground">
+                    <span className={cn("size-1.5 shrink-0 rounded-full", st.dot)} />
+                    <span className="truncate">
+                      {st.label} · {cartao ? cartao.nome : "Débito / Pix"}
+                      {a.status !== "sumiu" && <> · próxima {cartao ? `fatura ${fmtMesCurto(a.proximoMes)}` : fmtMesCurto(a.proximoMes)}</>}
                     </span>
-                    {a.status !== "sumiu" && (
-                      <span className="text-[11px] text-muted-foreground">
-                        próxima: {cartao ? `fatura ${fmtMesCurto(a.proximoMes)}` : fmtMesCurto(a.proximoMes)}
-                      </span>
-                    )}
-                  </div>
+                  </p>
                 </div>
-              </motion.div>
+                <div className="shrink-0 text-right">
+                  <p className="tnum font-semibold leading-tight">{fmtR(a.valor)}<span className="text-xs font-normal text-muted-foreground">/mês</span></p>
+                  <p className="tnum mt-0.5 text-xs text-muted-foreground">{fmtR(a.valor * 12)}/ano</p>
+                </div>
+                <button
+                  onClick={() => ignorar(a)} disabled={busy}
+                  className="grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                  title="Não é assinatura" aria-label={`${a.nome} não é assinatura`}
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
             )
           })}
         </div>
@@ -166,9 +152,9 @@ export function AssinaturasPanel({ mesRef }: { mesRef: string }) {
 
 function Resumo({ label, valor, destaque }: { label: string; valor: string; destaque?: boolean }) {
   return (
-    <div className={cn("rounded-lg border px-3 py-1.5", destaque && "border-primary/40 bg-primary/8")}>
-      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={cn("tnum text-sm font-bold", destaque && "text-primary")}>{valor}</p>
+    <div className="rounded-xl bg-secondary/60 px-3 py-1.5">
+      <p className="text-[0.72rem] text-muted-foreground">{label}</p>
+      <p className={cn("tnum text-sm font-semibold", destaque && "text-foreground")}>{valor}</p>
     </div>
   )
 }

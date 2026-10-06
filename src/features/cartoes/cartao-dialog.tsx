@@ -11,9 +11,11 @@ import { supabase, type Cartao } from "@/lib/supabase"
 import { useFinData } from "@/hooks/use-fin-data"
 import { fechamentoDoCartao } from "@/lib/data-compra"
 
-export function CartaoDialog({ editar, trigger }: { editar?: Cartao; trigger?: React.ReactNode }) {
+export function CartaoDialog({ editar, trigger, open: openCtl, onOpenChange }: { editar?: Cartao; trigger?: React.ReactNode; open?: boolean; onOpenChange?: (v: boolean) => void }) {
   const { loadAll } = useFinData()
-  const [open, setOpen] = useState(false)
+  const [openInt, setOpenInt] = useState(false)
+  const open = openCtl ?? openInt
+  const setOpen = (v: boolean) => { setOpenInt(v); onOpenChange?.(v) }
   const [saving, setSaving] = useState(false)
   const [nome, setNome] = useState("")
   const [dia, setDia] = useState("")

@@ -19,9 +19,9 @@ export function PageHeader({
   return (
     <div className={cn("flex flex-wrap items-start justify-between gap-x-4 gap-y-2", className)}>
       <div className="min-w-0">
-        <h2 className="font-display text-2xl font-semibold tracking-[-0.01em]">
+        <h2 className="font-display text-[1.65rem] leading-tight font-semibold tracking-[-0.025em]">
           {title}
-          {accent && <span className="text-primary"> — {accent}</span>}
+          {accent && <span className="text-muted-foreground font-normal"> · {accent}</span>}
         </h2>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
@@ -30,7 +30,7 @@ export function PageHeader({
   )
 }
 
-// Título de seção dentro de uma página (caixa alta, discreto, com ícone)
+// Título de seção dentro de uma página (discreto, com ícone)
 export function SectionTitle({
   icon: Icon,
   children,
@@ -44,8 +44,8 @@ export function SectionTitle({
 }) {
   return (
     <div className={cn("mb-3 flex flex-wrap items-center justify-between gap-2", className)}>
-      <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-        {Icon && <Icon className="size-3.5" />}
+      <h3 className="flex items-center gap-2 text-sm font-semibold tracking-[-0.01em] text-foreground/85">
+        {Icon && <Icon className="size-4 text-muted-foreground" />}
         {children}
       </h3>
       {right}

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter+Tight:wght@400;450;500;600;700&display=swap');
 @import "tailwindcss";
 
 
@@ -122,7 +122,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-sans: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -134,11 +134,11 @@
     -webkit-font-smoothing: antialiased;
   }
   ::selection { background: color-mix(in oklch, var(--primary) 30%, transparent); }
+  /* números: mesma fonte do texto, só com algarismos de largura fixa (alinha colunas sem cara de terminal) */
   .tnum {
-    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum";
-    letter-spacing: -0.02em;
+    font-feature-settings: "tnum", "cv11";
+    letter-spacing: -0.01em;
   }
   h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -160,6 +160,33 @@
   }
 }
 
+/* ---- Barra superior fixa (material translúcido) ---- */
+.app-bar {
+  background: color-mix(in oklch, var(--background) 72%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+/* borda só aparece quando há conteúdo passando por baixo */
+.app-bar[data-scrolled="true"] { box-shadow: 0 1px 0 var(--border), 0 12px 24px -18px oklch(0 0 0 / 0.35); }
+.tab-bar {
+  background: color-mix(in oklch, var(--card) 78%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: 0 -1px 0 var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-bar, .tab-bar { background: var(--background); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-contrast: more) {
+  .app-bar, .tab-bar { background: var(--background); box-shadow: 0 1px 0 var(--foreground); }
+}
+/* toque: resposta no pressionar, não no soltar */
+button:not(:disabled):active, [role="button"]:active { transition-duration: 80ms; }
+.press:active { transform: scale(0.97); transition: transform 80ms ease-out; }
+/* troca de tema sem salto brusco de brilho */
+html.theme-fade, html.theme-fade * { transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease !important; }
+
 /* Grades sem coluna explícita (celular) encolhem ao invés de estourar a tela:
    a coluna implícita vira minmax(0,1fr) em vez de max-content. */
 @layer base {
@@ -167,28 +194,11 @@
 }
 
 
-/* ---- Painéis "LED" do Histórico: navy profundo + borda neon (teal / violeta) ---- */
-.font-ui { font-family: "Inter", var(--font-sans); letter-spacing: 0; }
-.led-panel {
-  --lp-c: 20 184 166;
-  position: relative;
-  border-radius: 1.4rem;
-  border: 1.5px solid rgb(var(--lp-c) / 0.42);
-  background: linear-gradient(160deg, rgb(var(--lp-c) / 0.06), transparent 55%), var(--card);
-  box-shadow: 0 0 34px -10px rgb(var(--lp-c) / 0.5), inset 0 0 40px -22px rgb(var(--lp-c) / 0.5);
-}
-.led-panel[data-tone="violet"] { --lp-c: 139 92 246; }
-.dark .led-panel { background: linear-gradient(160deg, rgb(20 31 44), rgb(13 21 31) 70%); }
-.dark .led-panel[data-tone="violet"] { background: linear-gradient(160deg, rgb(24 24 54), rgb(15 17 36) 70%); }
-.led-card {
-  border-radius: 1.4rem;
-  background: color-mix(in srgb, var(--lc) 4%, var(--card));
-  border: 1px solid color-mix(in srgb, var(--lc) 40%, transparent);
-  box-shadow: 0 0 22px -12px var(--lc);
-}
-.dark .led-card { background: color-mix(in srgb, var(--lc) 5%, rgb(13 21 30)); }
-.led-row { border-radius: 1rem; border: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent); background: color-mix(in srgb, var(--foreground) 3%, transparent); }
-.dark .led-row { background: rgb(17 23 37 / 0.85); }
+/* ---- Painéis do Histórico: mesmo material dos outros cartões (sem neon) ---- */
+.font-ui { font-family: var(--font-sans); letter-spacing: -0.01em; }
+.led-panel { position: relative; border-radius: 1.25rem; border: 1px solid var(--border); background: var(--card); }
+.led-card { border-radius: 1rem; border: 1px solid var(--border); background: color-mix(in oklch, var(--secondary) 40%, var(--card)); }
+.led-row { border-radius: 0.85rem; }
 
 /* Botão "Marcar fatura como paga": verde-petróleo com ícone em tile e brilho suave */
 .btn-pagar {

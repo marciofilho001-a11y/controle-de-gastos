@@ -127,7 +127,7 @@ export function EnsinarGestorDialog({ trigger }: { trigger?: React.ReactNode }) 
 
           {/* palavras ensinadas */}
           <div className="rounded-xl border bg-card p-3">
-            <p className="mb-2 text-[0.7rem] font-bold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">
               Suas palavras ({totalExtras})
             </p>
             {totalExtras === 0 ? (
@@ -154,7 +154,7 @@ export function EnsinarGestorDialog({ trigger }: { trigger?: React.ReactNode }) 
           {/* sugestões: descrições frequentes sem tema */}
           {semTema.length > 0 && (
             <div>
-              <p className="mb-1.5 text-[0.7rem] font-bold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 text-xs font-semibold text-muted-foreground">
                 Sem tema ainda — clique pra ensinar como "{temaAtual.label}"
               </p>
               <div className="flex flex-wrap gap-1.5">

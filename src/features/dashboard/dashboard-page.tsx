@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react"
 import { motion } from "motion/react"
-import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
 import { type DonutSlice } from "./category-donut"
-import { LancamentosFiltravel } from "./lancamentos-filtravel"
 import { HeroResumo } from "./hero-resumo"
 import { FluxoMeses } from "./fluxo-meses"
 import { DespesasCategoria } from "./despesas-categoria"
@@ -12,11 +9,6 @@ import { ChecklistResumo } from "./checklist-resumo"
 import { UltimosLancamentos } from "./ultimos-lancamentos"
 import { EASE } from "./painel"
 import { TransacaoDialog } from "@/features/transacoes/nova-transacao-dialog"
-import { duplicarTransacao, excluirTransacao } from "@/lib/transacoes-actions"
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import type { Transacao } from "@/lib/supabase"
 import type { TabId } from "@/components/layout/nav"
 import { useFinData } from "@/hooks/use-fin-data"
@@ -34,22 +26,8 @@ function saudacao(): string {
 }
 
 export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNavigate: (t: TabId) => void }) {
-  const { obrigacoes, cartoes, transacoes, descricaoIcones, config, loadAll, faturaPagamentos } = useFinData()
+  const { obrigacoes, cartoes, transacoes, config, faturaPagamentos } = useFinData()
   const [editTx, setEditTx] = useState<Transacao | null>(null)
-  const [delTx, setDelTx] = useState<Transacao | null>(null)
-  const [busyTx, setBusyTx] = useState(false)
-
-  async function duplicar(t: Transacao) {
-    try { await duplicarTransacao(t, mesRef); toast.success("Lançamento duplicado neste mês"); await loadAll() }
-    catch (e) { toast.error("Erro ao duplicar", { description: e instanceof Error ? e.message : "" }) }
-  }
-  async function confirmarExcluir() {
-    if (!delTx) return
-    setBusyTx(true)
-    try { await excluirTransacao(delTx.id); toast.success("Lançamento removido"); setDelTx(null); await loadAll() }
-    catch (e) { toast.error("Erro ao remover", { description: e instanceof Error ? e.message : "" }) }
-    finally { setBusyTx(false) }
-  }
 
   const d = useMemo(() => {
     const receitas = receitasDoMes(transacoes, mesRef)
@@ -89,12 +67,11 @@ export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNaviga
     }
   }, [obrigacoes, cartoes, transacoes, faturaPagamentos, config, mesRef])
 
-  const irParaLancamentos = () => document.getElementById("lancamentos")?.scrollIntoView({ behavior: "smooth", block: "start" })
 
   return (
     <div className="flex flex-col gap-5">
-      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }}>
-        <h2 className="font-ui text-2xl font-semibold tracking-tight">{saudacao()}</h2>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16, ease: EASE }}>
+        <h2 className="font-display text-[1.65rem] leading-tight font-semibold tracking-[-0.025em]">{saudacao()}</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">Aqui está o resumo do seu mês financeiro · {fmtMesLongo(mesRef)}</p>
       </motion.div>
 
@@ -116,33 +93,10 @@ export function DashboardPage({ mesRef, onNavigate }: { mesRef: string; onNaviga
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <ChecklistResumo checks={d.checks} onVerTodos={() => onNavigate("fechamento")} index={5} />
-        <UltimosLancamentos lancamentos={d.lancamentos.filter((t) => !(t as LinhaExibicao)._pendente)} onEditar={setEditTx} onVerTodos={irParaLancamentos} index={6} />
-      </div>
-
-      {/* Lançamentos filtráveis (carrossel / grade) — a lista completa */}
-      <div id="lancamentos" className="scroll-mt-4">
-      <LancamentosFiltravel
-        lancamentos={d.lancamentos} cartoes={cartoes} descricaoIcones={descricaoIcones}
-        onEdit={(t) => setEditTx(t)} onDuplicar={duplicar} onDelete={(t) => setDelTx(t)}
-      />
+        <UltimosLancamentos lancamentos={d.lancamentos.filter((t) => !(t as LinhaExibicao)._pendente)} onEditar={setEditTx} onVerTodos={() => onNavigate("transacoes")} index={6} max={6} />
       </div>
 
       <TransacaoDialog editar={editTx} open={!!editTx} onOpenChange={(o) => !o && setEditTx(null)} />
-      <AlertDialog open={delTx != null} onOpenChange={(o) => !o && setDelTx(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover este lançamento?</AlertDialogTitle>
-            <AlertDialogDescription>{delTx?.descricao} — esta ação não pode ser desfeita.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={(e) => { e.preventDefault(); confirmarExcluir() }} disabled={busyTx}>
-              {busyTx && <Loader2 data-icon="inline-start" className="animate-spin" />}
-              Remover
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

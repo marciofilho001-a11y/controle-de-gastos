@@ -17,9 +17,9 @@ import { cn } from "@/lib/utils"
 const EASE = [0.23, 1, 0.32, 1] as const
 
 const SEV: Record<Severidade, { label: string; icon: typeof Flame; cls: string; dot: string }> = {
-  vilao:   { label: "Vilão",    icon: Flame,        cls: "border-destructive/30 bg-destructive/[0.07]", dot: "bg-destructive/15 text-destructive" },
-  atencao: { label: "Atenção",  icon: AlertTriangle, cls: "border-warning/30 bg-warning/[0.07]",        dot: "bg-warning/15 text-warning" },
-  ok:      { label: "Bom sinal",icon: CheckCircle2,  cls: "border-success/30 bg-success/[0.07]",        dot: "bg-success/15 text-success" },
+  vilao:   { label: "Vilão",    icon: Flame,        cls: "border-border bg-card", dot: "bg-destructive/15 text-destructive" },
+  atencao: { label: "Atenção",  icon: AlertTriangle, cls: "border-border bg-card",        dot: "bg-warning/15 text-warning" },
+  ok:      { label: "Bom sinal",icon: CheckCircle2,  cls: "border-border bg-card",        dot: "bg-success/15 text-success" },
   info:    { label: "Panorama", icon: Info,          cls: "border-border bg-card",                      dot: "bg-muted text-muted-foreground" },
 }
 
@@ -32,7 +32,7 @@ export function usePanorama(mesRef: string): Insight[] {
   )
 }
 
-export function InsightCard({ insight, index = 0, compacto = false }: { insight: Insight; index?: number; compacto?: boolean }) {
+export function InsightCard({ insight, index: _index = 0, compacto = false }: { insight: Insight; index?: number; compacto?: boolean }) {
   const [aberto, setAberto] = useState(false)
   const s = SEV[insight.severidade]
   const Icon = s.icon
@@ -40,9 +40,9 @@ export function InsightCard({ insight, index = 0, compacto = false }: { insight:
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, delay: index * 0.04, ease: EASE }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.16, ease: EASE }}
       className={cn("rounded-xl border", s.cls, compacto ? "px-3 py-2.5" : "p-4")}
     >
       <div className="flex items-start gap-3">
@@ -71,7 +71,7 @@ export function InsightCard({ insight, index = 0, compacto = false }: { insight:
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.22, ease: EASE }}
+                transition={{ duration: 0.16, ease: EASE }}
                 className="overflow-hidden"
               >
                 <div className="mt-2 flex flex-col gap-1">
@@ -160,7 +160,7 @@ export function PanoramaResumo({ mesRef }: { mesRef: string }) {
   return (
     <div className="rounded-xl border bg-card p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm font-semibold tracking-[-0.01em] text-foreground/85">
           <Sparkles className="size-3.5" /> Panorama do mês
         </div>
         <PanoramaDialog

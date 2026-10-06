@@ -4,8 +4,7 @@ import {
   ComposedChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, LabelList,
   useYAxisScale, usePlotArea,
 } from "recharts"
-import {
-  CalendarClock, BarChart3, Wallet, Trophy, TrendingDown, ArrowUp, ArrowDown, Check, ChartColumnStacked, ChartSpline,
+import { BarChart3, Wallet, Trophy, TrendingDown, ArrowUp, ArrowDown, Check, ChartColumnStacked, ChartSpline,
 } from "lucide-react"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { catInfo, catColor } from "@/lib/categorias"
@@ -146,7 +145,7 @@ function TooltipCat({ active, payload, label, chaves, catSel }: any) {
   return (
     <div
       className="font-ui w-[312px] overflow-hidden rounded-2xl border bg-popover/95 shadow-2xl backdrop-blur-md"
-      style={{ borderColor: "rgb(20 184 166 / .45)", boxShadow: "0 18px 40px -16px rgb(0 0 0 / .8), 0 0 26px -8px rgb(20 184 166 / .5)" }}
+      style={{ boxShadow: "0 18px 40px -16px rgb(0 0 0 / .5)" }}
     >
       <div className="flex items-baseline justify-between gap-3 border-b px-4 py-3" style={{ borderColor: "rgb(148 163 184 / .16)" }}>
         <p className="text-[14.5px] font-semibold">{label}</p>
@@ -162,7 +161,7 @@ function TooltipCat({ active, payload, label, chaves, catSel }: any) {
               className="flex items-center gap-2.5 rounded-xl px-2.5 py-[7px]"
               style={destaque ? { background: `color-mix(in srgb, ${cor} 14%, transparent)` } : undefined}
             >
-              <span className="size-2.5 shrink-0 rounded-full" style={{ background: cor, boxShadow: `0 0 7px ${cor}` }} />
+              <span className="size-2.5 shrink-0 rounded-full" style={{ background: cor }} />
               <span className="min-w-0 flex-1 truncate text-[13px] text-foreground/85">{nomeDe(i.k)}</span>
               <span className="tnum shrink-0 text-[13px] font-semibold">{fmtR(i.v)}</span>
               <span className="tnum w-[38px] shrink-0 text-right text-[11.5px] text-muted-foreground">
@@ -201,21 +200,20 @@ export function CategoriasTempo({
   const esmaece = (k: string) => (catSel && catSel !== k ? 0.16 : 1)
 
   const tickFill = "color-mix(in srgb, var(--foreground) 82%, transparent)"
-  const eixo = { tick: { fill: tickFill, fontSize: 12.5, style: { fontFamily: "Inter, sans-serif" } }, tickLine: false as const }
-  const linhaEixo = "rgb(20 184 166 / .35)"
+  const eixo = { tick: { fill: tickFill, fontSize: 12.5, style: { fontFamily: "Inter Tight, sans-serif" } }, tickLine: false as const }
+  const linhaEixo = "var(--border)"
 
   return (
-    <LedPanel tone="teal" className="flex flex-col gap-5 p-6">
+    <LedPanel tone="teal" className="flex flex-col gap-4 p-5">
       {/* cabeçalho */}
       <div className="flex flex-wrap items-center gap-4">
-        <LedIcon icon={CalendarClock} cor="#6b70ff" size={56} />
         <div className="min-w-0 flex-1 basis-[260px]">
-          <h3 className="font-ui text-[18px] font-semibold uppercase leading-tight tracking-[0.03em]">Categorias ao longo do tempo</h3>
-          <p className="mt-1 text-[13.5px] text-muted-foreground">Evolução dos seus gastos por categoria nos últimos {nMeses > 1 ? `${nMeses} meses` : "meses"}.</p>
+          <h3 className="font-display text-base font-semibold leading-tight tracking-[-0.015em]">Categorias ao longo do tempo</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">Evolução dos seus gastos por categoria nos últimos {nMeses > 1 ? `${nMeses} meses` : "meses"}.</p>
         </div>
         <div className="flex items-center gap-2.5">
           <Select value={String(range)} onValueChange={(v) => onRange(Number(v))}>
-            <SelectTrigger className="font-ui h-11 w-[190px] rounded-full bg-transparent px-4 text-[14.5px] [&_svg]:!text-[#2dd4bf] [&_svg]:!opacity-100" style={{ borderColor: "rgb(20 184 166 / .5)" }}>
+            <SelectTrigger className="h-9 w-[170px] text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -226,11 +224,11 @@ export function CategoriasTempo({
       </div>
 
       {/* legenda clicável */}
-      <div className="flex items-center gap-3 rounded-2xl border bg-black/10 py-2 pl-2 pr-2.5 dark:bg-black/25" style={{ borderColor: "rgb(20 184 166 / .22)" }}>
+      <div className="flex items-center gap-3 rounded-xl bg-secondary/50 py-1.5 pl-1.5 pr-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-0.5 gap-y-0.5">
         {linhas && (
           <span className="flex items-center gap-2 px-2.5 py-1 text-[13.5px] text-foreground/85">
-            <span className="size-3 rounded-full" style={{ background: COR_TOTAL_LINHA, boxShadow: `0 0 9px ${COR_TOTAL_LINHA}` }} /> Total
+            <span className="size-2.5 rounded-full" style={{ background: COR_TOTAL_LINHA }} /> Total
           </span>
         )}
         {chaves.map((k) => {
@@ -243,9 +241,9 @@ export function CategoriasTempo({
               aria-pressed={ativo}
               className={cn("flex items-center gap-2 rounded-full px-2.5 py-1 text-[13.5px] text-foreground/85 transition-all hover:text-foreground disabled:cursor-default",
                 catSel && !ativo && "opacity-45")}
-              style={ativo ? { background: `color-mix(in srgb, ${cor} 20%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${cor} 55%, transparent), 0 0 14px -3px ${cor}` } : undefined}
+              style={ativo ? { background: `color-mix(in srgb, ${cor} 16%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${cor} 45%, transparent)` } : undefined}
             >
-              <span className="size-3 rounded-full" style={{ background: cor, boxShadow: `0 0 9px color-mix(in srgb, ${cor} 80%, transparent)` }} />
+              <span className="size-2.5 rounded-full" style={{ background: cor }} />
               {nomeDe(k)}
             </button>
           )
@@ -257,7 +255,7 @@ export function CategoriasTempo({
                 key={v} onClick={() => setModelo(v)} aria-pressed={modelo === v}
                 className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-medium transition-all",
                   modelo === v ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
-                style={modelo === v ? { background: "rgb(20 184 166 / .2)", boxShadow: "inset 0 0 0 1px rgb(20 184 166 / .6), 0 0 14px -3px rgb(20 184 166 / .6)" } : undefined}
+                style={modelo === v ? { background: "var(--card)", boxShadow: "inset 0 0 0 1px var(--border)" } : undefined}
               >
                 <I className="size-4" /> {l}
               </button>
@@ -383,21 +381,21 @@ export function CategoriasTempo({
       <div className="grid grid-cols-2 gap-3.5 2xl:grid-cols-4">
         <CardPanorama
           icon={BarChart3} cor="#6b70ff" titulo="Total no período" valor={fmtR(panorama.total)}
-          rodape={<Delta pct={panorama.deltaTotal} />} delay={0}
+          rodape={<Delta pct={panorama.deltaTotal} />}
         />
         <CardPanorama
           icon={Wallet} cor="#22c55e" titulo="Média mensal" valor={fmtR(panorama.media)}
-          rodape={<Delta pct={panorama.deltaMedia} />} delay={0.05}
+          rodape={<Delta pct={panorama.deltaMedia} />}
         />
         <CardPanorama
           icon={Trophy} cor="#6b70ff" titulo="Maior gasto"
           destaque={panorama.maior ? catInfo(panorama.maior.k).l : "—"} valor={panorama.maior ? fmtR(panorama.maior.v) : "—"}
-          rodape={panorama.maior ? <span className="text-[14px] text-muted-foreground">{fmtPct(panorama.maior.pct)} do total</span> : null} delay={0.1}
+          rodape={panorama.maior ? <span className="text-xs text-muted-foreground">{fmtPct(panorama.maior.pct)} do total</span> : null}
         />
         <CardPanorama
           icon={TrendingDown} cor="#22d3ee" titulo="Menor gasto"
           destaque={panorama.menor ? catInfo(panorama.menor.k).l : "—"} valor={panorama.menor ? fmtR(panorama.menor.v) : "—"}
-          rodape={panorama.menor ? <span className="text-[14px] text-muted-foreground">{fmtPct(panorama.menor.pct)} do total</span> : null} delay={0.15}
+          rodape={panorama.menor ? <span className="text-xs text-muted-foreground">{fmtPct(panorama.menor.pct)} do total</span> : null}
         />
       </div>
     </LedPanel>
@@ -410,7 +408,7 @@ function Delta({ pct }: { pct: number | null }) {
   // gasto que sobe é ruim (vermelho); gasto que cai é bom (verde)
   const cls = subiu ? "text-destructive" : caiu ? "text-success" : "text-muted-foreground"
   return (
-    <span className="flex items-center gap-1.5 text-[14px]">
+    <span className="flex items-center gap-1.5 text-xs">
       <span className={cn("flex items-center gap-0.5 font-semibold", cls)}>
         {subiu ? <ArrowUp className="size-4" /> : caiu ? <ArrowDown className="size-4" /> : <Check className="size-4" />}
         {Math.abs(pct).toFixed(0)}%
@@ -421,18 +419,17 @@ function Delta({ pct }: { pct: number | null }) {
 }
 
 function CardPanorama({
-  icon, cor, titulo, destaque, valor, rodape, delay,
+  icon, cor, titulo, destaque, valor, rodape,
 }: {
-  icon: React.ComponentType<{ className?: string }>; cor: string; titulo: string; destaque?: string; valor: string; rodape?: React.ReactNode; delay: number
-}) {
+  icon: React.ComponentType<{ className?: string }>; cor: string; titulo: string; destaque?: string; valor: string; rodape?: React.ReactNode; }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay, ease: EASE }}>
-      <LedCard cor={cor} className="flex h-full min-h-[190px] flex-col gap-3 p-5">
-        <LedIcon icon={icon} cor={cor} size={50} />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16, ease: EASE }}>
+      <LedCard cor={cor} className="flex h-full min-h-[150px] flex-col gap-2.5 p-4">
+        <LedIcon icon={icon} cor={cor} size={34} />
         <div className="leading-tight">
-          <p className="text-[14.5px] text-muted-foreground">{titulo}</p>
-          {destaque && <p className="mt-1.5 truncate text-[21px] font-semibold tracking-[-0.01em]">{destaque}</p>}
-          <p className={cn("whitespace-nowrap font-bold tracking-[-0.015em]", destaque ? "mt-1 text-[22px]" : "mt-1.5 text-[25px]", valor.length > 12 ? "!text-[19px]" : valor.length > 10 && "!text-[21.5px]")}>{valor}</p>
+          <p className="text-[0.8rem] text-muted-foreground">{titulo}</p>
+          {destaque && <p className="mt-1 truncate text-base font-semibold tracking-[-0.01em]">{destaque}</p>}
+          <p className={cn("tnum whitespace-nowrap font-semibold tracking-[-0.02em]", destaque ? "mt-0.5 text-lg" : "mt-1 text-xl")}>{valor}</p>
         </div>
         <div className="mt-auto pt-2">{rodape}</div>
       </LedCard>

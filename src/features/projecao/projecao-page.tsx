@@ -4,15 +4,18 @@ import {
   ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
 } from "recharts"
 import {
-  TrendingUp, Calendar, ListChecks, Layers, ArrowUp, Wallet, Lightbulb,
-  ChevronRight, PartyPopper, Settings2, PiggyBank, CalendarCheck, CreditCard, Link as LinkIcon,
+  TrendingUp, Calendar, Wallet,
+  ChevronRight, PartyPopper, Settings2, PiggyBank, CalendarCheck, CreditCard, Link as LinkIcon, ShoppingBag, Info,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { SectionTitle } from "@/components/page-header"
+import { PageHeader, SectionTitle } from "@/components/page-header"
+import { Button } from "@/components/ui/button"
+import { SheetDrawer } from "@/components/ui/sheet-drawer"
+import { Tooltip as UiTooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useFinData } from "@/hooks/use-fin-data"
 import { fmtR, fmtMesCurto, proximosMeses } from "@/lib/format"
 import { calcularProjecaoMes, obrigacoesAtivasNoMes, faturaDoMes, parcelaNoMes } from "@/lib/selectors"
@@ -25,14 +28,13 @@ import { cn } from "@/lib/utils"
 import type { Obrigacao, Cartao, Transacao } from "@/lib/supabase"
 
 const EASE = [0.23, 1, 0.32, 1] as const
-// ritmo visual das linhas (decorativo, como na referência)
-const ACENTOS = ["#22d3a5", "#38bdf8", "#a78bfa", "#f472b6", "#f87171", "#fbbf24"]
 
 export function ProjecaoPage({ mesRef }: { mesRef: string }) {
   const { obrigacoes, cartoes, transacoes, config, saveConfig } = useFinData()
   const c = useChartColors()
   const [horizonte, setHorizonte] = useState("12")
   const [aberto, setAberto] = useState<string | null>(null)
+  const [simAberto, setSimAberto] = useState(false)
 
   const dados = useMemo(() => {
     const meses = proximosMeses(parseInt(horizonte), mesRef)
@@ -51,56 +53,58 @@ export function ProjecaoPage({ mesRef }: { mesRef: string }) {
   const chartData = dados.map((d) => ({
     mes: fmtMesCurto(d.mesRef),
     Receita: Math.round(d.receita),
-    Obrigações: Math.round(d.totalObr),
-    Sobra: Math.round(d.sobra),
+    Compromissos: Math.round(d.totalObr),
+    Livre: Math.round(d.sobra),
   }))
 
   return (
     <div className="flex flex-col gap-5">
-      {/* cabeçalho */}
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-lg bg-primary/15 text-primary">
-          <TrendingUp className="size-5" />
-        </span>
-        <div className="min-w-0">
-          <h2 className="font-display text-2xl font-semibold tracking-[-0.01em]">Projeção Financeira</h2>
-        </div>
-        <p className="hidden text-sm text-muted-foreground lg:block">
-          Receita, obrigações e sobra estimadas mês a mês a partir de {fmtMesCurto(mesRef)}.
-        </p>
-        <div className="ml-auto">
-          <Select value={horizonte} onValueChange={setHorizonte}>
-            <SelectTrigger className="h-10 w-[190px]">
-              <Calendar className="size-4 text-muted-foreground" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="6">Próximos 6 meses</SelectItem>
-                <SelectItem value="12">Próximos 12 meses</SelectItem>
-                <SelectItem value="24">Próximos 24 meses</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <PageHeader
+        title="Projeção"
+        accent={`a partir de ${fmtMesCurto(mesRef)}`}
+        description="Receita e compromissos (contas fixas + faturas) estimados mês a mês."
+        actions={
+          <>
+            <Button onClick={() => setSimAberto(true)} className="press">
+              <ShoppingBag data-icon="inline-start" /> Posso comprar?
+            </Button>
+            <Select value={horizonte} onValueChange={setHorizonte}>
+              <SelectTrigger className="h-9 w-[170px]">
+                <Calendar className="size-4 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="6">Próximos 6 meses</SelectItem>
+                  <SelectItem value="12">Próximos 12 meses</SelectItem>
+                  <SelectItem value="24">Próximos 24 meses</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </>
+        }
+      />
 
-      {/* posso comprar? */}
-      <SimuladorCompra mesRef={mesRef} />
+      <SheetDrawer
+        open={simAberto} onOpenChange={setSimAberto}
+        titulo="Posso comprar?" descricao="Simule a compra antes de fazer — nada é gravado."
+      >
+        <SimuladorCompra mesRef={mesRef} embutido />
+      </SheetDrawer>
 
       <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-        {/* coluna lateral: resumo + parâmetros */}
-        <div className="flex flex-col gap-3">
+        {/* coluna lateral: resumo + parâmetros (no celular vem depois do gráfico e da tabela) */}
+        <div className="order-2 flex flex-col gap-3 lg:order-1">
           <ResumoCard
-            icon={Wallet} tone="teal" label={`Sobra acumulada (${resumo.n}m)`}
+            icon={Wallet} tone="teal" label={`Livre acumulado (${resumo.n}m)`}
             valor={resumo.sobraTotal}
-            sub={<span className={resumo.sobraTotal >= 0 ? "text-success" : "text-destructive"}>média {fmtR(resumo.sobraTotal / Math.max(1, resumo.n))}/mês</span>}
+            sub={<>média {fmtR(resumo.sobraTotal / Math.max(1, resumo.n))}/mês</>}
             index={0}
           />
           <ResumoCard
             icon={PiggyBank} tone="violet" label={`Sugestão p/ investir (${resumo.n}m)`}
             valor={resumo.sugestaoTotal}
-            sub={<>{parseFloat(config.pct_investimento) || 0}% da sobra de cada mês</>}
+            sub={<>{parseFloat(config.pct_investimento) || 0}% do livre de cada mês</>}
             index={1}
           />
           <ResumoCard
@@ -123,7 +127,7 @@ export function ProjecaoPage({ mesRef }: { mesRef: string }) {
                 <span className="text-xs text-muted-foreground">Usada nos meses sem renda lançada</span>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="p-pct">% da sobra p/ investir</Label>
+                <Label htmlFor="p-pct">% do livre p/ investir</Label>
                 <Input
                   id="p-pct" type="number" step="1" defaultValue={config.pct_investimento ?? "20"}
                   className="tnum" placeholder="20"
@@ -134,66 +138,93 @@ export function ProjecaoPage({ mesRef }: { mesRef: string }) {
           </div>
         </div>
 
-        {/* tabela principal */}
-        <div className="flex flex-col gap-4">
-          <div className="overflow-x-auto rounded-xl border bg-card p-2">
-            <div className="min-w-[760px]">
+        {/* gráfico primeiro (a tendência), tabela depois (os números) */}
+        <div className="order-1 flex min-w-0 flex-col gap-4 lg:order-2">
+          <section className="rounded-2xl border bg-card p-5">
+            <SectionTitle
+              icon={TrendingUp}
+              right={<ChartLegend items={[
+                { color: c.text, label: "Receita" },
+                { color: c.despesa, label: "Compromissos" },
+                { color: c.primary, label: "Livre" },
+              ]} />}
+            >
+              Evolução projetada
+            </SectionTitle>
+            <div className="h-60">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="projSobra" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={c.primary} stopOpacity={0.22} />
+                      <stop offset="100%" stopColor={c.primary} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} {...gridProps(c)} />
+                  <XAxis dataKey="mes" {...axisProps(c)} />
+                  <YAxis tickFormatter={fmtAxis} {...axisProps(c)} width={70} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ stroke: c.grid }} />
+                  <Area type="monotone" dataKey="Livre" stroke="none" fill="url(#projSobra)" animationDuration={CHART_ANIM} legendType="none" tooltipType="none" />
+                  <Line type="monotone" dataKey="Receita" stroke={c.text} strokeWidth={1.75} strokeDasharray="5 4" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} animationDuration={CHART_ANIM} />
+                  <Line type="monotone" dataKey="Compromissos" stroke={c.despesa} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} animationDuration={CHART_ANIM} />
+                  <Line type="monotone" dataKey="Livre" stroke={c.primary} strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} animationDuration={CHART_ANIM} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <div className="overflow-x-auto rounded-2xl border bg-card">
+            <div className="min-w-[680px]">
               {/* cabeçalho da tabela */}
-              <div className="grid grid-cols-[150px_1.1fr_1.3fr_1.3fr_1.3fr_1.3fr_32px] items-center gap-2 px-3 py-2.5 text-sm font-medium text-muted-foreground">
-                <Head icon={Calendar}>Mês</Head>
-                <Head icon={ListChecks}>Obrigações ativas</Head>
-                <Head icon={Layers}>Total obrigações</Head>
-                <Head icon={ArrowUp} cor={c.receita}>Receita</Head>
-                <Head icon={Wallet} cor={c.primary}>Sobra</Head>
-                <Head icon={Lightbulb} cor={c.previsto}>Sugestão investir</Head>
+              <div className="grid grid-cols-[110px_0.8fr_1.2fr_1.2fr_1.2fr_1.2fr_28px] items-center gap-2 border-b px-4 py-2.5 text-xs font-medium text-muted-foreground">
+                <span>Mês</span>
+                <span>Contas ativas</span>
+                <span className="text-right">Compromissos</span>
+                <span className="text-right">Receita</span>
+                <span className="flex items-center justify-end gap-1">
+                  Livre
+                  <UiTooltip>
+                    <TooltipTrigger asChild><Info className="size-3.5 cursor-help" /></TooltipTrigger>
+                    <TooltipContent className="max-w-64">Receita − contas fixas − faturas do cartão. Não inclui Pix e débito do dia a dia — por isso é diferente do saldo do Dashboard.</TooltipContent>
+                  </UiTooltip>
+                </span>
+                <span className="text-right">Sugestão investir</span>
                 <span />
               </div>
 
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col">
                 {dados.map((d, i) => {
                   const anteriorQtd = i > 0 ? dados[i - 1].qtdObr : d.qtdObr
                   const terminou = i > 0 && anteriorQtd > d.qtdObr
-                  const cor = ACENTOS[i % ACENTOS.length]
                   const atual = i === 0
                   const expandido = aberto === d.mesRef
                   return (
-                    <motion.div
+                    <div
                       key={d.mesRef}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.22, delay: Math.min(i * 0.025, 0.3), ease: EASE }}
                       className={cn(
-                        "relative overflow-hidden rounded-lg border bg-background/40 transition-colors",
-                        atual ? "border-primary/40 bg-primary/[0.06] shadow-[0_0_0_1px_var(--primary)_inset,0_0_18px_-6px_var(--primary)]" : "hover:border-primary/30",
-                        expandido && "border-primary/30"
+                        "border-b border-border/60 transition-colors last:border-b-0",
+                        atual && "bg-primary/[0.05]",
+                        expandido && "bg-secondary/40",
                       )}
                     >
-                      <span className="absolute inset-y-0 left-0 w-1" style={{ background: cor }} aria-hidden />
                       <button
                         onClick={() => setAberto(expandido ? null : d.mesRef)}
-                        className="grid w-full grid-cols-[150px_1.1fr_1.3fr_1.3fr_1.3fr_1.3fr_32px] items-center gap-2 px-3 py-2.5 pl-4 text-left"
+                        className="grid w-full grid-cols-[110px_0.8fr_1.2fr_1.2fr_1.2fr_1.2fr_28px] items-center gap-2 px-4 py-3 text-left text-sm hover:bg-secondary/40"
                         aria-expanded={expandido}
                       >
-                        <span className="flex items-center gap-2.5">
-                          <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/15 text-primary">
-                            <Calendar className="size-4" />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="flex items-center gap-1.5 font-display text-[15px] font-semibold leading-tight">
-                              {fmtMesCurto(d.mesRef)}
-                              {terminou && <PartyPopper className="size-3.5 text-primary" />}
-                            </span>
-                            <span className="block text-[0.7rem] leading-tight text-muted-foreground">{d.mesRef.slice(0, 4)}</span>
-                          </span>
+                        <span className="flex items-center gap-1.5 font-medium">
+                          {fmtMesCurto(d.mesRef)}
+                          {atual && <span className="rounded-full bg-primary/12 px-1.5 py-px text-[0.65rem] font-medium text-primary">atual</span>}
+                          {terminou && <PartyPopper className="size-3.5 text-primary" aria-label="uma conta terminou" />}
                         </span>
-                        <span className="tnum text-base font-semibold">{d.qtdObr}</span>
-                        <span className="tnum text-base font-semibold text-destructive">{fmtR(d.totalObr)}</span>
-                        <span className="tnum text-base font-semibold text-success">
-                          {fmtR(d.receita)}{d.estimado && <span className="ml-1 text-[0.65rem] font-normal text-muted-foreground">est.</span>}
+                        <span className="tnum text-muted-foreground">{d.qtdObr}</span>
+                        <span className="tnum text-right">{fmtR(d.totalObr)}</span>
+                        <span className="tnum text-right">
+                          {d.estimado && <span className="mr-1 text-[0.65rem] text-muted-foreground">est.</span>}{fmtR(d.receita)}
                         </span>
-                        <span className={cn("tnum text-base font-semibold", d.sobra >= 0 ? "text-primary" : "text-destructive")}>{fmtR(d.sobra)}</span>
-                        <span className="tnum text-base font-semibold" style={{ color: c.previsto }}>{fmtR(d.sugestao)}</span>
-                        <ChevronRight className={cn("size-4 justify-self-end text-muted-foreground transition-transform", expandido && "rotate-90")} />
+                        <span className={cn("tnum text-right font-semibold", d.sobra < 0 && "text-destructive")}>{fmtR(d.sobra)}</span>
+                        <span className="tnum text-right text-muted-foreground">{fmtR(d.sugestao)}</span>
+                        <ChevronRight className={cn("size-4 justify-self-end text-muted-foreground transition-transform duration-200", expandido && "rotate-90")} />
                       </button>
 
                       <AnimatePresence initial={false}>
@@ -202,78 +233,33 @@ export function ProjecaoPage({ mesRef }: { mesRef: string }) {
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.22, ease: EASE }}
+                            transition={{ type: "spring", bounce: 0, duration: 0.3 }}
                             className="overflow-hidden"
                           >
                             <DetalheMes mesRef={d.mesRef} obrigacoes={obrigacoes} cartoes={cartoes} transacoes={transacoes} />
                           </motion.div>
                         )}
                       </AnimatePresence>
-                    </motion.div>
+                    </div>
                   )
                 })}
               </div>
             </div>
           </div>
-
-          {/* gráfico */}
-          <section>
-            <SectionTitle
-              icon={TrendingUp}
-              right={<ChartLegend items={[
-                { color: c.receita, label: "Receita" },
-                { color: c.despesa, label: "Obrigações" },
-                { color: c.primary, label: "Sobra" },
-              ]} />}
-            >
-              Evolução Projetada
-            </SectionTitle>
-            <div className="rounded-xl border bg-card p-5">
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id="projSobra" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={c.primary} stopOpacity={0.28} />
-                        <stop offset="100%" stopColor={c.primary} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid vertical={false} {...gridProps(c)} />
-                    <XAxis dataKey="mes" {...axisProps(c)} />
-                    <YAxis tickFormatter={fmtAxis} {...axisProps(c)} width={70} />
-                    <Tooltip content={<ChartTooltip />} cursor={{ stroke: c.grid }} />
-                    <Area type="monotone" dataKey="Sobra" stroke="none" fill="url(#projSobra)" animationDuration={CHART_ANIM} legendType="none" tooltipType="none" />
-                    <Line type="monotone" dataKey="Receita" stroke={c.receita} strokeWidth={2} strokeDasharray="5 4" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} animationDuration={CHART_ANIM} />
-                    <Line type="monotone" dataKey="Obrigações" stroke={c.despesa} strokeWidth={2.25} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} animationDuration={CHART_ANIM} />
-                    <Line type="monotone" dataKey="Sobra" stroke={c.primary} strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} animationDuration={CHART_ANIM} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </section>
         </div>
       </div>
     </div>
   )
 }
 
-function Head({ icon: Icon, cor, children }: { icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; cor?: string; children: React.ReactNode }) {
-  return (
-    <span className="flex items-center gap-2">
-      <Icon className="size-4" style={cor ? { color: cor } : undefined} />
-      {children}
-    </span>
-  )
-}
-
 const TONES = {
-  teal: "bg-primary/15 text-primary",
-  violet: "bg-[#a78bfa]/15 text-[#a78bfa]",
-  blue: "bg-[#38bdf8]/15 text-[#38bdf8]",
+  teal: "bg-secondary text-primary",
+  violet: "bg-secondary text-muted-foreground",
+  blue: "bg-secondary text-muted-foreground",
 }
 
 function ResumoCard({
-  icon: Icon, tone, label, valor, valorTexto, sub, barra, index,
+  icon: Icon, tone, label, valor, valorTexto, sub, barra, index: _index,
 }: {
   icon: React.ComponentType<{ className?: string }>
   tone: keyof typeof TONES
@@ -286,17 +272,17 @@ function ResumoCard({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.26, delay: index * 0.05, ease: EASE }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.16, ease: EASE }}
       className="flex items-center gap-4 rounded-xl border bg-card p-4"
     >
-      <span className={cn("grid size-14 shrink-0 place-items-center rounded-xl", TONES[tone])}>
-        <Icon className="size-6" />
+      <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", TONES[tone])}>
+        <Icon className="size-5" />
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-muted-foreground">{label}</p>
-        <p className={cn("tnum font-display text-2xl font-semibold leading-tight", tone === "teal" && "text-primary")}>
+        <p className="tnum font-display text-2xl font-semibold leading-tight tracking-[-0.02em]">
           {valorTexto ?? fmtR(valor || 0)}
         </p>
         {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
@@ -326,28 +312,28 @@ function DetalheMes({
     .filter((f) => f.v > 0)
   const vazio = !ativas.length && !faturas.length
   return (
-    <div className="grid gap-2 border-t border-border/60 px-4 py-3 pl-5 sm:grid-cols-2">
+    <div className="grid gap-x-6 gap-y-1 px-4 pt-1 pb-3 sm:grid-cols-2">
       {vazio && <p className="text-sm text-muted-foreground">Nenhuma obrigação ou fatura neste mês.</p>}
       {ativas.map((o) => (
-        <div key={`o-${o.id}`} className="flex items-center gap-2.5 rounded-lg bg-secondary/40 px-3 py-2">
-          <span className="grid size-7 place-items-center rounded-md bg-[#a78bfa]/15 text-[#a78bfa]"><LinkIcon className="size-3.5" /></span>
+        <div key={`o-${o.id}`} className="flex items-center gap-2.5 py-1.5">
+          <span className="grid size-7 place-items-center rounded-full bg-secondary text-muted-foreground"><LinkIcon className="size-3.5" /></span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium">{o.nome}</span>
             <span className="block text-[0.7rem] text-muted-foreground">
               Dia {o.dia_vencimento || "—"} · {o.parcela_total ? `Parcela ${parcelaNoMes(o, mesRef)}/${o.parcela_total}` : "Recorrente"}
             </span>
           </span>
-          <span className="tnum text-sm font-semibold text-destructive">{fmtR(Number(o.valor))}</span>
+          <span className="tnum text-sm font-semibold">{fmtR(Number(o.valor))}</span>
         </div>
       ))}
       {faturas.map(({ c, v }) => (
-        <div key={`c-${c.id}`} className="flex items-center gap-2.5 rounded-lg bg-secondary/40 px-3 py-2">
+        <div key={`c-${c.id}`} className="flex items-center gap-2.5 py-1.5">
           <LogoAvatar src={c.logo} cor="var(--muted-foreground)" Icon={CreditCard} size={28} />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium">Fatura {c.nome}</span>
             <span className="block text-[0.7rem] text-muted-foreground">Dia {c.dia_vencimento || "—"} · cartão</span>
           </span>
-          <span className="tnum text-sm font-semibold text-destructive">{fmtR(v)}</span>
+          <span className="tnum text-sm font-semibold">{fmtR(v)}</span>
         </div>
       ))}
     </div>

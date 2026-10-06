@@ -141,7 +141,7 @@ export function LancarRapido() {
 
           <AnimatePresence mode="wait">
             {previa && (
-              <motion.div key="previa" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2, ease: EASE }}>
+              <motion.div key="previa" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.16, ease: EASE }}>
                 <PreviewCard
                   parse={previa}
                   cartoes={cartoes}
@@ -160,7 +160,7 @@ export function LancarRapido() {
 
           {feitos.length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Lançados agora</p>
+              <p className="text-sm font-medium text-muted-foreground">Lançados agora</p>
               <AnimatePresence initial={false}>
                 {feitos.map((f, i) => (
                   <motion.p

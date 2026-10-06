@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { motion } from "motion/react"
 import { ArrowUp, ArrowDown, Clock, Eye, EyeOff, CircleCheck, TrendingDown } from "lucide-react"
-import { Bar, ComposedChart, Line, ResponsiveContainer, Tooltip, YAxis } from "recharts"
+import { Bar, ComposedChart, Line, ResponsiveContainer, Tooltip as RTooltip, YAxis } from "recharts"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { fmtR, fmtMesCurto, fmtMesRef, addMonths } from "@/lib/format"
 import { variacaoPct } from "@/lib/selectors"
 import { cn } from "@/lib/utils"
@@ -23,15 +24,19 @@ export function HeroResumo({
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: EASE }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16, ease: EASE }}
       className="painel relative overflow-hidden rounded-2xl border bg-card"
     >
-      <span className="absolute inset-y-0 left-0 w-[3px] bg-primary" style={{ boxShadow: "0 0 18px var(--primary)" }} />
-      <div className="grid gap-y-5 p-5 pl-6 md:grid-cols-[minmax(0,1.25fr)_minmax(0,2.4fr)] xl:grid-cols-[minmax(0,1.2fr)_minmax(0,2.3fr)_minmax(0,1.2fr)] xl:items-center">
+      <div className="grid gap-y-5 p-5 md:grid-cols-[minmax(0,1.25fr)_minmax(0,2.4fr)] xl:grid-cols-[minmax(0,1.2fr)_minmax(0,2.3fr)_minmax(0,1.2fr)] xl:items-center">
         {/* saldo */}
         <div className="flex flex-col gap-2 md:pr-6">
           <div className="flex items-center gap-2 text-sm font-medium">
-            Saldo do mês
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help underline decoration-muted-foreground/40 decoration-dotted underline-offset-4">Saldo do mês</span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-64">Receitas − despesas do mês, contando as contas fixas que ainda vão ser pagas. É o mesmo número do Fechamento.</TooltipContent>
+            </Tooltip>
             <button
               type="button" onClick={() => setOculto((o) => !o)}
               className="text-muted-foreground transition-colors hover:text-foreground"
@@ -61,11 +66,11 @@ export function HeroResumo({
             rodape={<Variacao atual={receitas} anterior={receitasAnt} mesRef={mesRef} />}
           />
           <Kpi
-            icon={ArrowDown} tom="destructive" rotulo="Despesas do mês" valor={esconder(fmtR(despesas))} valorCls="text-destructive"
+            icon={ArrowDown} tom="destructive" rotulo="Despesas do mês" valor={esconder(fmtR(despesas))}
             rodape={<Variacao atual={despesas} anterior={despesasAnt} mesRef={mesRef} invertido />}
           />
           <Kpi
-            icon={Clock} tom="warning" rotulo="Dessas, falta pagar" valor={esconder(fmtR(pendentes))} valorCls="text-warning"
+            icon={Clock} tom="warning" rotulo="Dessas, falta pagar" valor={esconder(fmtR(pendentes))}
             rodape={
               nPendentes > 0 ? (
                 <span className="flex flex-col gap-1">
@@ -82,8 +87,11 @@ export function HeroResumo({
         </div>
 
         {/* saldo dos últimos meses */}
-        <div className="h-24 md:col-span-2 xl:col-span-1 xl:h-28 xl:border-l xl:pl-4">
-          <MiniSaldo serie={serie} mesRef={mesRef} oculto={oculto} />
+        <div className="flex flex-col md:col-span-2 xl:col-span-1 xl:border-l xl:pl-4">
+          <p className="text-xs text-muted-foreground">Saldo · últimos 6 meses</p>
+          <div className="h-20 xl:h-24">
+            <MiniSaldo serie={serie} mesRef={mesRef} oculto={oculto} />
+          </div>
         </div>
       </div>
     </motion.section>
@@ -153,7 +161,7 @@ function MiniSaldo({ serie, mesRef, oculto }: { serie: Ponto[]; mesRef: string; 
           </linearGradient>
         </defs>
         <YAxis hide domain={[(min: number) => Math.min(0, min), "dataMax"]} />
-        <Tooltip
+        <RTooltip
           cursor={false}
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null

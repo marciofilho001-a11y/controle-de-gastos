@@ -157,7 +157,7 @@ export function LancamentosFiltravel({
         return (
           <motion.div
             key={filtroCat}
-            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: EASE_OUT }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16, ease: EASE_OUT }}
             className="relative mb-4 flex flex-wrap items-center gap-x-6 gap-y-3 overflow-hidden rounded-xl border p-4"
             style={{ background: `linear-gradient(90deg, ${cor}1f, transparent 60%)`, borderColor: `${cor}55` }}
           >
@@ -312,7 +312,7 @@ function PctMes({ pct, cor }: { pct: number; cor: string }) {
           className="h-full rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${Math.min(100, Math.max(pct, 3))}%` }}
-          transition={{ duration: 0.7, ease: EASE_OUT }}
+          transition={{ duration: 0.35, ease: EASE_OUT }}
           style={{ background: `linear-gradient(90deg, color-mix(in srgb, ${cor} 70%, transparent), ${cor})`, boxShadow: `0 0 10px ${cor}` }}
         />
       </div>
@@ -403,7 +403,7 @@ function TipoIcone({ tipo, className }: { tipo: TipoGasto | null; className?: st
 }
 
 function LancCard({
-  t, tipo, cartoes, descricaoIcones, index, acoes,
+  t, tipo, cartoes, descricaoIcones, index: _index, acoes,
 }: {
   t: LinhaExibicao; tipo: TipoGasto | null; cartoes: Cartao[]; descricaoIcones: Record<string, string>; index: number; acoes: Acoes
 }) {
@@ -413,9 +413,9 @@ function LancCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.26, delay: Math.min(index * 0.03, 0.3), ease: EASE_OUT }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.16, ease: EASE_OUT }}
       className="relative flex flex-col gap-3 overflow-hidden rounded-xl border bg-background/40 p-3.5 pl-4 transition-colors hover:border-primary/30"
     >
       {/* barra de acento à esquerda, na cor da categoria */}
@@ -459,7 +459,7 @@ function LancCard({
 }
 
 function LancRow({
-  t, tipo, cartoes, descricaoIcones, index, acoes,
+  t, tipo, cartoes, descricaoIcones, index: _index, acoes,
 }: {
   t: LinhaExibicao; tipo: TipoGasto | null; cartoes: Cartao[]; descricaoIcones: Record<string, string>; index: number; acoes: Acoes
 }) {
@@ -469,9 +469,9 @@ function LancRow({
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 6 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.22, delay: Math.min(index * 0.02, 0.25), ease: EASE_OUT }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.16, ease: EASE_OUT }}
       className="relative flex items-center gap-3 overflow-hidden rounded-lg border bg-background/40 py-2 pl-4 pr-2 transition-colors hover:border-primary/30"
     >
       <span className="absolute inset-y-0 left-0 w-1" style={{ background: cor }} aria-hidden />

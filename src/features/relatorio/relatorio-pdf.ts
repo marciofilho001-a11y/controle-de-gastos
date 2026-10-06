@@ -8,7 +8,7 @@ import {
 import { catInfo, catColor } from "@/lib/categorias"
 import { fmtR, fmtMesLongo, fmtData } from "@/lib/format"
 import {
-  receitasDoMes, despesasDoMes, despesasExibicaoDoMes, obrigacoesAtivasNoMes, faturaDoMes,
+  receitasDoMes, despesasComContasDoMes, despesasExibicaoDoMes, obrigacoesAtivasNoMes, faturaDoMes,
   txDoMes, parcelaNoMes, ehFaturaCheia, type LinhaExibicao,
 } from "@/lib/selectors"
 import { gerarInsights, type Severidade } from "@/lib/insights"
@@ -84,7 +84,8 @@ export async function gerarRelatorioPdf(inp: PdfInput) {
 
   // ---------------- dados ----------------
   const receita = receitasDoMes(transacoes, mesRef)
-  const despesas = despesasDoMes(transacoes, mesRef)
+  // mesma base da tela: contas fixas a pagar contam no mês
+  const despesas = despesasComContasDoMes(obrigacoes, transacoes, mesRef)
   const sobra = receita - despesas
   const exib = despesasExibicaoDoMes(transacoes, mesRef)
   const receitas = txDoMes(transacoes, mesRef).filter((t) => t.tipo === "receita")
@@ -235,7 +236,7 @@ export async function gerarRelatorioPdf(inp: PdfInput) {
     { label: "Total de despesas", valor: fmtR(despesas) },
     { label: "Receitas do mês", valor: fmtR(receita) },
     { label: "Obrigações + faturas", valor: fmtR(comprometido) },
-    { label: sobra >= 0 ? "Sobra do mês" : "Déficit do mês", valor: fmtR(sobra) },
+    { label: sobra >= 0 ? "Saldo do mês" : "Déficit do mês", valor: fmtR(sobra) },
   ])
 
   // ---- 1. Onde o dinheiro foi gasto (Categoria -> Subcategoria) ----

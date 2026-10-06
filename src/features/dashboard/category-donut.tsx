@@ -71,7 +71,7 @@ export function CategoryDonut({
       {/* texto central — troca no hover, nunca sobrepõe */}
       <div className="pointer-events-none absolute inset-0 grid place-items-center">
         <div className="flex max-w-[70%] flex-col items-center text-center leading-none">
-          <span className="mb-1.5 truncate text-[0.68rem] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="mb-1.5 truncate text-xs font-medium text-muted-foreground">
             {label}
           </span>
           <span className="tnum text-[clamp(0.95rem,3.6vw,1.2rem)] font-semibold text-foreground">

@@ -5,7 +5,7 @@ export const EASE = [0.23, 1, 0.32, 1] as const
 
 // Moldura padrão dos blocos do Dashboard: título com ícone verde à esquerda, ação à direita
 export function Painel({
-  icon: Icon, titulo, sub, acao, children, className, index = 0, id,
+  icon: Icon, titulo, sub, acao, children, className, index: _index = 0, id,
 }: {
   icon?: React.ComponentType<{ className?: string }>
   titulo: React.ReactNode
@@ -19,8 +19,8 @@ export function Painel({
   return (
     <motion.section
       id={id}
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.05, ease: EASE }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      transition={{ duration: 0.16, ease: EASE }}
       className={cn("painel flex min-w-0 flex-col rounded-2xl border bg-card p-5", className)}
     >
       <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">

@@ -1,6 +1,6 @@
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { fmtMesLongo } from "@/lib/format"
+import { fmtMesLongo, fmtMesRef } from "@/lib/format"
 
 export function MonthNav({
   mesRef,
@@ -10,15 +10,15 @@ export function MonthNav({
   onChange: (delta: number) => void
 }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <Button variant="outline" size="icon" className="size-9" onClick={() => onChange(-1)} aria-label="Mês anterior">
+    <div className="flex items-center rounded-full border bg-card/70 p-0.5">
+      <Button variant="ghost" size="icon" className="press size-8 rounded-full" onClick={() => onChange(-1)} aria-label="Mês anterior">
         <ChevronLeft className="size-4" />
       </Button>
-      <div className="flex min-w-[11rem] items-center justify-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium">
-        <CalendarDays className="size-4 text-primary" />
-        <span className="font-display capitalize">{fmtMesLongo(mesRef)}</span>
-      </div>
-      <Button variant="outline" size="icon" className="size-9" onClick={() => onChange(1)} aria-label="Próximo mês">
+      <span className="tnum min-w-[6.5rem] px-1 text-center text-sm font-semibold sm:min-w-[9.5rem]">
+        <span className="sm:hidden">{fmtMesRef(mesRef)}</span>
+        <span className="hidden capitalize sm:inline">{fmtMesLongo(mesRef)}</span>
+      </span>
+      <Button variant="ghost" size="icon" className="press size-8 rounded-full" onClick={() => onChange(1)} aria-label="Próximo mês">
         <ChevronRight className="size-4" />
       </Button>
     </div>

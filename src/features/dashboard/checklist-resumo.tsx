@@ -19,7 +19,7 @@ export function ChecklistResumo({ checks, onVerTodos, index }: { checks: CheckFe
         <span className="flex items-center gap-3">
           <span className="tnum">{feitos} / {checks.length} concluídos</span>
           <span className="h-1.5 w-32 overflow-hidden rounded-full bg-secondary sm:w-48">
-            <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: EASE }} />
+            <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.35, ease: EASE }} />
           </span>
         </span>
       }

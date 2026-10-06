@@ -34,14 +34,14 @@ export function AtencaoCard({ contas, receitas, mesRef, index }: { contas: Conta
       {n > 0 ? (
         <div className="flex flex-col gap-1">
           <p className="text-sm">
-            <span className="tnum font-semibold text-warning">{n}</span> pagamento{n > 1 ? "s" : ""} pendente{n > 1 ? "s" : ""}
+            <span className="tnum font-semibold">{n}</span> pagamento{n > 1 ? "s" : ""} pendente{n > 1 ? "s" : ""}
             {contas.vencidas.length > 0 && (
               <span className="ml-1.5 rounded-md bg-destructive/12 px-1.5 py-0.5 text-xs font-medium text-destructive">
                 {contas.vencidas.length} vencida{contas.vencidas.length > 1 ? "s" : ""}
               </span>
             )}
           </p>
-          <p className="tnum text-2xl font-bold text-warning">{fmtR(contas.totalPendente)}</p>
+          <p className="tnum text-2xl font-semibold">{fmtR(contas.totalPendente)}</p>
         </div>
       ) : contas.itens.length > 0 ? (
         <div className="flex items-center gap-2 text-sm font-medium text-success">
@@ -120,7 +120,7 @@ function ContasDialog({
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-secondary">
             <motion.div className="h-full rounded-full bg-gradient-to-r from-primary to-series-previsto"
-              initial={{ width: 0 }} animate={{ width: `${pctComprometido}%` }} transition={{ duration: 0.5, ease: EASE }} />
+              initial={{ width: 0 }} animate={{ width: `${pctComprometido}%` }} transition={{ duration: 0.35, ease: EASE }} />
           </div>
           {contas.pendentes.length > 0 && (
             <p className="mt-2 flex w-fit items-center gap-1.5 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning">

@@ -63,15 +63,15 @@ export function FormaPagamentoBreakdown({
     <div className="grid gap-4 lg:grid-cols-[minmax(240px,320px)_1fr]">
       {/* coluna de métodos */}
       <div className="flex flex-col gap-2">
-        {metodos.map((m, i) => {
+        {metodos.map((m) => {
           const ativo = m.id === sel?.id
           const pct = Math.round((m.total / maxTotal) * 100)
           return (
             <motion.button
               key={m.id}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.28, delay: i * 0.04, ease: EASE_OUT }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.16, ease: EASE_OUT }}
               whileTap={{ scale: 0.985 }}
               onClick={() => setSelId(m.id)}
               className={cn(
@@ -88,7 +88,7 @@ export function FormaPagamentoBreakdown({
                     style={{ background: ativo ? "var(--primary)" : "var(--muted-foreground)" }}
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.5, delay: i * 0.04 + 0.1, ease: EASE_OUT }}
+                    transition={{ duration: 0.35, ease: EASE_OUT }}
                   />
                 </div>
               </div>
@@ -105,10 +105,10 @@ export function FormaPagamentoBreakdown({
           {sel && (
             <motion.div
               key={sel.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.22, ease: EASE_OUT }}
+              transition={{ duration: 0.16, ease: EASE_OUT }}
             >
               <div className="mb-3 flex items-center gap-2.5">
                 <LogoAvatar src={sel.logo} cor={sel.cor} Icon={sel.id === "debito" ? Banknote : CreditCard} size={36} />
@@ -129,16 +129,16 @@ export function FormaPagamentoBreakdown({
 
                 {/* legenda / lista de categorias (valores precisos — fallback de a11y) */}
                 <div className="flex flex-col gap-1">
-                  {breakdown.map((b, i) => {
+                  {breakdown.map((b) => {
                     const info = catInfo(b.catKey)
                     const Icon = info.icon
                     const pct = sel.total > 0 ? Math.round((b.valor / sel.total) * 100) : 0
                     return (
                       <motion.div
                         key={b.catKey}
-                        initial={{ opacity: 0, x: 6 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.24, delay: i * 0.03, ease: EASE_OUT }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.16, ease: EASE_OUT }}
                         className="flex items-center gap-2.5 rounded-lg px-2 py-1.5"
                       >
                         <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: `${catColor(b.catKey)}1f`, color: catColor(b.catKey) }}>

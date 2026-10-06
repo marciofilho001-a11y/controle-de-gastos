@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
-import { CreditCard, Pencil, Trash2, Loader2, Inbox, Check, Undo2, FileCheck2 } from "lucide-react"
+import { CreditCard, Pencil, Loader2, Inbox, Check, Undo2, FileCheck2 } from "lucide-react"
+import { RowActions } from "@/components/row-actions"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,7 +22,7 @@ import { FaturaDetalhe } from "./fatura-detalhe"
 import { useFinData } from "@/hooks/use-fin-data"
 import { registrarFaturaPaga, removerFaturaPaga } from "@/lib/pagamentos"
 import { supabase, type Cartao, type CartaoCompra } from "@/lib/supabase"
-import { catInfo, catColor } from "@/lib/categorias"
+import { catInfo } from "@/lib/categorias"
 import { fmtR, fmtMesCurto, fmtData } from "@/lib/format"
 import { faturaInfoDoMes, faturaPagaNoMes } from "@/lib/selectors"
 import { motion } from "motion/react"
@@ -38,10 +39,14 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
   const [detalheCartao, setDetalheCartao] = useState<Cartao | null>(null)
   const [busyFat, setBusyFat] = useState<number | null>(null)
 
+  // mais recentes primeiro (por mês de início), depois por cartão
   const comprasFiltradas = useMemo(() => {
-    if (filtroCartao === "todos") return compras
-    return compras.filter((c) => c.cartao_id === parseInt(filtroCartao))
+    const base = filtroCartao === "todos" ? compras : compras.filter((c) => c.cartao_id === parseInt(filtroCartao))
+    return [...base].sort((a, b) =>
+      a.data_inicio < b.data_inicio ? 1 : a.data_inicio > b.data_inicio ? -1 : a.cartao_id - b.cartao_id || b.id - a.id)
   }, [compras, filtroCartao])
+  const [editCartao, setEditCartao] = useState<Cartao | null>(null)
+  const [editCompra, setEditCompra] = useState<CartaoCompra | null>(null)
 
   async function confirmarDelCartao() {
     if (!delCartao) return
@@ -112,7 +117,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Cartões de Crédito"
+        title="Cartões"
         accent={fmtMesCurto(mesRef)}
         description="Fatura de cada cartão no mês navegado, compras e parcelamentos."
         actions={<><CartaoDialog /><CompraDialog /></>}
@@ -123,7 +128,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
         <Empty>Nenhum cartão cadastrado</Empty>
       ) : (
         <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-          {cartoes.map((c, i) => {
+          {cartoes.map((c) => {
             const fatInfo = faturaInfoDoMes(transacoes, c.id, mesRef)
             const fatura = fatInfo.valor
             const usoLimite = c.limite ? Math.min(100, (fatura / Number(c.limite)) * 100) : null
@@ -131,10 +136,10 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
             return (
               <motion.div
                 key={c.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: i * 0.04, ease: [0.2, 0, 0, 1] }}
-                className="group/cartao flex cursor-pointer flex-col gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.16, ease: [0.2, 0, 0, 1] }}
+                className="group/cartao flex cursor-pointer flex-col gap-3 rounded-2xl border bg-card p-4 transition-colors hover:border-foreground/20"
                 onClick={() => setDetalheCartao(c)}
               >
                 <div className="flex items-center gap-2.5">
@@ -144,18 +149,21 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                     <CicloCartao cartao={c} />
                   </div>
                   <CartaoMini nome={c.nome} logo={c.logo} />
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <RowActions size="sm" onEditar={() => setEditCartao(c)} onExcluir={() => setDelCartao(c)} />
+                  </span>
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">Fatura deste mês</p>
+                    <p className="text-[0.8rem] text-muted-foreground">Fatura deste mês</p>
                     {fatInfo.tipo === "prevista" && (
-                      <span className="rounded-full bg-warning/15 px-2 py-px text-[0.6rem] font-semibold uppercase tracking-wide text-warning">prevista</span>
+                      <span className="rounded-full bg-secondary px-2 py-px text-[0.68rem] font-medium text-muted-foreground">prevista</span>
                     )}
                     {fatInfo.tipo === "atual" && (
-                      <span className="rounded-full bg-success/15 px-2 py-px text-[0.6rem] font-semibold uppercase tracking-wide text-success">atual</span>
+                      <span className="rounded-full bg-secondary px-2 py-px text-[0.68rem] font-medium text-muted-foreground">atual</span>
                     )}
                     {fatInfo.tipo === "parcial" && (
-                      <span className="rounded-full bg-primary/15 px-2 py-px text-[0.6rem] font-semibold uppercase tracking-wide text-primary">parcial</span>
+                      <span className="rounded-full bg-secondary px-2 py-px text-[0.68rem] font-medium text-muted-foreground">parcial</span>
                     )}
                     <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
                       <FaturaPrevistaDialog
@@ -169,7 +177,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                       />
                     </span>
                   </div>
-                  <p className="tnum text-xl font-semibold text-destructive">{fmtR(fatura)}</p>
+                  <p className="tnum text-xl font-semibold">{fmtR(fatura)}</p>
                   {fatInfo.tipo === "parcial" && (
                     <div className="mt-1 flex flex-col gap-0.5 text-[0.7rem]">
                       <span className="flex justify-between text-muted-foreground">
@@ -187,7 +195,7 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                   <div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
                       <div
-                        className={cn("h-full rounded-full", usoLimite >= 90 ? "bg-destructive" : "bg-gradient-to-r from-series-previsto to-series-real")}
+                        className={cn("h-full rounded-full", usoLimite >= 90 ? "bg-destructive" : usoLimite >= 75 ? "bg-warning" : "bg-primary")}
                         style={{ width: `${usoLimite}%` }}
                       />
                     </div>
@@ -225,19 +233,6 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                     )}
                   </div>
                 )}
-                <div className="mt-auto flex gap-2" onClick={(e) => e.stopPropagation()}>
-                  <CartaoDialog
-                    editar={c}
-                    trigger={
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Pencil data-icon="inline-start" /> Editar
-                      </Button>
-                    }
-                  />
-                  <Button variant="ghost" size="icon" className="size-9 text-muted-foreground hover:text-destructive" onClick={() => setDelCartao(c)}>
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
               </motion.div>
             )
           })}
@@ -247,8 +242,8 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
       {/* Compras e parcelamentos */}
       <section>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Compras e Parcelamentos Lançados
+          <h3 className="text-sm font-semibold tracking-[-0.01em] text-foreground/85">
+            Compras e parcelamentos
           </h3>
           <Select value={filtroCartao} onValueChange={setFiltroCartao}>
             <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
@@ -265,59 +260,53 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
         <p className="mb-3 text-xs text-muted-foreground">
           Cada compra gera uma transação por parcela, já no mês certo — excluir aqui remove todas as parcelas de uma vez.
         </p>
-        <div className="overflow-x-auto rounded-xl border bg-card">
-          <Table className="min-w-[760px]">
+        <div className="overflow-x-auto rounded-2xl border bg-card">
+          <Table className="min-w-[640px]">
             <TableHeader>
-              <TableRow>
-                <TableHead>Cartão</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Parcela</TableHead>
-                <TableHead className="text-right">Valor parcela</TableHead>
-                <TableHead className="text-right">Valor total</TableHead>
-                <TableHead>Início</TableHead>
-                <TableHead className="w-20 text-right">Ações</TableHead>
+              <TableRow className="text-xs">
+                <TableHead>Compra</TableHead>
+                <TableHead>Parcelas</TableHead>
+                <TableHead className="text-right">Parcela</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Início</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {comprasFiltradas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                     Nenhuma compra lançada
                   </TableCell>
                 </TableRow>
               ) : (
                 comprasFiltradas.map((cp) => {
                   const info = catInfo(cp.categoria)
-                  const Icon = info.icon
                   const total = Number(cp.valor_parcela) * cp.parcela_total
+                  const cartao = cartoes.find((c) => c.id === cp.cartao_id)
+                  const mostraCat = cp.categoria && cp.categoria !== "cartao"
                   return (
-                    <TableRow key={cp.id}>
-                      <TableCell className="font-medium">{cartaoNome(cp.cartao_id)}</TableCell>
-                      <TableCell>{cp.descricao || "—"}</TableCell>
+                    <TableRow key={cp.id} className="group/compra">
                       <TableCell>
-                        <span className="flex items-center gap-1.5 font-medium" style={{ color: catColor(cp.categoria) }}>
-                          <Icon className="size-4" /> {info.l}
-                        </span>
+                        <button type="button" onClick={() => setEditCompra(cp)} className="flex min-w-0 items-center gap-3 text-left">
+                          <LogoAvatar src={cartao?.logo} cor="var(--muted-foreground)" Icon={CreditCard} size={30} />
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium">{cp.descricao || "—"}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {cartaoNome(cp.cartao_id)}{mostraCat ? ` · ${info.l}` : ""}
+                            </span>
+                          </span>
+                        </button>
                       </TableCell>
-                      <TableCell>{cp.parcela_total > 1 ? `1/${cp.parcela_total}` : "à vista"}</TableCell>
-                      <TableCell className="tnum text-right">{fmtR(Number(cp.valor_parcela))}</TableCell>
+                      <TableCell className="text-muted-foreground">{cp.parcela_total > 1 ? `${cp.parcela_total}x` : "à vista"}</TableCell>
+                      <TableCell className="tnum text-right font-medium">{fmtR(Number(cp.valor_parcela))}</TableCell>
                       <TableCell className="tnum text-right text-muted-foreground">{fmtR(total)}</TableCell>
-                      <TableCell className="text-muted-foreground">{fmtMesCurto(cp.data_inicio.slice(0, 7))}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-0.5">
-                          <CompraDialog
-                            editar={cp}
-                            trigger={
-                              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-primary" aria-label="Editar compra">
-                                <Pencil className="size-4" />
-                              </Button>
-                            }
-                          />
-                          <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => setDelCompra(cp)} aria-label="Remover compra">
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
+                      <TableCell className="text-right text-muted-foreground">{fmtMesCurto(cp.data_inicio.slice(0, 7))}</TableCell>
+                      <TableCell className="text-right">
+                        <RowActions
+                          size="sm" onEditar={() => setEditCompra(cp)} onExcluir={() => setDelCompra(cp)}
+                          className="md:opacity-0 md:group-hover/compra:opacity-100 md:focus-visible:opacity-100 data-[state=open]:opacity-100"
+                        />
                       </TableCell>
                     </TableRow>
                   )
@@ -326,6 +315,8 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
             </TableBody>
           </Table>
         </div>
+        {editCompra && <CompraDialog editar={editCompra} open onOpenChange={(v) => !v && setEditCompra(null)} trigger={<span hidden />} />}
+        {editCartao && <CartaoDialog editar={editCartao} open onOpenChange={(v) => !v && setEditCartao(null)} trigger={<span hidden />} />}
       </section>
 
       {/* Confirmações */}

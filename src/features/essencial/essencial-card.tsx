@@ -52,12 +52,12 @@ export function EssencialCard({ mesRef, compacto = false }: { mesRef: string; co
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: EASE }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16, ease: EASE }}
       className="rounded-xl border bg-card p-5"
     >
       {/* cabeçalho: título + seletor + ajustar */}
       <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm font-semibold tracking-[-0.01em] text-foreground/85">
           <Scale className="size-3.5" /> Para onde foi o dinheiro
         </div>
         <div className="order-3 flex w-full rounded-lg border bg-secondary/40 p-0.5 sm:order-none sm:ml-auto sm:w-auto" role="tablist">
@@ -77,7 +77,7 @@ export function EssencialCard({ mesRef, compacto = false }: { mesRef: string; co
                     layoutId={`foco-${compacto ? "c" : "n"}`}
                     className="absolute inset-0 rounded-md"
                     style={{ background: `color-mix(in srgb, ${COR(n)} 18%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${COR(n)} 55%, transparent)` }}
-                    transition={{ duration: 0.25, ease: EASE }}
+                    transition={{ duration: 0.16, ease: EASE }}
                   />
                 )}
                 <span className="relative size-2 rounded-full" style={{ background: COR(n) }} />
@@ -98,7 +98,7 @@ export function EssencialCard({ mesRef, compacto = false }: { mesRef: string; co
             <AnimatePresence mode="wait">
               <motion.p
                 key={foco}
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.18, ease: EASE }}
                 className="tnum font-display text-4xl font-bold leading-none" style={{ color: cor }}
               >
@@ -122,7 +122,7 @@ export function EssencialCard({ mesRef, compacto = false }: { mesRef: string; co
 
           {/* barra do mês: o foco acende, o resto apaga */}
           <div className="flex h-3.5 overflow-hidden rounded-full bg-secondary">
-            {(["essencial", "escolha", "inutil", "indefinido"] as const).map((k, i) => {
+            {(["essencial", "escolha", "inutil", "indefinido"] as const).map((k) => {
               const v = r[k]
               if (v <= 0) return null
               const ativo = k === foco
@@ -134,7 +134,7 @@ export function EssencialCard({ mesRef, compacto = false }: { mesRef: string; co
                   className="h-full first:rounded-l-full last:rounded-r-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${seg(v)}%`, opacity: k === "indefinido" ? 0.4 : ativo ? 1 : 0.35 }}
-                  transition={{ duration: 0.5, delay: 0.05 + i * 0.06, ease: EASE }}
+                  transition={{ duration: 0.35, ease: EASE }}
                   style={{ background: COR(k), boxShadow: ativo ? `0 0 12px color-mix(in srgb, ${COR(k)} 60%, transparent)` : undefined }}
                 />
               )
@@ -204,7 +204,7 @@ export function EssencialCard({ mesRef, compacto = false }: { mesRef: string; co
             <AnimatePresence mode="wait">
               <motion.div
                 key={foco}
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.18, ease: EASE }}
                 className="flex flex-col gap-2"
               >
@@ -224,7 +224,7 @@ export function EssencialCard({ mesRef, compacto = false }: { mesRef: string; co
                     <p className="py-6 text-center text-sm text-muted-foreground">Nada {info.frase.replace("foi ", "")} neste mês</p>
                   )
                 ) : (
-                  grupos.slice(0, 6).map((g, i) => (
+                  grupos.slice(0, 6).map((g) => (
                     <div key={g.grupo} className="min-w-0">
                       <div className="flex items-baseline justify-between gap-2">
                         <p className="truncate text-sm">{g.grupo} <span className="text-xs text-muted-foreground">· {g.n}</span></p>
@@ -234,7 +234,7 @@ export function EssencialCard({ mesRef, compacto = false }: { mesRef: string; co
                         <motion.div
                           className="h-full rounded-full" style={{ background: cor }}
                           initial={{ width: 0 }} animate={{ width: `${(g.total / maxGrupo) * 100}%` }}
-                          transition={{ duration: 0.5, delay: 0.05 + i * 0.04, ease: EASE }}
+                          transition={{ duration: 0.35, ease: EASE }}
                         />
                       </div>
                     </div>
@@ -267,7 +267,7 @@ export function EssencialCard({ mesRef, compacto = false }: { mesRef: string; co
 
 // Versão do Dashboard: barra, as três faixas lado a lado (clicáveis) e para onde foi a faixa escolhida.
 // O histórico mês a mês e o seletor completo continuam no Fechamento.
-export function EssencialResumo({ mesRef, index = 0 }: { mesRef: string; index?: number }) {
+export function EssencialResumo({ mesRef, index: _index = 0 }: { mesRef: string; index?: number }) {
   const { transacoes, config } = useFinData()
   const [foco, setFoco] = useState<NaturezaClassificada>("escolha")
   const [ajustar, setAjustar] = useState<{ open: boolean; filtro: Natureza | "todos" }>({ open: false, filtro: "todos" })
@@ -285,7 +285,7 @@ export function EssencialResumo({ mesRef, index = 0 }: { mesRef: string; index?:
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: index * 0.05, ease: EASE }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16, ease: EASE }}
       className="painel grid min-w-0 gap-6 rounded-2xl border bg-card p-5 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"
     >
       <div className="flex min-w-0 flex-col gap-4">
@@ -306,14 +306,14 @@ export function EssencialResumo({ mesRef, index = 0 }: { mesRef: string; index?:
         </div>
 
         <div className="flex h-3 overflow-hidden rounded-full bg-secondary">
-          {(["essencial", "escolha", "inutil", "indefinido"] as const).map((k, i) =>
+          {(["essencial", "escolha", "inutil", "indefinido"] as const).map((k) =>
             r[k] > 0 ? (
               <motion.button
                 key={k} type="button" aria-label={NATUREZA_INFO[k].label} disabled={k === "indefinido"}
                 onClick={() => k !== "indefinido" && setFoco(k)}
                 className="h-full border-r-2 border-card last:border-r-0"
                 initial={{ width: 0 }} animate={{ width: `${seg(r[k])}%`, opacity: k === "indefinido" ? 0.35 : foco === k ? 1 : 0.75 }}
-                transition={{ duration: 0.55, delay: 0.05 + i * 0.06, ease: EASE }}
+                transition={{ duration: 0.35, ease: EASE }}
                 style={{ background: COR(k) }}
               />
             ) : null,
@@ -364,7 +364,7 @@ export function EssencialResumo({ mesRef, index = 0 }: { mesRef: string; index?:
           </p>
         )}
         <AnimatePresence mode="wait">
-          <motion.div key={foco} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16, ease: EASE }} className="flex flex-col">
+          <motion.div key={foco} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16, ease: EASE }} className="flex flex-col">
             {grupos.length === 0 ? (
               foco === "inutil" ? (
                 <button type="button" onClick={() => setAjustar({ open: true, filtro: "todos" })}

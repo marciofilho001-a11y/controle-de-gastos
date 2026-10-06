@@ -36,7 +36,7 @@ export function StatCard({
   tone = "slate",
   trend,
   valueClassName,
-  index = 0,
+  index: _index = 0,
   spark,
 }: {
   label: string
@@ -53,17 +53,16 @@ export function StatCard({
   const gid = `spark-${label.replace(/\s+/g, "")}-${tone}`
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.05, ease: [0.2, 0, 0, 1] }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.16, ease: [0.2, 0, 0, 1] }}
       className="relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm"
     >
-      <span className={cn("absolute inset-y-0 left-0 w-[3px]", s.bar)} />
       <div className="mb-3 flex items-center gap-2.5">
-        <div className={cn("grid size-9 place-items-center rounded-[0.65rem]", s.badge)}>
-          <Icon className="size-[1.05rem]" />
+        <div className={cn("grid size-8 place-items-center rounded-[0.6rem]", s.badge)}>
+          <Icon className="size-4" />
         </div>
-        <span className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {label}
         </span>
       </div>

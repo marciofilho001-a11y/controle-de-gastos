@@ -15,9 +15,11 @@ import { DESPESA_CATS } from "@/lib/categorias"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
 
-export function CompraDialog({ editar, trigger }: { editar?: CartaoCompra; trigger?: React.ReactNode }) {
+export function CompraDialog({ editar, trigger, open: openCtl, onOpenChange }: { editar?: CartaoCompra; trigger?: React.ReactNode; open?: boolean; onOpenChange?: (v: boolean) => void }) {
   const { cartoes, loadAll } = useFinData()
-  const [open, setOpen] = useState(false)
+  const [openInt, setOpenInt] = useState(false)
+  const open = openCtl ?? openInt
+  const setOpen = (v: boolean) => { setOpenInt(v); onOpenChange?.(v) }
   const [saving, setSaving] = useState(false)
   const cartoesAtivos = cartoes.filter((c) => c.ativo !== false)
   const [cartaoId, setCartaoId] = useState("")

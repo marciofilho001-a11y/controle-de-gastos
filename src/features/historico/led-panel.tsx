@@ -22,20 +22,16 @@ export function LedCard({
   )
 }
 
-// Ícone em círculo: aro fino na cor + brilho suave (o LED)
+// Ícone em círculo: fundo suave na cor da categoria, sem brilho
 export function LedIcon({
   icon: Icon, cor, size = 44, className,
 }: { icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; cor: string; size?: number; className?: string }) {
   return (
     <span
       className={cn("grid shrink-0 place-items-center rounded-full", className)}
-      style={{
-        width: size, height: size, color: cor,
-        background: `color-mix(in srgb, ${cor} 14%, transparent)`,
-        boxShadow: `inset 0 0 0 1.5px color-mix(in srgb, ${cor} 75%, transparent), 0 0 ${Math.round(size * 0.42)}px color-mix(in srgb, ${cor} 38%, transparent)`,
-      }}
+      style={{ width: size, height: size, color: cor, background: `color-mix(in srgb, ${cor} 14%, transparent)` }}
     >
-      <Icon className="size-[46%]" strokeWidth={1.8} />
+      <Icon className="size-[48%]" strokeWidth={2} />
     </span>
   )
 }

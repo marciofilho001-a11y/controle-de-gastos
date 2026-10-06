@@ -28,11 +28,11 @@ export function DespesasCategoria({ slices, total, index }: { slices: DonutSlice
       <div className="grid flex-1 items-center gap-5 sm:grid-cols-[minmax(170px,210px)_minmax(0,1fr)]">
         <CategoryDonut slices={slices} centerLabel="Despesas" centerValue={total} />
         <div className="flex flex-col">
-          {linhas.map((l, i) => (
+          {linhas.map((l) => (
             <motion.div
               key={l.key}
-              initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.22, delay: i * 0.025, ease: EASE }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              transition={{ duration: 0.16, ease: EASE }}
               className="grid grid-cols-[minmax(0,1fr)_auto_2.5rem] items-center gap-3 border-b border-border/60 py-2 last:border-b-0"
             >
               <span className="flex min-w-0 items-center gap-2.5 text-sm">
