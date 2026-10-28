@@ -100,9 +100,15 @@ function paraExtrato(t: any, conta: { id: string; tipo: string }) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS })
-  const clientId = Deno.env.get("PLUGGY_CLIENT_ID")
-  const clientSecret = Deno.env.get("PLUGGY_CLIENT_SECRET")
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
+  // chaves: segredos da função ou, se não houver, o cofre do banco (Vault, só o service_role lê)
+  let clientId = Deno.env.get("PLUGGY_CLIENT_ID")
+  let clientSecret = Deno.env.get("PLUGGY_CLIENT_SECRET")
+  if (!clientId || !clientSecret) {
+    const { data: cred } = await db.rpc("pluggy_credenciais")
+    clientId = clientId || cred?.id || undefined
+    clientSecret = clientSecret || cred?.secret || undefined
+  }
   const body = await req.json().catch(() => ({}))
   const acao = body.acao ?? "sync"
 
