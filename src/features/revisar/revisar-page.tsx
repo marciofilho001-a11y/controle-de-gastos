@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
 import {
   Sparkles, Check, X, Undo2, RefreshCw, Upload, CreditCard, Landmark, Trash2, Loader2, ChevronDown,
-  Clock, Inbox, Brain, Link as LinkIcon, Info,
+  Inbox, Brain, Link as LinkIcon, Info,
 } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -116,10 +116,9 @@ export function RevisarPage() {
   const ctx = useMemo(() => contextoAtual(), [extrato, regras, contasBanco, cartoes, obrigacoes, transacoes, faturaPagamentos, extratoLigados, config.temas_extra])
 
   const fila = useMemo(
-    () => extrato.filter((e) => e.status === "novo" && !e.pendente).sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0)),
+    () => extrato.filter((e) => e.status === "novo").sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0)),
     [extrato],
   )
-  const pendentes = useMemo(() => extrato.filter((e) => e.status === "novo" && e.pendente), [extrato])
   const lancados = useMemo(
     () => extrato.filter((e) => e.status === "lancado" || e.status === "conciliado").sort((a, b) => ((a.resolvido_em ?? "") < (b.resolvido_em ?? "") ? 1 : -1)),
     [extrato],
@@ -203,7 +202,6 @@ export function RevisarPage() {
                 <Vazio
                   semConexao={contasBanco.length === 0}
                   autoHoje={autoHoje}
-                  pendentes={pendentes.length}
                 />
               ) : (
                 <div className="flex flex-col gap-5">
@@ -224,12 +222,6 @@ export function RevisarPage() {
                       </div>
                     </div>
                   ))}
-                  {pendentes.length > 0 && (
-                    <p className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-2.5 text-xs text-muted-foreground">
-                      <Clock className="size-4 shrink-0" />
-                      {pendentes.length} compra{pendentes.length > 1 ? "s" : ""} ainda pendente{pendentes.length > 1 ? "s" : ""} no banco. Entram aqui quando o banco confirmar.
-                    </p>
-                  )}
                 </div>
               )
             )}
@@ -295,7 +287,7 @@ function CabecalhoMes({ mes, itens }: { mes: string; itens: ExtratoItem[] }) {
   )
 }
 
-function Vazio({ semConexao, autoHoje, pendentes }: { semConexao: boolean; autoHoje: number; pendentes: number }) {
+function Vazio({ semConexao, autoHoje }: { semConexao: boolean; autoHoje: number }) {
   if (semConexao) {
     return (
       <div className="grid place-items-center gap-3 py-12 text-center">
@@ -318,7 +310,6 @@ function Vazio({ semConexao, autoHoje, pendentes }: { semConexao: boolean; autoH
         <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
           {autoHoje > 0 ? `${autoHoje} lançamento${autoHoje > 1 ? "s" : ""} feito${autoHoje > 1 ? "s" : ""} sozinho${autoHoje > 1 ? "s" : ""} recentemente (aba Lançados). ` : ""}
           Quando chegar algo novo do banco, aparece aqui.
-          {pendentes > 0 && ` ${pendentes} compra${pendentes > 1 ? "s" : ""} ainda pendente${pendentes > 1 ? "s" : ""} no banco.`}
         </p>
       </div>
     </div>
@@ -432,7 +423,7 @@ function ItemRevisar({ item, sug, conta }: { item: ExtratoItem; sug: Sugestao; c
                 <span className="rounded-md bg-muted px-1.5 py-0.5 text-[0.7rem] font-medium text-muted-foreground">parcela {item.parcela_atual ?? 1}/{item.parcela_total}</span>
               )}
               {ehCartao && item.sentido === "saida" && (
-                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[0.7rem] font-medium text-muted-foreground">fatura de {fmtMesCurto(sug.mes_ref).toLowerCase()}</span>
+                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[0.7rem] font-medium text-muted-foreground">fatura de {fmtMesCurto(sug.mes_ref).toLowerCase()}{item.pendente ? " (aberta)" : ""}</span>
               )}
             </div>
           )}

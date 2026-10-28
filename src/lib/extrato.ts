@@ -10,7 +10,7 @@ import {
   ehFaturaCheia, faturaInfoDoMes, faturaPagaNoMes, obrigacaoPagaNoMes, obrigacoesAtivasNoMes,
 } from "@/lib/selectors"
 import { registrarFaturaPaga, removerFaturaPaga } from "@/lib/pagamentos"
-import { catInfo } from "@/lib/categorias"
+import { catInfo, DESPESA_CATS } from "@/lib/categorias"
 
 // ---------------------------------------------------------------------------
 // Lançamento automático: cada movimentação que chega do banco (Open Finance ou arquivo)
@@ -47,6 +47,7 @@ export type Contexto = {
   faturaPagamentos: FaturaPagamento[]
   temas: Tema[]
   usados: Set<number>               // transações já ligadas a algum item do extrato
+  extrato?: ExtratoItem[]           // as outras movimentações (pra achar o par de um Pix pago no cartão)
 }
 
 // ---------- texto ----------
@@ -96,11 +97,24 @@ export function limparDescricao(raw: string | null | undefined): string {
   return titulo(s || String(raw || "Movimentação").trim())
 }
 
+// quem recebeu/mandou: campo próprio ou o nome depois do "|" ("Transferência enviada pelo Pix|FULANO")
+export function contraparteDe(item: Pick<ExtratoItem, "descricao" | "descricao_raw" | "contraparte">): string | null {
+  if (item.contraparte) return item.contraparte
+  for (const t of [item.descricao, item.descricao_raw]) {
+    const i = String(t ?? "").indexOf("|")
+    if (i >= 0 && String(t).slice(i + 1).trim()) return String(t).slice(i + 1).trim()
+  }
+  return null
+}
+const ehPessoa = (item: Pick<ExtratoItem, "descricao" | "descricao_raw" | "operacao">) =>
+  /pix|ted|doc|transf/i.test(`${item.operacao ?? ""} ${item.descricao_raw ?? ""} ${item.descricao}`)
+
 // chave da regra: pessoa (Pix/TED) ou estabelecimento, normalizada e curta
 export function chaveDe(item: Pick<ExtratoItem, "descricao" | "descricao_raw" | "contraparte" | "operacao">): string {
-  const pessoa = item.contraparte && /pix|ted|doc|transf/i.test(`${item.operacao ?? ""} ${item.descricao_raw ?? ""} ${item.descricao}`)
+  const cp = contraparteDe(item)
+  const pessoa = cp && ehPessoa(item)
   if (pessoa) {
-    const p = normalizarTexto(item.contraparte).split(" ").filter((w) => w.length > 1).slice(0, 2).join(" ")
+    const p = normalizarTexto(cp).split(" ").filter((w) => w.length > 1).slice(0, 2).join(" ")
     if (p) return `pessoa:${p}`
   }
   const base = normalizarTexto(limparDescricao(item.descricao || item.descricao_raw))
@@ -108,7 +122,13 @@ export function chaveDe(item: Pick<ExtratoItem, "descricao" | "descricao_raw" | 
   return tokens.slice(0, 3).join(" ") || base || "movimentacao"
 }
 
-const sem = (s: string) => normalizarTexto(s).split(" ").filter((w) => w.length >= 3)
+const GENERICOS_HIST = new Set([
+  "pagamento", "transferencia", "pix", "compra", "valor", "enviada", "recebida", "debito", "credito", "nubank",
+  "mercado", "pago", "boleto", "fatura", "conta", "cartao", "loja", "servicos", "brasil", "instituicao", "ltda",
+  "comercio", "apple", "google", "pagamentos", "tecnologia", "intermediacoes",
+])
+// palavras que não identificam nada ("pagamento", "pix", "ltda"...) não contam como nome em comum
+const sem = (s: string) => normalizarTexto(s).split(" ").filter((w) => w.length >= 3 && !GENERICOS_HIST.has(w))
 function sobreposicao(a: string, b: string): number {
   const A = new Set(sem(a))
   return sem(b).filter((w) => A.has(w)).length
@@ -145,7 +165,12 @@ function mesDe(iso: string) { return iso.slice(0, 7) }
 
 // em qual fatura cai uma compra do extrato do cartão
 function mesFaturaDoItem(item: ExtratoItem, cartao: Cartao | null): string {
-  if (item.previsao_fatura) return mesDe(item.previsao_fatura)
+  // previsão no último dia do mês (Nubank: 30/09, 31/10...) = mês de referência; a fatura vence no mês seguinte
+  if (item.previsao_fatura) {
+    const [a, m, d] = item.previsao_fatura.split("-").map(Number)
+    const ultimo = new Date(Date.UTC(a, m, 0)).getUTCDate()
+    return d === ultimo ? addMonths(mesDe(item.previsao_fatura), 1) : mesDe(item.previsao_fatura)
+  }
   const k = item.parcela_atual ?? 1
   if (item.data_compra && k > 1) return addMonths(mesFaturaPara(cartao, item.data_compra), k - 1)
   return mesFaturaPara(cartao, item.data_compra && k <= 1 ? item.data_compra : item.data)
@@ -154,9 +179,11 @@ function mesFaturaDoItem(item: ExtratoItem, cartao: Cartao | null): string {
 // ---------- histórico ----------
 
 // categoria e nome que você já usou pra algo parecido
+
 function doHistorico(nome: string, chave: string, transacoes: Transacao[]): { categoria: string; descricao: string } | null {
   const alvo = normalizarTexto(nome)
-  const tok = chave.replace(/^pessoa:/, "").split(" ")[0] ?? ""
+  const tok0 = chave.replace(/^pessoa:/, "").split(" ")[0] ?? ""
+  const tok = GENERICOS_HIST.has(tok0) ? "" : tok0
   const cands = transacoes.filter((t) => {
     if (t.tipo !== "despesa" || !t.categoria || t.categoria === "outro" || t.categoria === "fatura_indefinida" || ehFaturaCheia(t)) return false
     const n = normalizarTexto(nomeComercial(t.descricao))
@@ -170,9 +197,13 @@ function doHistorico(nome: string, chave: string, transacoes: Transacao[]): { ca
   return { categoria, descricao: nomeComercial((exato ?? cands[0]).descricao) }
 }
 
+const CATS_GASTO = new Set(DESPESA_CATS.map((c) => c.v).filter((v) => v !== "cartao" && v !== "fatura_indefinida" && v !== "outro"))
+const RE_INTERMEDIARIO = /(mercado ?pago|picpay|pagseguro|pagbank|shpp|shopee|pay2all|ligapay|renovapay|stone|cielo|getnet|institui[cç][aã]o de pagamento|intermedia[cç])/i
 function categoriaPorDicionario(nome: string, ctx: Contexto): { categoria: string; fonte: string } {
+  // Pix pra maquininha/carteira: o nome não diz o que foi comprado
+  if (RE_INTERMEDIARIO.test(nome)) return { categoria: "outro", fonte: "pago por intermediário (maquininha/carteira): diga o que foi" }
   const p = parseEntrada(`${nome} 1`, [], [], [])
-  if (p && p.categoriaOrigem === "dicionário" && p.categoria !== "outro" && p.categoria !== "cartao") return { categoria: p.categoria, fonte: `parece ${catInfo(p.categoria).l.toLowerCase()}` }
+  if (p && p.categoriaOrigem === "dicionário" && CATS_GASTO.has(p.categoria)) return { categoria: p.categoria, fonte: `parece ${catInfo(p.categoria).l.toLowerCase()}` }
   const tema = temaDaDescricao(nome, ctx.temas)
   if (tema) return { categoria: CAT_DO_TEMA[tema.key as TemaKey] ?? "outro", fonte: `parece ${tema.titulo.toLowerCase()}` }
   return { categoria: "outro", fonte: "" }
@@ -213,6 +244,34 @@ function acharExistente(item: ExtratoItem, s: Omit<Sugestao, "conciliar" | "auto
 
 // ---------- sugestão ----------
 
+const RE_PIX_CREDITO = /valor adicionado na conta por cart|pix no cr[eé]dito|cr[eé]dito para pix/i
+
+// mesmo titular da conta (Pix pra você mesmo em outro banco)
+function ehTitular(nome: string | null | undefined, conta: ContaBanco | null, ctx: Contexto): boolean {
+  if (!nome) return false
+  const titulares = [...new Set([conta?.titular, ...ctx.contas.map((c) => c.titular)].filter(Boolean) as string[])]
+  const alvo = normalizarTexto(nome).replace(/[^a-z ]/g, "")
+  const alvoColado = alvo.replace(/ /g, "")
+  return titulares.some((t) => {
+    const tt = normalizarTexto(t).replace(/[^a-z ]/g, "").split(" ").filter(Boolean)
+    if (tt.length < 2) return false
+    const dois = `${tt[0]} ${tt[1]}`
+    const colado = tt.join("")
+    return alvo.startsWith(dois) || (alvoColado.length >= 12 && colado.startsWith(alvoColado))
+  })
+}
+
+// Pix que saiu logo depois de "valor adicionado na conta por cartão" com o mesmo valor
+function pixPagoNoCartao(item: ExtratoItem, ctx: Contexto): boolean {
+  return (ctx.extrato ?? []).some((e) => e.id !== item.id && e.conta_id === item.conta_id && e.sentido === "entrada" &&
+    RE_PIX_CREDITO.test(`${e.descricao} ${e.descricao_raw ?? ""}`) && Math.abs(Number(e.valor) - item.valor) < 0.01 &&
+    diasEntre(e.data, item.data) <= 1)
+}
+
+function obrigacaoPorNome(item: ExtratoItem, ctx: Contexto): boolean {
+  return obrigacoesAtivasNoMes(ctx.obrigacoes, mesDe(item.data)).some((o) => sobreposicao(o.nome, `${item.descricao} ${item.descricao_raw ?? ""}`) >= 1)
+}
+
 const RE_TRANSF_PROPRIA = /(mesma titularidade|conta propria|entre contas|aplica[cç][aã]o|resgate|caixinha|cofrinho|porquinho|guardad|poupan[cç]a|\bcdb\b|\brdb\b|\blci\b|\blca\b|tesouro|investimento|reserva)/i
 const RE_PAGTO_FATURA = /(fatura|pagamento (de |do )?cart[aã]o|pgto (de )?cart|pag(amento)? fat|nu pagamentos|cart[aã]o de cr[eé]dito)/i
 const RE_SALARIO = /(sal[aá]rio|folha|proventos|holerite|pro[- ]?labore|adiantamento salarial)/i
@@ -222,9 +281,11 @@ export function sugerir(item: ExtratoItem, ctx: Contexto): Sugestao {
   const conta = ctx.contas.find((c) => c.id === item.conta_id) ?? null
   const ehCartao = (item.tipo_conta ?? conta?.tipo) === "CREDIT"
   const cartao = ehCartao ? ctx.cartoes.find((c) => c.id === conta?.cartao_id) ?? null : null
-  const nome = limparDescricao(item.contraparte && /pix|ted|transf/i.test(`${item.operacao} ${item.descricao}`) ? item.contraparte : item.descricao)
+  const cp = contraparteDe(item)
+  const nome = limparDescricao(cp && ehPessoa(item) ? cp : item.descricao)
   const chave = chaveDe(item)
-  const texto = `${item.descricao} ${item.descricao_raw ?? ""} ${item.contraparte ?? ""}`
+  const texto = `${item.descricao} ${item.descricao_raw ?? ""} ${cp ?? ""}`
+  const proprio = ehTitular(cp, conta, ctx) || ehTitular(item.descricao.replace(/^.*\*\s*/, ""), conta, ctx)
   const regra = ctx.regras.find((r) => r.chave === chave && r.sentido === item.sentido) ?? null
   const mesData = mesDe(item.data)
 
@@ -257,8 +318,20 @@ export function sugerir(item: ExtratoItem, ctx: Contexto): Sugestao {
         motivo: !cartao ? "ligue esta conta a um cartão do app" : h ? `você já lançou "${h.descricao}" assim` : d!.fonte || "novo por aqui",
       }
     }
+  } else if (proprio) {
+    s = { ...base, acao: "ignorar", confianca: "alta", motivo: "transferência entre contas suas (mesmo titular)" }
   } else if (RE_TRANSF_PROPRIA.test(texto) && !RE_RENDIMENTO.test(texto)) {
-    s = { ...base, acao: "ignorar", confianca: "media", motivo: "parece movimentação entre suas contas ou investimento" }
+    s = { ...base, acao: "ignorar", confianca: "alta", motivo: "movimentação de investimento/caixinha, não é gasto nem renda" }
+  } else if (item.sentido === "entrada" && RE_PIX_CREDITO.test(texto)) {
+    s = { ...base, acao: "ignorar", confianca: "alta", motivo: "Pix no crédito: o gasto já conta na fatura do cartão" }
+  } else if (item.sentido === "saida" && pixPagoNoCartao(item, ctx)) {
+    s = { ...base, acao: "ignorar", confianca: "alta", motivo: "Pix pago com o cartão: o gasto já conta na fatura" }
+  } else if (item.sentido === "saida" && RE_PAGTO_FATURA.test(texto) && !obrigacaoPorNome(item, ctx)) {
+    const mesmoBanco = ctx.contas.find((c) => c.tipo === "CREDIT" && !!c.cartao_id && !!conta?.item_id && c.item_id === conta.item_id)?.cartao_id ?? null
+    const fat = faturaDoPagamento(item, ctx, mesmoBanco)
+    s = fat && fat.confianca !== "baixa"
+      ? { ...base, ...fat, acao: "fatura" }
+      : { ...base, acao: "ignorar", confianca: "alta", motivo: "pagamento da fatura do cartão: os gastos já contam pelas compras" }
   } else if (item.sentido === "entrada") {
     if (RE_SALARIO.test(texto)) s = { ...base, acao: "receita", categoria: "salario", descricao: nome, confianca: "media", motivo: "parece salário" }
     else if (RE_RENDIMENTO.test(texto)) s = { ...base, acao: "receita", categoria: "investimento", confianca: "media", motivo: "parece rendimento" }
@@ -284,9 +357,10 @@ export function sugerir(item: ExtratoItem, ctx: Contexto): Sugestao {
   }
 
   const conciliar = s.acao === "ignorar" || s.acao === "fatura" ? null : acharExistente(item, s, ctx)
-  const travado = item.pendente || item.acao === "revisar" || !!item.acao?.startsWith("sem:")
+  const travado = item.acao === "revisar" || !!item.acao?.startsWith("sem:")
   const automatico = !travado && (
     !!conciliar ||
+    (s.acao === "ignorar" && s.confianca === "alta" && !regra) ||
     (!!regra && regra.auto && (s.acao !== "despesa" || !ehCartao || !!s.cartao_id)) ||
     (ehCartao && item.sentido === "entrada" && s.confianca === "alta"))   // pagamento de fatura dentro do cartão
   return { ...s, conciliar, automatico, motivo: conciliar ? `já estava lançado: "${conciliar.descricao}"` : s.motivo }
@@ -310,6 +384,20 @@ function faturaDoPagamento(item: ExtratoItem, ctx: Contexto, cartaoFixo: number 
     }
   }
   const exato = melhor && melhor.dif <= Math.max(1, item.valor * 0.01)
+  if (cartaoFixo && !exato) {
+    // pagamento da fatura inteira perto do vencimento (fatura do app pode estar incompleta)
+    const c = porNome
+    if (!c) return null
+    for (const m of [mes, addMonths(mes, 1)]) {
+      const venc = `${m}-${String(Math.min(c.dia_vencimento ?? 10, 28)).padStart(2, "0")}`
+      const v = faturaInfoDoMes(ctx.transacoes, c.id, m).valor
+      if (diasEntre(item.data, venc) <= 7 && v > 0 && item.valor >= v * 0.6 && !faturaPagaNoMes(ctx.faturaPagamentos, c.id, m)) {
+        return { cartao_id: c.id, mes_ref: m, descricao: `Fatura ${c.nome}`, categoria: "cartao", confianca: "media",
+          motivo: `pagamento da fatura ${c.nome} (${m.slice(5)}/${m.slice(2, 4)}); no app ela está em ${v.toFixed(2).replace(".", ",")}` }
+      }
+    }
+    return null
+  }
   if (!exato && !porNome) return null
   const c = exato ? melhor!.c : porNome!
   const m = exato ? melhor!.m : melhor?.c.id === c.id ? melhor!.m : mes
@@ -325,9 +413,11 @@ function contaFixaDoPagamento(item: ExtratoItem, ctx: Contexto): { o: Obrigacao;
   const mes = mesDe(item.data)
   let melhor: { o: Obrigacao; nota: number } | null = null
   for (const o of obrigacoesAtivasNoMes(ctx.obrigacoes, mes)) {
-    const valorOk = Math.abs(Number(o.valor) - item.valor) <= Math.max(1, Number(o.valor) * 0.02)
+    const dif = Math.abs(Number(o.valor) - item.valor)
+    const nome = sobreposicao(o.nome, `${item.descricao} ${item.descricao_raw ?? ""} ${contraparteDe(item) ?? ""}`)
+    const valorOk = dif <= Math.max(1, Number(o.valor) * 0.02) || (nome >= 1 && dif <= Number(o.valor) * 0.1)
     if (!valorOk) continue
-    const nota = 2 + Math.min(2, sobreposicao(o.nome, `${item.descricao} ${item.contraparte ?? ""}`))
+    const nota = 2 + Math.min(2, nome)
     if (!melhor || nota > melhor.nota) melhor = { o, nota }
   }
   return melhor
@@ -426,7 +516,7 @@ export async function desfazer(item: ExtratoItem, transacoes: Transacao[], opts:
 // Resolve sozinho tudo que tem certeza (regra aprendida, já lançado à mão, pagamento dentro do cartão)
 export async function processarAutomaticos(itens: ExtratoItem[], ctx: Contexto): Promise<{ feitos: number; erros: number }> {
   let feitos = 0, erros = 0
-  const fila = itens.filter((i) => i.status === "novo" && !i.pendente).sort((a, b) => (a.data < b.data ? -1 : 1))
+  const fila = itens.filter((i) => i.status === "novo").sort((a, b) => (a.data < b.data ? -1 : 1))
   for (const item of fila) {
     const s = sugerir(item, ctx)
     if (!s.automatico) continue

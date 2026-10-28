@@ -143,6 +143,7 @@ export type ContaBanco = {
   ativo: boolean
   ultimo_sync: string | null
   criado_em: string
+  titular?: string | null
 }
 
 export type ExtratoItem = {

@@ -15,6 +15,7 @@ export function contextoAtual(): Contexto {
     faturaPagamentos: st.faturaPagamentos,
     temas: temasComExtras(st.config.temas_extra),
     usados: new Set(st.extratoLigados),
+    extrato: st.extrato,
   }
 }
 
@@ -71,7 +72,7 @@ export async function statusBancos(): Promise<{ configurado: boolean; items: num
   return data as { configurado: boolean; items: number }
 }
 
-// quantos esperam resposta (o que ainda está pendente no banco não conta)
-export function contarParaRevisar(extrato: { status: string; pendente: boolean }[]): number {
-  return extrato.filter((e) => e.status === "novo" && !e.pendente).length
+// quantos esperam resposta
+export function contarParaRevisar(extrato: { status: string }[]): number {
+  return extrato.filter((e) => e.status === "novo").length
 }

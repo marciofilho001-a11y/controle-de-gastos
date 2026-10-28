@@ -98,6 +98,21 @@ function paraExtrato(t: any, conta: { id: string; tipo: string }) {
   }
 }
 
+// "Nu Pagamentos S.A. - Instituição de Pagamento" -> "Nubank" (o conector MeuPluggy não diz o banco)
+function nomeDoBanco(nome: string | null | undefined): string | null {
+  const n = String(nome ?? "").toLowerCase()
+  if (!n) return null
+  const mapa: [RegExp, string][] = [
+    [/nu pagamentos|nubank/, "Nubank"], [/mercado ?pago/, "Mercado Pago"], [/picpay/, "PicPay"],
+    [/ita[uú]/, "Itaú"], [/bradesco/, "Bradesco"], [/santander/, "Santander"], [/\binter\b/, "Inter"],
+    [/caixa/, "Caixa"], [/banco do brasil/, "Banco do Brasil"], [/\bc6\b/, "C6 Bank"], [/sicoob/, "Sicoob"],
+    [/sicredi/, "Sicredi"], [/neon/, "Neon"], [/next/, "Next"], [/btg/, "BTG"], [/xp /, "XP"],
+  ]
+  for (const [re, nomeBanco] of mapa) if (re.test(n)) return nomeBanco
+  return String(nome).split(/\s[-–(]/)[0].trim()
+}
+const diasEntre = (a: string, b: string) => Math.abs((Date.parse(a + "T12:00:00Z") - Date.parse(b + "T12:00:00Z")) / 86400000)
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS })
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
@@ -138,16 +153,18 @@ Deno.serve(async (req) => {
   for (const itemId of items) {
     try {
       const item = await pluggy(`/items/${itemId}`, apiKey).catch(() => null)
-      const banco = item?.connector?.name ?? null
       const contas = await pluggy(`/accounts?itemId=${itemId}`, apiKey)
+      const conector = item?.connector?.name ?? null
+      const contaCorrente = (contas.results ?? []).find((a: any) => a.type === "BANK")
+      const banco = conector && !/meu ?pluggy/i.test(conector) ? conector : nomeDoBanco(contaCorrente?.name ?? contaCorrente?.marketingName)
       for (const a of contas.results ?? []) {
         resumo.contas++
         const contaId = String(a.id)
         const { data: existente } = await db.from("fin_bancos_contas").select("id, ultimo_sync, ativo").eq("id", contaId).maybeSingle()
         const linhaConta = {
-          id: contaId, item_id: itemId, origem: "pluggy", banco: banco ?? a.owner ?? null,
-          nome: a.marketingName || a.name || null, tipo: a.type ?? null, subtipo: a.subtype ?? null,
-          numero: a.number ? String(a.number).slice(-4) : null,
+          id: contaId, item_id: itemId, origem: "pluggy", banco: banco ?? null,
+          nome: a.type === "CREDIT" ? `Cartão ${a.name ?? ""}`.trim() : "Conta", tipo: a.type ?? null, subtipo: a.subtype ?? null,
+          numero: a.number ? String(a.number).slice(-4) : null, titular: a.owner ?? null,
         }
         if (existente) await db.from("fin_bancos_contas").update(linhaConta).eq("id", contaId)
         else await db.from("fin_bancos_contas").insert(linhaConta)
@@ -161,6 +178,15 @@ Deno.serve(async (req) => {
         const linhas = brutas.map((t) => paraExtrato(t, { id: contaId, tipo: a.type }))
           .filter((l) => l.valor > 0)
 
+        // compra pendente que o banco confirmou com outro id (Nubank: a fatura aberta é toda "pendente"):
+        // a nova herda o que você já resolveu na antiga, sem lançar de novo
+        const vistos = new Set(linhas.map((l) => l.id))
+        const { data: pendAntigos } = await db.from("fin_extrato")
+          .select("id, valor, data, status, acao, auto, transacao_id, regra_id, resolvido_em")
+          .eq("conta_id", contaId).eq("pendente", true).gte("data", de)
+        const sumidos = (pendAntigos ?? []).filter((r: any) => !vistos.has(r.id))
+        const herdados = new Set<string>()
+
         if (linhas.length) {
           const ids = linhas.map((l) => l.id)
           const ja = new Map<string, string>()
@@ -168,7 +194,16 @@ Deno.serve(async (req) => {
             const { data } = await db.from("fin_extrato").select("id, status").in("id", ids.slice(i, i + 200))
             for (const r of data ?? []) ja.set(r.id, r.status)
           }
-          const novas = linhas.filter((l) => !ja.has(l.id))
+          const novas: any[] = linhas.filter((l) => !ja.has(l.id))
+          for (const n of novas) {
+            const antigo = sumidos.find((r: any) => !herdados.has(r.id) && r.status !== "novo" &&
+              Math.abs(Number(r.valor) - n.valor) < 0.01 && diasEntre(r.data, n.data) <= 5)
+            if (!antigo) continue
+            herdados.add(antigo.id)
+            Object.assign(n, { status: antigo.status, acao: antigo.acao, auto: antigo.auto, transacao_id: antigo.transacao_id, regra_id: antigo.regra_id, resolvido_em: antigo.resolvido_em })
+          }
+          // a antiga sai antes (o vínculo com a transação passa pra nova)
+          if (herdados.size) await db.from("fin_extrato").delete().in("id", [...herdados])
           // ainda não resolvidas: atualiza (compra pendente que fechou muda data/valor)
           const atualizar = linhas.filter((l) => ja.get(l.id) === "novo")
           if (novas.length) {
@@ -181,11 +216,8 @@ Deno.serve(async (req) => {
             resumo.atualizados++
           }
         }
-        // compra pendente que o banco substituiu por outra ao confirmar (id novo): sai da fila
-        const vistos = new Set(linhas.map((l) => l.id))
-        const { data: pend } = await db.from("fin_extrato").select("id")
-          .eq("conta_id", contaId).eq("status", "novo").eq("pendente", true).gte("data", de)
-        const sumiram = (pend ?? []).map((r) => r.id).filter((id) => !vistos.has(id))
+        // pendente que sumiu sem ter sido resolvida: sai da fila (a confirmada, se veio, entrou como nova)
+        const sumiram = sumidos.filter((r: any) => r.status === "novo").map((r: any) => r.id)
         if (sumiram.length) await db.from("fin_extrato").delete().in("id", sumiram)
 
         await db.from("fin_bancos_contas").update({ ultimo_sync: new Date().toISOString() }).eq("id", contaId)
