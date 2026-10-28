@@ -128,3 +128,60 @@ export type CategoriaIcone = {
   imagem: string
   atualizado_em: string
 }
+
+// ---- Lançamento automático (Open Finance / extrato importado) ----
+export type ContaBanco = {
+  id: string
+  item_id: string | null
+  origem: "pluggy" | "arquivo"
+  banco: string | null
+  nome: string | null
+  tipo: string | null          // BANK | CREDIT
+  subtipo: string | null
+  numero: string | null
+  cartao_id: number | null
+  ativo: boolean
+  ultimo_sync: string | null
+  criado_em: string
+}
+
+export type ExtratoItem = {
+  id: string
+  conta_id: string | null
+  origem: "pluggy" | "arquivo"
+  data: string
+  descricao: string
+  descricao_raw: string | null
+  valor: number
+  sentido: "saida" | "entrada"
+  tipo_conta: string | null
+  operacao: string | null
+  contraparte: string | null
+  parcela_atual: number | null
+  parcela_total: number | null
+  data_compra: string | null
+  previsao_fatura: string | null
+  pendente: boolean
+  status: "novo" | "lancado" | "conciliado" | "ignorado"
+  acao: string | null
+  auto: boolean
+  transacao_id: number | null
+  regra_id: number | null
+  resolvido_em: string | null
+  criado_em: string
+}
+
+export type Regra = {
+  id: number
+  chave: string
+  sentido: "saida" | "entrada"
+  acao: "despesa" | "receita" | "fatura" | "obrigacao" | "ignorar"
+  descricao: string | null
+  categoria: string | null
+  obrigacao_id: number | null
+  cartao_id: number | null
+  auto: boolean
+  vezes: number
+  criado_em: string
+  atualizado_em: string
+}

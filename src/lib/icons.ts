@@ -122,4 +122,11 @@ export {
   X as XIcon,
   XCircle,
   Lightning as Zap,
+  ArrowsClockwise as RefreshCw,
+  PlugsConnected,
+  Brain,
+  Robot,
+  Question as HelpCircle,
+  Bank,
+  Tray,
 } from "@phosphor-icons/react"

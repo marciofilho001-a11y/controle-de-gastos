@@ -13,6 +13,9 @@ import {
   type Config,
   type DescricaoIcone,
   type CategoriaIcone,
+  type ContaBanco,
+  type ExtratoItem,
+  type Regra,
 } from "@/lib/supabase"
 
 type FinState = {
@@ -30,6 +33,11 @@ type FinState = {
   config: Record<string, string>
   descricaoIcones: Record<string, string>
   categoriaIcones: Record<string, string>
+  // lançamento automático
+  extrato: ExtratoItem[]          // a revisar + resolvidos nos últimos 45 dias
+  extratoLigados: number[]        // ids de transações já ligadas a algum item do extrato
+  regras: Regra[]
+  contasBanco: ContaBanco[]
   loadAll: () => Promise<void>
   saveConfig: (chave: string, valor: string) => Promise<void>
 }
@@ -51,6 +59,10 @@ export const useFinData = create<FinState>((set) => ({
   config: {},
   descricaoIcones: {},
   categoriaIcones: {},
+  extrato: [],
+  extratoLigados: [],
+  regras: [],
+  contasBanco: [],
   saveConfig: async (chave, valor) => {
     await supabase.from("fin_config").upsert({ chave, valor: String(valor) }, { onConflict: "chave" })
     set((st) => ({ config: { ...st.config, [chave]: String(valor) } }))
@@ -60,7 +72,8 @@ export const useFinData = create<FinState>((set) => ({
     // atualizam em silêncio (senão a tela desmonta e você perde a fatura/aba que estava aberta)
     set({ loading: !jaCarregou, error: null })
     try {
-      const [obr, tx, cart, comp, fat, fpg, inv, sal, tet, cfg, dic, cic] = await Promise.all([
+      const desde = new Date(Date.now() - 45 * 86400000).toISOString()
+      const [obr, tx, cart, comp, fat, fpg, inv, sal, tet, cfg, dic, cic, exNovos, exResolvidos, exLig, reg, cb] = await Promise.all([
         supabase.from("fin_obrigacoes").select("*").order("dia_vencimento"),
         supabase.from("fin_transacoes").select("*").order("data", { ascending: false }),
         supabase.from("fin_cartoes").select("*").order("nome"),
@@ -73,6 +86,11 @@ export const useFinData = create<FinState>((set) => ({
         supabase.from("fin_config").select("*"),
         supabase.from("fin_descricao_icones").select("*"),
         supabase.from("fin_categoria_icones").select("*"),
+        supabase.from("fin_extrato").select("*").eq("status", "novo").order("data", { ascending: false }).limit(1000),
+        supabase.from("fin_extrato").select("*").neq("status", "novo").gte("resolvido_em", desde).order("resolvido_em", { ascending: false }).limit(500),
+        supabase.from("fin_extrato").select("transacao_id").not("transacao_id", "is", null).limit(10000),
+        supabase.from("fin_regras").select("*").order("atualizado_em", { ascending: false }),
+        supabase.from("fin_bancos_contas").select("*").order("criado_em"),
       ])
 
       const firstError =
@@ -108,6 +126,11 @@ export const useFinData = create<FinState>((set) => ({
         config,
         descricaoIcones,
         categoriaIcones,
+        // o extrato não pode derrubar o app se falhar
+        extrato: [...((exNovos.data as ExtratoItem[]) || []), ...((exResolvidos.data as ExtratoItem[]) || [])].map((e) => ({ ...e, valor: Number(e.valor) })),
+        extratoLigados: ((exLig.data as { transacao_id: number }[]) || []).map((r) => r.transacao_id),
+        regras: (reg.data as Regra[]) || [],
+        contasBanco: (cb.data as ContaBanco[]) || [],
       })
     } catch (e) {
       set({ loading: false, error: e instanceof Error ? e.message : "Erro ao carregar dados" })

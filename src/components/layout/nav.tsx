@@ -2,22 +2,25 @@ import { useState } from "react"
 import { motion } from "motion/react"
 import {
   LayoutDashboard, ListChecks, CreditCard, ArrowLeftRight, TrendingUp,
-  FileText, CalendarCheck, History, MoreHorizontal, type LucideIcon,
+  FileText, CalendarCheck, History, MoreHorizontal, Inbox, type LucideIcon,
 } from "@/lib/icons"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useFinData } from "@/hooks/use-fin-data"
+import { contarParaRevisar } from "@/features/revisar/automatico"
 import { cn } from "@/lib/utils"
 
 export type TabId =
   | "dashboard" | "obrigacoes" | "cartoes" | "transacoes"
-  | "projecao" | "fechamento" | "historico" | "relatorio"
+  | "projecao" | "fechamento" | "historico" | "relatorio" | "revisar"
 
 export const TABS: { id: TabId; label: string; curto: string; icon: LucideIcon }[] = [
   { id: "dashboard", label: "Dashboard", curto: "Início", icon: LayoutDashboard },
   { id: "obrigacoes", label: "Obrigações", curto: "Obrigações", icon: ListChecks },
   { id: "cartoes", label: "Cartões", curto: "Cartões", icon: CreditCard },
   { id: "transacoes", label: "Transações", curto: "Transações", icon: ArrowLeftRight },
+  { id: "revisar", label: "Revisar", curto: "Revisar", icon: Inbox },
   { id: "projecao", label: "Projeção", curto: "Projeção", icon: TrendingUp },
   { id: "fechamento", label: "Fechamento", curto: "Fechamento", icon: CalendarCheck },
   { id: "historico", label: "Histórico", curto: "Histórico", icon: History },
@@ -57,10 +60,11 @@ export function NavBar({ active, onChange }: { active: TabId; onChange: (t: TabI
 }
 
 // Celular: barra inferior com as 4 seções mais usadas + "Mais"
-const PRINCIPAIS: TabId[] = ["dashboard", "transacoes", "cartoes", "fechamento"]
+const PRINCIPAIS: TabId[] = ["dashboard", "transacoes", "revisar", "cartoes"]
 
 export function TabBar({ active, onChange }: { active: TabId; onChange: (t: TabId) => void }) {
   const [menu, setMenu] = useState(false)
+  const aRevisar = useFinData((s) => contarParaRevisar(s.extrato))
   const outras = TABS.filter((t) => !PRINCIPAIS.includes(t.id))
   const outraAtiva = outras.find((t) => t.id === active)
   return (
@@ -77,7 +81,12 @@ export function TabBar({ active, onChange }: { active: TabId; onChange: (t: TabI
               className={cn("press flex flex-col items-center gap-0.5 rounded-lg py-1 text-[0.68rem] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring", isActive ? "text-primary" : "text-muted-foreground")}
               aria-current={isActive ? "page" : undefined}
             >
-              <Icon className="size-[1.35rem]" weight={isActive ? "fill" : "regular"} />
+              <span className="relative">
+                <Icon className="size-[1.35rem]" weight={isActive ? "fill" : "regular"} />
+                {id === "revisar" && aRevisar > 0 && (
+                  <span className="tnum absolute -top-1 -right-2.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.6rem] leading-4 font-bold text-primary-foreground ring-2 ring-background">{aRevisar > 99 ? "99+" : aRevisar}</span>
+                )}
+              </span>
               {t.curto}
             </button>
           )

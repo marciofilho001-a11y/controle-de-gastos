@@ -2,11 +2,13 @@ import { motion } from "motion/react"
 import { Wallet, Plus } from "@/lib/icons"
 import { TABS, type TabId } from "@/components/layout/nav"
 import { useChatUI } from "@/features/chat/chat-assistente"
+import { useFinData } from "@/hooks/use-fin-data"
+import { contarParaRevisar } from "@/features/revisar/automatico"
 import { cn } from "@/lib/utils"
 
 // Barra lateral do desktop: seções agrupadas (como nos apps grandes) + lançamento rápido no rodapé
 const GRUPOS: { titulo: string; ids: TabId[] }[] = [
-  { titulo: "Principal", ids: ["dashboard", "transacoes", "cartoes", "obrigacoes"] },
+  { titulo: "Principal", ids: ["dashboard", "transacoes", "revisar", "cartoes", "obrigacoes"] },
   { titulo: "Análise", ids: ["projecao", "historico", "relatorio"] },
   { titulo: "Gestão", ids: ["fechamento"] },
 ]
@@ -16,6 +18,7 @@ export const SIDEBAR_W = 232
 
 export function Sidebar({ active, onChange }: { active: TabId; onChange: (t: TabId) => void }) {
   const abrirChat = useChatUI((s) => s.setAberto)
+  const aRevisar = useFinData((s) => contarParaRevisar(s.extrato))
   return (
     <aside
       className="sidebar fixed inset-y-0 left-0 z-40 hidden flex-col border-r bg-sidebar md:flex"
@@ -53,7 +56,10 @@ export function Sidebar({ active, onChange }: { active: TabId; onChange: (t: Tab
                   >
                     {isActive && <motion.span layoutId="sidebar-pill" transition={SPRING} className="absolute inset-0 rounded-lg bg-sidebar-accent" />}
                     <Icon className={cn("relative size-[1.1rem]", isActive && "text-primary")} weight={isActive ? "fill" : "regular"} />
-                    <span className="relative">{id === "dashboard" ? "Início" : t.label}</span>
+                    <span className="relative flex-1 text-left">{id === "dashboard" ? "Início" : t.label}</span>
+                    {id === "revisar" && aRevisar > 0 && (
+                      <span className="tnum relative rounded-full bg-primary px-1.5 text-[0.7rem] leading-[1.15rem] font-semibold text-primary-foreground">{aRevisar}</span>
+                    )}
                   </button>
                 )
               })}

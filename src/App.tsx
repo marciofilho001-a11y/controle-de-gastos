@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Header } from "@/components/layout/header"
@@ -14,6 +15,8 @@ import { FechamentoPage } from "@/features/fechamento/fechamento-page"
 import { HistoricoPage } from "@/features/historico/historico-page"
 import { ChatAssistente } from "@/features/chat/chat-assistente"
 import { LancarRapido } from "@/features/lancar/lancar-rapido"
+import { RevisarPage } from "@/features/revisar/revisar-page"
+import { rodarAutomatico } from "@/features/revisar/automatico"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
 import { Loader2 } from "@/lib/icons"
@@ -32,6 +35,21 @@ export default function App() {
   useEffect(() => {
     loadAll()
   }, [loadAll])
+
+  // ao abrir o site: lança sozinho o que chegou do banco e o site já conhece
+  const autoFeito = useRef(false)
+  useEffect(() => {
+    if (loading || error || autoFeito.current || window.location.pathname.startsWith("/lancar")) return
+    autoFeito.current = true
+    rodarAutomatico().then((r) => {
+      if (r.feitos > 0) {
+        toast.success(`${r.feitos} lançamento${r.feitos > 1 ? "s" : ""} feito${r.feitos > 1 ? "s" : ""} sozinho${r.feitos > 1 ? "s" : ""}`, {
+          description: "Do extrato do banco, com o que o site já aprendeu.",
+          action: { label: "Ver", onClick: () => { setTab("revisar"); window.scrollTo({ top: 0 }) } },
+        })
+      }
+    }).catch(() => {})
+  }, [loading, error])
 
   // a barra superior só ganha sombra quando há conteúdo passando por baixo dela
   useEffect(() => {
@@ -96,6 +114,8 @@ export default function App() {
               <FechamentoPage mesRef={mesRef} onNavigate={irPara} />
             ) : tab === "historico" ? (
               <HistoricoPage mesRef={mesRef} />
+            ) : tab === "revisar" ? (
+              <RevisarPage />
             ) : tab === "relatorio" ? (
               <RelatorioPage mesRef={mesRef} />
             ) : null}
