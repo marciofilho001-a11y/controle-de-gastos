@@ -16,6 +16,7 @@ import { HistoricoPage } from "@/features/historico/historico-page"
 import { ChatAssistente } from "@/features/chat/chat-assistente"
 import { LancarRapido } from "@/features/lancar/lancar-rapido"
 import { RevisarPage } from "@/features/revisar/revisar-page"
+import { BancosPage } from "@/features/bancos/bancos-page"
 import { rodarAutomatico } from "@/features/revisar/automatico"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
@@ -105,7 +106,7 @@ export default function App() {
             ) : tab === "obrigacoes" ? (
               <ObrigacoesPage mesRef={mesRef} onNavigate={irPara} />
             ) : tab === "cartoes" ? (
-              <CartoesPage mesRef={mesRef} />
+              <CartoesPage mesRef={mesRef} onNavigate={irPara} />
             ) : tab === "projecao" ? (
               <ProjecaoPage mesRef={mesRef} />
             ) : tab === "transacoes" ? (
@@ -114,6 +115,8 @@ export default function App() {
               <FechamentoPage mesRef={mesRef} onNavigate={irPara} />
             ) : tab === "historico" ? (
               <HistoricoPage mesRef={mesRef} />
+            ) : tab === "bancos" ? (
+              <BancosPage mesRef={mesRef} onNavigate={irPara} />
             ) : tab === "revisar" ? (
               <RevisarPage />
             ) : tab === "relatorio" ? (

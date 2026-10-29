@@ -17,6 +17,8 @@ const json = (body: unknown, status = 200) =>
 function dataBR(iso: string | null | undefined): string | null {
   if (!iso) return null
   if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso
+  if (/^\d{4}-\d{2}$/.test(iso)) return `${iso}-01`                      // "2026-11": mês da fatura
+  if (/T00:00:00(\.0+)?Z$/.test(iso)) return iso.slice(0, 10)             // data pura (vencimento) sem fuso
   const d = new Date(iso)
   if (isNaN(d.getTime())) return null
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d)
@@ -98,6 +100,20 @@ function paraExtrato(t: any, conta: { id: string; tipo: string }) {
   }
 }
 
+// faturas fechadas do cartão (o que o banco cobra em cada vencimento), mais recentes primeiro
+async function faturasDoCartao(accountId: string, apiKey: string) {
+  try {
+    const r: any = await pluggy(`/bills?accountId=${accountId}`, apiKey)
+    return (r.results ?? [])
+      .map((b: any) => ({ vence: dataBR(b.dueDate), total: Math.round(Number(b.totalAmount ?? 0) * 100) / 100 }))
+      .filter((b: any) => b.vence)
+      .sort((x: any, y: any) => (x.vence < y.vence ? 1 : -1))
+      .slice(0, 8)
+  } catch {
+    return null
+  }
+}
+
 // "Nu Pagamentos S.A. - Instituição de Pagamento" -> "Nubank" (o conector MeuPluggy não diz o banco)
 function nomeDoBanco(nome: string | null | undefined): string | null {
   const n = String(nome ?? "").toLowerCase()
@@ -165,6 +181,15 @@ Deno.serve(async (req) => {
           id: contaId, item_id: itemId, origem: "pluggy", banco: banco ?? null,
           nome: a.type === "CREDIT" ? `Cartão ${a.name ?? ""}`.trim() : "Conta", tipo: a.type ?? null, subtipo: a.subtype ?? null,
           numero: a.number ? String(a.number).slice(-4) : null, titular: a.owner ?? null,
+          // retrato do banco: saldo da conta; no cartão, o usado, limite, disponível e vencimento
+          saldo: a.balance != null ? Math.round(Number(a.balance) * 100) / 100 : null,
+          limite: a.creditData?.creditLimit ?? null,
+          disponivel: a.creditData?.availableCreditLimit ?? null,
+          vencimento: dataBR(a.creditData?.balanceDueDate ?? null),
+          bandeira: a.creditData?.brand ?? null,
+          nivel: a.creditData?.level ?? null,
+          faturas: a.type === "CREDIT" ? await faturasDoCartao(String(a.id), apiKey) : null,
+          saldo_em: new Date().toISOString(),
         }
         if (existente) await db.from("fin_bancos_contas").update(linhaConta).eq("id", contaId)
         else await db.from("fin_bancos_contas").insert(linhaConta)

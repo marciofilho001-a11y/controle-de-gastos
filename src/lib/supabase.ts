@@ -144,6 +144,14 @@ export type ContaBanco = {
   ultimo_sync: string | null
   criado_em: string
   titular?: string | null
+  saldo?: number | string | null           // conta: saldo; cartão: valor usado do limite
+  limite?: number | string | null
+  disponivel?: number | string | null
+  vencimento?: string | null
+  bandeira?: string | null
+  nivel?: string | null
+  faturas?: { vence: string; total: number }[] | null
+  saldo_em?: string | null
 }
 
 export type ExtratoItem = {

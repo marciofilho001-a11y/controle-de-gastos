@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 
 // Barra lateral do desktop: seções agrupadas (como nos apps grandes) + lançamento rápido no rodapé
 const GRUPOS: { titulo: string; ids: TabId[] }[] = [
-  { titulo: "Principal", ids: ["dashboard", "transacoes", "revisar", "cartoes", "obrigacoes"] },
+  { titulo: "Principal", ids: ["dashboard", "transacoes", "revisar", "bancos", "cartoes", "obrigacoes"] },
   { titulo: "Análise", ids: ["projecao", "historico", "relatorio"] },
   { titulo: "Gestão", ids: ["fechamento"] },
 ]

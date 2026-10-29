@@ -164,7 +164,7 @@ export function casarCartao(texto: string | null | undefined, cartoes: Cartao[])
 function mesDe(iso: string) { return iso.slice(0, 7) }
 
 // em qual fatura cai uma compra do extrato do cartão
-function mesFaturaDoItem(item: ExtratoItem, cartao: Cartao | null): string {
+export function mesFaturaDoItem(item: ExtratoItem, cartao: Cartao | null): string {
   // previsão no último dia do mês (Nubank: 30/09, 31/10...) = mês de referência; a fatura vence no mês seguinte
   if (item.previsao_fatura) {
     const [a, m, d] = item.previsao_fatura.split("-").map(Number)

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { CreditCard, Pencil, Loader2, Inbox, Check, Undo2, FileCheck2 } from "@/lib/icons"
+import { CreditCard, Pencil, Loader2, Inbox, Check, Undo2, FileCheck2, Landmark, Sparkles, ChevronRight } from "@/lib/icons"
 import { RowActions } from "@/components/row-actions"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -28,10 +28,13 @@ import { faturaInfoDoMes, faturaPagaNoMes } from "@/lib/selectors"
 import { motion } from "motion/react"
 import { LogoAvatar } from "@/components/logo-avatar"
 import { fechamentoDoCartao, diasParaFechar, dataLocal } from "@/lib/data-compra"
+import { faturaDoMesNoBanco, faturaFechadaDoMes, mesDaFaturaAberta, nomeDoPlastico } from "@/lib/bancos"
+import type { ContaBanco } from "@/lib/supabase"
+import type { TabId } from "@/components/layout/nav"
 import { cn } from "@/lib/utils"
 
-export function CartoesPage({ mesRef }: { mesRef: string }) {
-  const { cartoes, compras, transacoes, faturaPagamentos, loadAll } = useFinData()
+export function CartoesPage({ mesRef, onNavigate }: { mesRef: string; onNavigate?: (t: TabId) => void }) {
+  const { cartoes, compras, transacoes, faturaPagamentos, contasBanco, loadAll } = useFinData()
   const [filtroCartao, setFiltroCartao] = useState("todos")
   const [delCartao, setDelCartao] = useState<Cartao | null>(null)
   const [delCompra, setDelCompra] = useState<CartaoCompra | null>(null)
@@ -131,7 +134,11 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
           {cartoes.map((c) => {
             const fatInfo = faturaInfoDoMes(transacoes, c.id, mesRef)
             const fatura = fatInfo.valor
-            const usoLimite = c.limite ? Math.min(100, (fatura / Number(c.limite)) * 100) : null
+            const doBanco = contasBanco.find((x) => x.tipo === "CREDIT" && x.cartao_id === c.id && x.ativo !== false) ?? null
+            // com o banco ligado, a barra mostra o limite real usado; sem ele, a fatura do app sobre o limite cadastrado
+            const usoLimite = doBanco?.limite
+              ? Math.min(100, (Number(doBanco.saldo ?? 0) / Number(doBanco.limite)) * 100)
+              : c.limite ? Math.min(100, (fatura / Number(c.limite)) * 100) : null
             const pg = faturaPagaNoMes(faturaPagamentos, c.id, mesRef)
             return (
               <motion.div
@@ -191,16 +198,21 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
                     </div>
                   )}
                 </div>
+                {doBanco && <NoBanco cartao={c} conta={doBanco} mesRef={mesRef} faturaApp={fatura} onNavigate={onNavigate} />}
                 {usoLimite !== null && (
                   <div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
                       <div
-                        className={cn("h-full rounded-full", usoLimite >= 90 ? "bg-destructive" : usoLimite >= 75 ? "bg-warning" : "bg-primary")}
+                        className={cn("h-full rounded-full transition-[width] duration-500", usoLimite >= 90 ? "bg-destructive" : usoLimite >= 75 ? "bg-warning" : "bg-primary")}
                         style={{ width: `${usoLimite}%` }}
                       />
                     </div>
                     <div className="mt-1 flex justify-between text-[0.7rem] text-muted-foreground">
-                      <span className="tnum">{fmtR(fatura)} de {fmtR(Number(c.limite))}</span>
+                      {doBanco?.limite ? (
+                        <span className="tnum">{fmtR(Number(doBanco.disponivel ?? Number(doBanco.limite) - Number(doBanco.saldo ?? 0)))} livres de {fmtR(Number(doBanco.limite))}</span>
+                      ) : (
+                        <span className="tnum">{fmtR(fatura)} de {fmtR(Number(c.limite))}</span>
+                      )}
                       <span className="tnum">{usoLimite.toFixed(0)}%</span>
                     </div>
                   </div>
@@ -354,6 +366,65 @@ export function CartoesPage({ mesRef }: { mesRef: string }) {
         </AlertDialogContent>
       </AlertDialog>
 
+    </div>
+  )
+}
+
+// o que o banco diz deste cartão no mês navegado, lado a lado com o app
+function NoBanco({ cartao, conta, mesRef, faturaApp, onNavigate }: {
+  cartao: Cartao; conta: ContaBanco; mesRef: string; faturaApp: number; onNavigate?: (t: TabId) => void
+}) {
+  const { extrato } = useFinData()
+  const hoje = dataLocal(new Date().toISOString())
+  const aberta = mesDaFaturaAberta(extrato, conta, cartao, hoje)
+  const calc = faturaDoMesNoBanco(extrato, conta, cartao, mesRef)
+  const fechada = faturaFechadaDoMes(conta, mesRef)
+  const ehAberta = mesRef === aberta
+  const futura = mesRef > aberta
+  const aRevisar = calc.itens.filter((e) => e.status === "novo").length
+  // compara compras com compras: o app soma os gastos; o banco desconta pagamentos antecipados
+  const faltaNoApp = Math.round((calc.compras - faturaApp) * 100) / 100
+  const semDados = calc.itens.length === 0 && !fechada
+
+  return (
+    <div className="rounded-xl border border-border/70 bg-secondary/25 px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+      <p className="flex items-center gap-1.5 text-[0.7rem] font-medium text-muted-foreground">
+        <Landmark className="size-3.5" /> No banco · {nomeDoPlastico(conta)}{conta.numero ? ` ••${conta.numero}` : ""}
+      </p>
+      {semDados ? (
+        <p className="mt-1 text-xs text-muted-foreground">{futura ? "Só parcelas futuras por enquanto." : "Sem movimentação deste mês no banco."}</p>
+      ) : (
+        <>
+          <div className="mt-1 flex items-baseline justify-between gap-2">
+            <span className="text-xs text-muted-foreground">
+              {ehAberta ? "Compras até agora" : futura ? "Parcelas já lançadas" : "Compras da fatura"}
+            </span>
+            <span className="tnum text-sm font-semibold">{fmtR(calc.compras)}</span>
+          </div>
+          {fechada && !ehAberta && (
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-xs text-muted-foreground">Cobrado no vencimento</span>
+              <span className="tnum text-xs font-medium">{fmtR(fechada.total)}</span>
+            </div>
+          )}
+          {calc.creditos > 0 && (
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-xs text-muted-foreground">Pago antecipado</span>
+              <span className="tnum text-xs font-medium text-success">− {fmtR(calc.creditos)}</span>
+            </div>
+          )}
+          <p className={cn("mt-1.5 text-[0.7rem]", Math.abs(faltaNoApp) <= 0.5 ? "text-success" : "text-muted-foreground")}>
+            {Math.abs(faltaNoApp) <= 0.5 ? "✓ bate com o app" : faltaNoApp > 0 ? `no banco tem ${fmtR(faltaNoApp)} a mais que no app` : `no app tem ${fmtR(-faltaNoApp)} a mais que no banco`}
+          </p>
+        </>
+      )}
+      {aRevisar > 0 && onNavigate && (
+        <button onClick={() => onNavigate("revisar")} className="press mt-2 flex w-full items-center gap-1.5 rounded-lg bg-primary/10 px-2 py-1.5 text-left text-xs font-medium text-primary">
+          <Sparkles className="size-3.5" weight="fill" />
+          <span className="flex-1">{aRevisar} compra{aRevisar > 1 ? "s" : ""} pra revisar</span>
+          <ChevronRight className="size-3.5" />
+        </button>
+      )}
     </div>
   )
 }
