@@ -2,13 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { toast } from "sonner"
 import {
-  Sparkles, Check, X, Undo2, RefreshCw, Upload, CreditCard, Landmark, Trash2, Loader2, ChevronDown,
-  Inbox, Brain, Link as LinkIcon, Info,
+  Sparkles, Check, X, Undo2, Upload, CreditCard, Landmark, Trash2, Loader2,
+  Inbox, Brain, Link as LinkIcon,
 } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PageHeader } from "@/components/page-header"
 import { IconeLancamento } from "@/components/icone-lancamento"
@@ -20,7 +19,7 @@ import { importarArquivo } from "@/lib/importar-arquivo"
 import { catInfo, DESPESA_CATS, RECEITA_CATS } from "@/lib/categorias"
 import { addMonths, fmtData, fmtMesCurto, fmtMesLongo, fmtR } from "@/lib/format"
 import { faturaInfoDoMes, obrigacoesAtivasNoMes } from "@/lib/selectors"
-import { contextoAtual, contarParaRevisar, rodarAutomatico, sincronizarBancos, statusBancos } from "./automatico"
+import { contextoAtual, contarParaRevisar, rodarAutomatico } from "./automatico"
 import { cn } from "@/lib/utils"
 
 type Aba = "fila" | "lancados" | "ignorados" | "regras"
@@ -64,18 +63,6 @@ function acoesPossiveis(item: ExtratoItem): Acao[] {
   const cartao = item.tipo_conta === "CREDIT"
   if (item.sentido === "entrada") return cartao ? ["ignorar"] : ["receita", "ignorar"]
   return cartao ? ["despesa", "ignorar"] : ["despesa", "fatura", "obrigacao", "ignorar"]
-}
-
-function quando(iso?: string | null): string {
-  if (!iso) return "nunca"
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return "nunca"
-  const hh = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-  const hoje = new Date()
-  const ontem = new Date(Date.now() - 86400000)
-  if (d.toDateString() === hoje.toDateString()) return `hoje às ${hh}`
-  if (d.toDateString() === ontem.toDateString()) return `ontem às ${hh}`
-  return `${d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${hh}`
 }
 
 function rotuloChave(chave: string): string {
@@ -158,7 +145,7 @@ export function RevisarPage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Revisar"
-        description="O que chega do banco o site lança sozinho quando já conhece. O resto ele pergunta uma vez e aprende."
+        description="Importe o extrato ou a fatura do banco: o site lança sozinho o que já conhece e pergunta o resto uma vez."
       />
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.75fr)_minmax(300px,1fr)]">
@@ -237,7 +224,6 @@ export function RevisarPage() {
         </section>
 
         <aside className="flex flex-col gap-5 lg:sticky lg:top-[7.5rem]">
-          <PainelBancos />
           <PainelImportar />
           <ComoFunciona />
         </aside>
@@ -295,7 +281,7 @@ function Vazio({ semConexao, autoHoje }: { semConexao: boolean; autoHoje: number
         <div>
           <p className="font-semibold">Pare de lançar à mão</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            Conecte seus bancos de graça pelo Open Finance (painel ao lado) ou importe o extrato em OFX/CSV.
+            Importe o extrato ou a fatura do banco em OFX/CSV (painel ao lado).
             Tudo que entrar aparece aqui: o que o site já conhece ele lança sozinho, o resto ele pergunta uma vez.
           </p>
         </div>
@@ -309,7 +295,7 @@ function Vazio({ semConexao, autoHoje }: { semConexao: boolean; autoHoje: number
         <p className="font-semibold">Tudo em dia</p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
           {autoHoje > 0 ? `${autoHoje} lançamento${autoHoje > 1 ? "s" : ""} feito${autoHoje > 1 ? "s" : ""} sozinho${autoHoje > 1 ? "s" : ""} recentemente (aba Lançados). ` : ""}
-          Quando chegar algo novo do banco, aparece aqui.
+          Quando você importar um extrato novo, o que precisar de resposta aparece aqui.
         </p>
       </div>
     </div>
@@ -673,161 +659,6 @@ function ListaRegras() {
         ))}
       </div>
     </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Conexão com os bancos (Open Finance via Meu Pluggy — grátis pra uso pessoal)
-
-function PainelBancos() {
-  const { contasBanco, cartoes, config, saveConfig, loadAll } = useFinData()
-  const [status, setStatus] = useState<{ configurado: boolean; items: number } | null | undefined>(undefined)
-  const [sincronizando, setSincronizando] = useState(false)
-  const [abrirConfig, setAbrirConfig] = useState(false)
-  const [itens, setItens] = useState(config.pluggy_items ?? "")
-  const [salvando, setSalvando] = useState(false)
-
-  useEffect(() => { statusBancos().then(setStatus) }, [])
-  useEffect(() => { setItens(config.pluggy_items ?? "") }, [config.pluggy_items])
-
-  const contasPluggy = contasBanco.filter((c) => c.origem === "pluggy")
-  const pronto = !!status?.configurado && (status?.items ?? 0) > 0
-
-  async function sincronizar() {
-    setSincronizando(true)
-    try {
-      const r = await sincronizarBancos()
-      if (r.erro) throw new Error(r.erro)
-      await loadAll()
-      const a = await rodarAutomatico()
-      const revisar = contarParaRevisar(useFinData.getState().extrato)
-      const partes = [
-        `${r.novos ?? 0} nova${(r.novos ?? 0) === 1 ? "" : "s"}`,
-        a.feitos ? `${a.feitos} lançada${a.feitos > 1 ? "s" : ""} sozinha${a.feitos > 1 ? "s" : ""}` : null,
-        revisar ? `${revisar} pra revisar` : null,
-      ].filter(Boolean)
-      toast.success("Bancos atualizados", { description: partes.join(" · ") })
-      if (r.erros?.length) toast.error("Alguma conexão falhou", { description: r.erros.join(" | ").slice(0, 300) })
-      statusBancos().then(setStatus)
-    } catch (e) {
-      toast.error("Não consegui buscar nos bancos", { description: e instanceof Error ? e.message : String(e) })
-    } finally {
-      setSincronizando(false)
-    }
-  }
-
-  async function salvarItens() {
-    setSalvando(true)
-    const limpo = itens.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean).join(", ")
-    await saveConfig("pluggy_items", limpo)
-    setSalvando(false)
-    toast.success("Conexões salvas")
-    statusBancos().then(setStatus)
-  }
-
-  async function ligarCartao(conta: ContaBanco, v: string) {
-    const { error } = await supabase.from("fin_bancos_contas").update({ cartao_id: v === "nenhum" ? null : Number(v) }).eq("id", conta.id)
-    if (error) return toast.error("Não consegui salvar", { description: error.message })
-    await loadAll()
-  }
-  async function alternarConta(conta: ContaBanco, ativo: boolean) {
-    const { error } = await supabase.from("fin_bancos_contas").update({ ativo }).eq("id", conta.id)
-    if (error) return toast.error("Não consegui salvar", { description: error.message })
-    await loadAll()
-  }
-
-  return (
-    <section className="painel rounded-2xl border bg-card p-5">
-      <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Landmark className="size-[1.1rem]" /></span>
-        <div className="min-w-0 flex-1">
-          <h3 className="font-ui text-[0.95rem] font-semibold tracking-tight">Bancos conectados</h3>
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className={cn("size-1.5 rounded-full", status === undefined ? "bg-muted-foreground/40" : pronto ? "bg-success" : "bg-warning")} />
-            {status === undefined ? "verificando..." : status === null ? "função de sincronização fora do ar"
-              : !status.configurado ? "falta configurar (grátis)"
-              : !status.items ? "falta colar as conexões"
-              : `busca sozinho 2x por dia · última ${quando(config.pluggy_ultimo_sync)}`}
-          </p>
-        </div>
-      </div>
-
-      {pronto && (
-        <Button onClick={sincronizar} disabled={sincronizando} variant="secondary" size="sm" className="mt-4 w-full gap-1.5">
-          <RefreshCw className={cn("size-4", sincronizando && "animate-spin")} />
-          {sincronizando ? "Buscando nos bancos..." : "Buscar agora"}
-        </Button>
-      )}
-
-      {contasPluggy.length > 0 && (
-        <div className="mt-4 flex flex-col gap-2">
-          {contasPluggy.map((c) => (
-            <div key={c.id} className="rounded-xl border border-border/70 bg-secondary/15 px-3 py-2.5">
-              <div className="flex items-center gap-2.5">
-                {c.tipo === "CREDIT" ? <CreditCard className="size-4 shrink-0 text-muted-foreground" /> : <Landmark className="size-4 shrink-0 text-muted-foreground" />}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{c.banco ?? "Banco"} · {c.nome ?? (c.tipo === "CREDIT" ? "Cartão" : "Conta")}</p>
-                  <p className="truncate text-[0.7rem] text-muted-foreground">
-                    {c.tipo === "CREDIT" ? "cartão de crédito" : "conta"}{c.numero ? ` ••${c.numero}` : ""} · {quando(c.ultimo_sync)}
-                  </p>
-                </div>
-                <Switch size="sm" checked={c.ativo} onCheckedChange={(v) => alternarConta(c, v)} aria-label="Buscar esta conta" />
-              </div>
-              {c.tipo === "CREDIT" && (
-                <Select value={c.cartao_id ? String(c.cartao_id) : "nenhum"} onValueChange={(v) => ligarCartao(c, v)}>
-                  <SelectTrigger className="mt-2 h-8 w-full text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectGroup>
-                    <SelectItem value="nenhum">Ligar a um cartão do app...</SelectItem>
-                    {cartoes.filter((k) => k.ativo !== false).map((k) => <SelectItem key={k.id} value={String(k.id)}>É o cartão {nomeCurto(k.nome)}</SelectItem>)}
-                  </SelectGroup></SelectContent>
-                </Select>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <button
-        onClick={() => setAbrirConfig((v) => !v)}
-        className="press mt-4 flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground"
-      >
-        {pronto ? "Conexões (Item IDs)" : "Como conectar de graça"}
-        <ChevronDown className={cn("size-4 transition-transform", (abrirConfig || (!pronto && status !== undefined)) && "rotate-180")} />
-      </button>
-      <AnimatePresence initial={false}>
-        {(abrirConfig || (!pronto && status !== undefined)) && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden"
-          >
-            <div className="pt-3">
-              {!pronto && (
-                <ol className="mb-3 flex list-decimal flex-col gap-1.5 pl-4 text-xs text-muted-foreground marker:font-semibold marker:text-foreground/70">
-                  <li>Crie sua conta grátis no <a className="font-medium text-primary underline-offset-2 hover:underline" href="https://meu.pluggy.ai" target="_blank" rel="noreferrer">Meu Pluggy</a> e conecte seus bancos (Nubank, Mercado Pago, PicPay...).</li>
-                  <li>Com o mesmo e-mail, entre no <a className="font-medium text-primary underline-offset-2 hover:underline" href="https://dashboard.pluggy.ai" target="_blank" rel="noreferrer">painel da Pluggy</a> e crie uma aplicação. Copie o Client ID e o Client Secret.</li>
-                  <li>No Supabase, em Edge Functions → Secrets, crie <code className="rounded bg-muted px-1">PLUGGY_CLIENT_ID</code> e <code className="rounded bg-muted px-1">PLUGGY_CLIENT_SECRET</code> com esses valores.</li>
-                  <li>No painel da Pluggy, conecte cada banco pelo conector “MeuPluggy” e cole aqui o Item ID de cada um.</li>
-                </ol>
-              )}
-              <Textarea
-                value={itens}
-                onChange={(e) => setItens(e.target.value)}
-                placeholder="Item IDs, um por linha (ex.: 3f2a9c1e-...)"
-                rows={3}
-                className="font-mono text-xs"
-              />
-              <Button onClick={salvarItens} disabled={salvando || itens === (config.pluggy_items ?? "")} size="sm" variant="secondary" className="mt-2 w-full">
-                {salvando ? <Loader2 className="size-4 animate-spin" /> : null} Salvar conexões
-              </Button>
-              <p className="mt-2 flex gap-1.5 text-[0.7rem] text-muted-foreground">
-                <Info className="mt-px size-3.5 shrink-0" />
-                O Client Secret fica só no Supabase, nunca no site. O site guarda só data, descrição e valor das movimentações.
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </section>
   )
 }
 

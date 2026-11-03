@@ -13,7 +13,7 @@ import { registrarFaturaPaga, removerFaturaPaga } from "@/lib/pagamentos"
 import { catInfo, DESPESA_CATS } from "@/lib/categorias"
 
 // ---------------------------------------------------------------------------
-// Lançamento automático: cada movimentação que chega do banco (Open Finance ou arquivo)
+// Lançamento automático: cada movimentação que chega do extrato importado
 // vira uma SUGESTÃO. O site decide sozinho quando tem certeza (regra aprendida ou o mesmo
 // lançamento já feito à mão) e pergunta quando não tem. Cada resposta vira regra.
 // ---------------------------------------------------------------------------

@@ -129,7 +129,7 @@ export type CategoriaIcone = {
   atualizado_em: string
 }
 
-// ---- Lançamento automático (Open Finance / extrato importado) ----
+// ---- Lançamento automático (extrato importado) ----
 export type ContaBanco = {
   id: string
   item_id: string | null

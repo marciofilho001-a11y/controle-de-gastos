@@ -3,7 +3,7 @@ import { supabase, type Cartao, type ExtratoItem } from "@/lib/supabase"
 // ---------------------------------------------------------------------------
 // Importar extrato/fatura por arquivo (sem cadastro em nada): OFX de qualquer banco,
 // CSV do Nubank (conta e cartão), Mercado Pago e CSV genérico (data, descrição, valor).
-// Cada linha vira um item do extrato (mesmo caminho do Open Finance): o site decide
+// Cada linha vira um item do extrato : o site decide
 // sozinho o que já conhece e pergunta o resto. Reimportar o mesmo arquivo não duplica.
 // ---------------------------------------------------------------------------
 

@@ -2,7 +2,7 @@ import { useState } from "react"
 import { motion } from "motion/react"
 import {
   LayoutDashboard, ListChecks, CreditCard, ArrowLeftRight, TrendingUp,
-  FileText, CalendarCheck, History, MoreHorizontal, Inbox, Landmark, type LucideIcon,
+  FileText, CalendarCheck, History, MoreHorizontal, Inbox, type LucideIcon,
 } from "@/lib/icons"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 
 export type TabId =
   | "dashboard" | "obrigacoes" | "cartoes" | "transacoes"
-  | "projecao" | "fechamento" | "historico" | "relatorio" | "revisar" | "bancos"
+  | "projecao" | "fechamento" | "historico" | "relatorio" | "revisar"
 
 export const TABS: { id: TabId; label: string; curto: string; icon: LucideIcon }[] = [
   { id: "dashboard", label: "Dashboard", curto: "Início", icon: LayoutDashboard },
@@ -21,7 +21,6 @@ export const TABS: { id: TabId; label: string; curto: string; icon: LucideIcon }
   { id: "cartoes", label: "Cartões", curto: "Cartões", icon: CreditCard },
   { id: "transacoes", label: "Transações", curto: "Transações", icon: ArrowLeftRight },
   { id: "revisar", label: "Revisar", curto: "Revisar", icon: Inbox },
-  { id: "bancos", label: "Bancos", curto: "Bancos", icon: Landmark },
   { id: "projecao", label: "Projeção", curto: "Projeção", icon: TrendingUp },
   { id: "fechamento", label: "Fechamento", curto: "Fechamento", icon: CalendarCheck },
   { id: "historico", label: "Histórico", curto: "Histórico", icon: History },
