@@ -11,6 +11,7 @@ import { erroDeLogin } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 
 type Modo = "entrar" | "criar" | "esqueci"
+class MensagemPronta extends Error {}
 const SPRING = { type: "spring", bounce: 0, duration: 0.35 } as const
 
 function Campo({ id, rotulo, children, dica }: { id: string; rotulo: string; children: React.ReactNode; dica?: string }) {
@@ -63,27 +64,23 @@ export function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha })
         if (error) throw error
       } else if (modo === "criar") {
-        if (!nome.trim()) throw new Error("Diga seu nome.")
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(), password: senha,
-          options: { data: { nome: nome.trim() }, emailRedirectTo: window.location.origin },
+        if (!nome.trim()) throw new MensagemPronta("Diga seu nome.")
+        // a conta nasce confirmada no servidor (sem e-mail de confirmação) e já entra
+        const { data, error } = await supabase.functions.invoke("criar-conta", {
+          body: { nome: nome.trim(), email: email.trim(), senha },
         })
         if (error) throw error
-        // Supabase devolve usuário sem identidades quando o e-mail já existe
-        if (data.user && data.user.identities && data.user.identities.length === 0) throw new Error("already registered")
-        if (!data.session) {
-          setAviso(`Conta criada. Enviamos um link de confirmação para ${email.trim()}: abra ele e depois entre aqui.`)
-          setModo("entrar")
-        } else {
-          toast.success(`Bem-vindo, ${nome.trim().split(" ")[0]}!`)
-        }
+        if (data?.erro) throw new MensagemPronta(data.erro)
+        const { error: e2 } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha })
+        if (e2) throw e2
+        toast.success(`Bem-vindo, ${nome.trim().split(" ")[0]}!`)
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin })
         if (error) throw error
         setAviso(`Se existir conta com ${email.trim()}, chegou um link pra criar uma senha nova.`)
       }
     } catch (err) {
-      setErro(err instanceof Error && err.message === "Diga seu nome." ? err.message : erroDeLogin(err))
+      setErro(err instanceof MensagemPronta ? err.message : erroDeLogin(err))
     } finally {
       setBusy(false)
     }
