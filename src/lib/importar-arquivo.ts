@@ -54,11 +54,13 @@ export function dataISO(s: string): string | null {
   return null
 }
 
-function parcelaDe(desc: string): [number, number] | null {
-  const m = desc.match(/parcela\s*(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})/i) || desc.match(/\((\d{1,2})\/(\d{1,2})\)\s*$/) || desc.match(/\s(\d{1,2})\/(\d{1,2})\s*$/)
+export function parcelaDe(desc: string): [number, number] | null {
+  // "Parcela 2 de 6" | "(2/6)" no fim | "LOJA 02/06" no fim | "LOJA  02/06   CIDADE" (Sicoob e outros: parcela no meio)
+  const m = desc.match(/parcela\s*(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})/i) || desc.match(/\((\d{1,2})\/(\d{1,2})\)\s*$/) ||
+    desc.match(/\s(\d{1,2})\/(\d{1,2})\s*$/) || desc.match(/\s(\d{2})\/(\d{2})\s+(?=[A-Za-zÀ-ú])/)
   if (!m) return null
   const a = Number(m[1]), b = Number(m[2])
-  return b > 1 && a >= 1 && a <= b ? [a, b] : null
+  return b > 1 && b <= 48 && a >= 1 && a <= b ? [a, b] : null
 }
 
 // ---------- OFX ----------
@@ -139,17 +141,46 @@ export function contraparteDe(desc: string): string | null {
   return m ? m[1].trim() : null
 }
 
-export async function importarArquivo(arquivo: File, destino: Destino): Promise<ResultadoImportacao> {
-  const bruto = await arquivo.arrayBuffer()
-  let txt = new TextDecoder("utf-8").decode(bruto)
-  if (txt.includes("�")) txt = new TextDecoder("windows-1252").decode(bruto)   // OFX/CSV antigos em latin-1
-  const { linhas, formato } = lerTexto(txt)
-  if (!linhas.length) throw new Error(`Não encontrei movimentações no arquivo (${formato}). Use OFX ou CSV com data, descrição e valor.`)
+const RE_CREDITO_CARTAO = /pagamento|pgto|estorno|cr[eé]dito|desconto|devolu[cç]|reembolso/i
+const RE_ENTRADA_CONTA = /receb|cr[eé]dito|dep[oó]sito|estorno|rendimento|sal[aá]rio|resgate|devolu[cç]|reembolso/i
 
+async function lerArquivo(arquivo: File, ehCartao: boolean, pedirSenha: () => string | null): Promise<{ linhas: Linha[]; formato: string }> {
+  const ehPdf = /\.pdf$/i.test(arquivo.name) || arquivo.type === "application/pdf"
+  if (!ehPdf) {
+    const bruto = await arquivo.arrayBuffer()
+    let txt = new TextDecoder("utf-8").decode(bruto)
+    if (txt.includes("�")) txt = new TextDecoder("windows-1252").decode(bruto)   // OFX/CSV antigos em latin-1
+    return lerTexto(txt)
+  }
+  const { lerPdf } = await import("@/lib/ler-pdf")
+  const brutas = await lerPdf(arquivo, pedirSenha)
+  // no PDF o sinal quase nunca vem: fatura = compra positiva, crédito/pagamento negativo;
+  // extrato = saída negativa, entrada positiva (pelo sinal, "C"/"D" ou pelas palavras)
+  const linhas: Linha[] = brutas.map((b) => {
+    let v = b.valor
+    if (ehCartao) {
+      if (b.sinal === "-" || b.sinal === "+" || (b.sinal == null && RE_CREDITO_CARTAO.test(b.descricao))) v = -v
+    } else {
+      const entrada = b.sinal === "+" || (b.sinal == null && RE_ENTRADA_CONTA.test(b.descricao))
+      if (!entrada) v = -v
+    }
+    return { data: b.data, descricao: b.descricao, valor: v, parcela: parcelaDe(b.descricao) }
+  })
+  return { linhas, formato: "PDF" }
+}
+
+export async function importarArquivo(arquivo: File, destino: Destino, pedirSenha: () => string | null = () => null): Promise<ResultadoImportacao> {
   const ehCartao = destino.tipo === "cartao"
+  const { linhas, formato } = await lerArquivo(arquivo, ehCartao, pedirSenha)
+  if (!linhas.length) {
+    throw new Error(formato === "PDF"
+      ? "Não achei movimentações nesse PDF. Se ele for uma imagem escaneada, baixe a versão em PDF do próprio app/site do banco."
+      : `Não encontrei movimentações no arquivo (${formato}). Use PDF, OFX ou CSV com data, descrição e valor.`)
+  }
+
   // no cartão, alguns arquivos trazem compra positiva (Nubank CSV), outros negativa (OFX): vale o sinal da maioria
   const positivas = linhas.filter((l) => l.valor > 0).length
-  const compraPositiva = ehCartao && positivas >= linhas.length / 2
+  const compraPositiva = ehCartao && (formato === "PDF" || positivas >= linhas.length / 2)
 
   // o id da conta leva o usuário: cada login tem as suas contas importadas
   const { data: sessao } = await supabase.auth.getSession()
@@ -188,7 +219,20 @@ export async function importarArquivo(arquivo: File, destino: Destino): Promise<
     const { data } = await supabase.from("fin_extrato").select("id").in("id", ids.slice(i, i + 300))
     for (const r of data ?? []) ja.add(r.id)
   }
-  const novas = itens.filter((i) => !ja.has(i.id!))
+  // a mesma compra vinda de outro formato (CSV hoje, PDF amanhã) não entra de novo:
+  // mesma conta, dia, valor e começo do nome
+  const assinatura = (i: { data?: string | null; valor?: number | string | null; descricao?: string | null }) =>
+    `${i.data}|${Number(i.valor).toFixed(2)}|${String(i.descricao ?? "").toLowerCase().normalize("NFD").replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter(Boolean).slice(0, 2).join(" ")}`
+  const datas = [...new Set(itens.map((i) => i.data!))]
+  const { data: existentes } = await supabase.from("fin_extrato").select("data, valor, descricao").eq("conta_id", contaId).in("data", datas)
+  const conhecidas = new Map<string, number>()
+  for (const e of existentes ?? []) conhecidas.set(assinatura(e), (conhecidas.get(assinatura(e)) ?? 0) + 1)
+  const novas = itens.filter((i) => {
+    if (ja.has(i.id!)) return false
+    const k = assinatura(i), n = conhecidas.get(k) ?? 0
+    if (n > 0) { conhecidas.set(k, n - 1); return false }
+    return true
+  })
   for (let i = 0; i < novas.length; i += 300) {
     const { error } = await supabase.from("fin_extrato").insert(novas.slice(i, i + 300))
     if (error) throw error

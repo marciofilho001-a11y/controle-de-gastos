@@ -85,11 +85,12 @@ export function limparDescricao(raw: string | null | undefined): string {
     s = INTERMEDIARIOS.has(pref) ? ast[2] : ast[1]
   }
   s = s
-    .replace(/\b\d{4,}\b/g, " ")                               // códigos/ids
+    .replace(/\s\(?\d{1,2}\/\d{1,2}\)?(?=\s|$)/g, " ")              // parcela "02/06" (vai pra parcela, não pro nome)
+    .replace(/\(?\b\d{4,}\b\)?/g, " ")                         // códigos/ids, com ou sem parênteses
     .replace(/\s+-\s+(cpf|cnpj)?[\d.\-/*•]+\s*$/i, "")          // " - ***.123.456-**"
     .replace(/[•*]+/g, " ")
     .replace(/\b(bra|brasil|br)\s*$/i, "")
-    .replace(/\s+(sao paulo|s paulo|rio de janeiro|curitiba|florianopolis|itajai|bombinhas|porto belo|balneario camboriu|osasco|barueri)\s*([a-z]{2})?\s*$/i, "")
+    .replace(/\s+(sao paulo|s paulo|rio de janeiro|curitiba|florianopolis|itajai|itapema|bombinhas|porto belo|tijucas|navegantes|blumenau|joinville|balneario camboriu|camboriu|osasco|barueri|sao jose|san francisco)\s*([a-z]{2})?\s*$/i, "")
     .replace(/\s+[A-Z]{2}\s*$/, "")                             // UF no fim
     .replace(/[-–:.,;]+\s*$/, "")
     .replace(/\s+/g, " ")
@@ -171,9 +172,12 @@ export function mesFaturaDoItem(item: ExtratoItem, cartao: Cartao | null): strin
     const ultimo = new Date(Date.UTC(a, m, 0)).getUTCDate()
     return d === ultimo ? addMonths(mesDe(item.previsao_fatura), 1) : mesDe(item.previsao_fatura)
   }
+  // parcela k de uma compra feita no dia D cai na fatura de D + (k − 1) meses.
+  // Fatura em arquivo/PDF traz a data da compra original ao lado da parcela ("LOJA 02/06").
   const k = item.parcela_atual ?? 1
-  if (item.data_compra && k > 1) return addMonths(mesFaturaPara(cartao, item.data_compra), k - 1)
-  return mesFaturaPara(cartao, item.data_compra && k <= 1 ? item.data_compra : item.data)
+  const compra = item.data_compra ?? item.data
+  if (k > 1) return addMonths(mesFaturaPara(cartao, compra), k - 1)
+  return mesFaturaPara(cartao, compra)
 }
 
 // ---------- histórico ----------

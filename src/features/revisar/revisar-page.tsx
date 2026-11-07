@@ -281,7 +281,7 @@ function Vazio({ semConexao, autoHoje }: { semConexao: boolean; autoHoje: number
         <div>
           <p className="font-semibold">Pare de lançar à mão</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            Importe o extrato ou a fatura do banco em OFX/CSV (painel ao lado).
+            Importe a fatura ou o extrato do banco em PDF, OFX ou CSV (painel ao lado).
             Tudo que entrar aparece aqui: o que o site já conhece ele lança sozinho, o resto ele pergunta uma vez.
           </p>
         </div>
@@ -677,7 +677,8 @@ function PainelImportar() {
     setBusy(true)
     try {
       const cartao = destino === "conta" ? null : cartoes.find((c) => c.id === Number(destino)) ?? null
-      const r = await importarArquivo(f, cartao ? { tipo: "cartao", cartao } : { tipo: "conta" })
+      const r = await importarArquivo(f, cartao ? { tipo: "cartao", cartao } : { tipo: "conta" }, () =>
+        window.prompt("Este PDF tem senha. Digite a senha do arquivo (nos bancos costuma ser o começo do CPF):"))
       await loadAll()
       const a = await rodarAutomatico()
       const revisar = contarParaRevisar(useFinData.getState().extrato)
@@ -702,7 +703,7 @@ function PainelImportar() {
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-muted-foreground"><Upload className="size-[1.1rem]" /></span>
         <div className="min-w-0 flex-1">
           <h3 className="font-ui text-[0.95rem] font-semibold tracking-tight">Importar extrato</h3>
-          <p className="text-xs text-muted-foreground">OFX ou CSV baixado do app/site do banco. Sem cadastro; importar de novo não duplica.</p>
+          <p className="text-xs text-muted-foreground">PDF, OFX ou CSV da fatura ou do extrato, baixado do app/site do banco. Importar de novo não duplica.</p>
         </div>
       </div>
       <div className="mt-4 flex gap-2">
@@ -716,7 +717,7 @@ function PainelImportar() {
         <Button onClick={() => ref.current?.click()} disabled={busy} className="h-9 gap-1.5">
           {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Arquivo
         </Button>
-        <input ref={ref} type="file" accept=".ofx,.csv,.txt,.OFX,.CSV,text/csv,application/x-ofx" className="hidden" onChange={onArquivo} />
+        <input ref={ref} type="file" accept=".pdf,.PDF,.ofx,.csv,.txt,.OFX,.CSV,application/pdf,text/csv,application/x-ofx" className="hidden" onChange={onArquivo} />
       </div>
     </section>
   )
