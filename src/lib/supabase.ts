@@ -39,6 +39,24 @@ export type Transacao = {
   parcela_atual: number | null
   parcela_total: number | null
   criado_em: string | null
+  origem?: string | null          // null = lançado por você; "salario_base" | "venda_ativo" = gerado pelo app
+}
+
+export type ClasseAtivo = "fii" | "acao" | "renda_fixa" | "outro"
+
+export type Ativo = {
+  id: number
+  classe: ClasseAtivo
+  nome: string
+  ticker: string | null
+  quantidade: number | null
+  valor_aplicado: number
+  data_compra: string
+  vendido_em: string | null
+  valor_venda: number | null
+  transacao_id: number | null
+  observacao: string | null
+  criado_em: string
 }
 
 export type Cartao = {

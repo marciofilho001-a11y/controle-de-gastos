@@ -126,6 +126,7 @@ export function TransacaoDialog({
           tipo, descricao: descricao.trim(), valor: v, data, categoria, mes_ref, cartao_id,
           parcela_total: pt > 1 ? pt : null,
           parcela_atual: pt > 1 ? Math.min(Math.max(1, pa || 1), pt) : null,
+          origem: null,
         }
         const { error } = await supabase.from("fin_transacoes").update(payload).eq("id", editar.id)
         if (error) throw error

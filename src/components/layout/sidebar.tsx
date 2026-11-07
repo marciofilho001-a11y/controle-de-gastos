@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 const GRUPOS: { titulo: string; ids: TabId[] }[] = [
   { titulo: "Principal", ids: ["dashboard", "transacoes", "revisar", "cartoes", "obrigacoes"] },
   { titulo: "Análise", ids: ["projecao", "historico", "relatorio"] },
-  { titulo: "Gestão", ids: ["fechamento"] },
+  { titulo: "Gestão", ids: ["investimentos", "fechamento"] },
 ]
 const SPRING = { type: "spring", bounce: 0, duration: 0.35 } as const
 

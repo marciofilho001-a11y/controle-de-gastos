@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { LogOut, Key, Loader2 } from "@/lib/icons"
+import { LogOut, Key, Loader2, Briefcase } from "@/lib/icons"
+import { SalarioBaseDialog } from "@/components/salario-base-dialog"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -14,6 +15,7 @@ import { useFinData } from "@/hooks/use-fin-data"
 
 export function MenuUsuario({ nome, email }: { nome: string; email: string }) {
   const [trocar, setTrocar] = useState(false)
+  const [salario, setSalario] = useState(false)
   const inicial = (nome || email).trim().charAt(0).toUpperCase() || "?"
 
   async function sair() {
@@ -38,11 +40,13 @@ export function MenuUsuario({ nome, email }: { nome: string; email: string }) {
             <p className="truncate text-xs text-muted-foreground">{email}</p>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => setSalario(true)} className="gap-2.5"><Briefcase className="size-4" /> Salário fixo</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setTrocar(true)} className="gap-2.5"><Key className="size-4" /> Trocar senha</DropdownMenuItem>
           <DropdownMenuItem onSelect={sair} className="gap-2.5 text-destructive focus:text-destructive"><LogOut className="size-4" /> Sair</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <TrocarSenha aberto={trocar} onOpenChange={setTrocar} />
+      <SalarioBaseDialog aberto={salario} onOpenChange={setSalario} />
     </>
   )
 }

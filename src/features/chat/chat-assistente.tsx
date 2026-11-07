@@ -42,6 +42,14 @@ export function ChatAssistente({ mesRef, esconderBotao = false }: { mesRef: stri
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })
   }, [msgs, aberto])
 
+  // Esc fecha
+  useEffect(() => {
+    if (!aberto) return
+    const f = (e: KeyboardEvent) => { if (e.key === "Escape") setAberto(false) }
+    window.addEventListener("keydown", f)
+    return () => window.removeEventListener("keydown", f)
+  }, [aberto, setAberto])
+
   function enviar() {
     const t = texto.trim()
     if (!t) return
@@ -129,6 +137,14 @@ export function ChatAssistente({ mesRef, esconderBotao = false }: { mesRef: stri
                 <p className="font-display text-sm font-semibold">Lançamento rápido</p>
                 <p className="text-xs text-muted-foreground">Escreva naturalmente, eu cadastro</p>
               </div>
+              <button
+                onClick={() => setAberto(false)}
+                className="press grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                aria-label="Fechar lançamento rápido"
+                title="Fechar (Esc)"
+              >
+                <X className="size-4" />
+              </button>
             </div>
 
             {/* mensagens */}

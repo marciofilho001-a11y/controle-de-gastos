@@ -7,6 +7,9 @@ import { fmtR, fmtMesCurto, fmtMesRef, addMonths } from "@/lib/format"
 import { variacaoPct } from "@/lib/selectors"
 import { cn } from "@/lib/utils"
 import { EASE } from "./painel"
+import { useFinData } from "@/hooks/use-fin-data"
+import { lerSalarioBase } from "@/lib/salario-base"
+import { SalarioBaseDialog } from "@/components/salario-base-dialog"
 
 type Ponto = { mes: string; saldo: number }
 
@@ -18,6 +21,8 @@ export function HeroResumo({
   pendentes: number; nPendentes: number; serie: Ponto[]
 }) {
   const [oculto, setOculto] = useState(false)
+  const [salarioAberto, setSalarioAberto] = useState(false)
+  const base = lerSalarioBase(useFinData((s) => s.config))
   const pctRenda = receitas > 0 ? Math.round((saldo / receitas) * 100) : null
   const positivo = saldo >= 0
   const esconder = (v: string) => (oculto ? "R$ ••••" : v)
@@ -63,7 +68,17 @@ export function HeroResumo({
         <div className="grid grid-cols-1 gap-3.5 border-t pt-4 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:border-t-0 sm:pt-0 md:border-l md:pl-2">
           <Kpi
             icon={ArrowUp} tom="success" rotulo="Receitas" valor={esconder(fmtR(receitas))}
-            rodape={<Variacao atual={receitas} anterior={receitasAnt} mesRef={mesRef} />}
+            rodape={
+              <span className="flex flex-col items-start gap-1">
+                <Variacao atual={receitas} anterior={receitasAnt} mesRef={mesRef} />
+                <button
+                  onClick={() => setSalarioAberto(true)}
+                  className="press text-xs font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  {base?.ativo ? `Salário fixo ${oculto ? "••••" : fmtR(base.valor)}` : "Definir salário fixo"}
+                </button>
+              </span>
+            }
           />
           <Kpi
             icon={ArrowDown} tom="destructive" rotulo="Despesas do mês" valor={esconder(fmtR(despesas))}
@@ -94,6 +109,7 @@ export function HeroResumo({
           </div>
         </div>
       </div>
+      <SalarioBaseDialog aberto={salarioAberto} onOpenChange={setSalarioAberto} />
     </motion.section>
   )
 }

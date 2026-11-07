@@ -32,6 +32,7 @@ export const DESPESA_CATS: CatDef[] = [
   { v: "lazer", l: "Lazer", icon: Gamepad2 },
   { v: "educacao", l: "Educação", icon: BookOpen },
   { v: "compras", l: "Compras", icon: ShoppingBag },
+  { v: "aporte", l: "Investimento (aporte)", icon: TrendingUp },
   { v: "fatura_indefinida", l: "Faturas a detalhar", icon: ReceiptText },
   { v: "outro", l: "Outro", icon: MoreHorizontal },
 ]
@@ -40,6 +41,7 @@ export const RECEITA_CATS: CatDef[] = [
   { v: "salario", l: "Salário", icon: Briefcase },
   { v: "freelance", l: "Freelance", icon: Wrench },
   { v: "investimento", l: "Rendimento", icon: TrendingUp },
+  { v: "venda_investimento", l: "Venda de investimento", icon: TrendingUp },
   { v: "outro", l: "Outro", icon: MoreHorizontal },
 ]
 
@@ -61,6 +63,8 @@ export const CAT_COLORS: Record<string, string> = {
   salario: "#14b8a6",
   freelance: "#3d8ef0",
   investimento: "#a78bfa",
+  venda_investimento: "#22c55e",
+  aporte: "#8b5cf6",
 }
 
 export function catInfo(v: string | null | undefined): CatDef {

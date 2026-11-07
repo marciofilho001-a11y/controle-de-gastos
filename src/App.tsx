@@ -16,7 +16,9 @@ import { HistoricoPage } from "@/features/historico/historico-page"
 import { ChatAssistente } from "@/features/chat/chat-assistente"
 import { LancarRapido } from "@/features/lancar/lancar-rapido"
 import { RevisarPage } from "@/features/revisar/revisar-page"
+import { CarteiraPage } from "@/features/investimentos/carteira-page"
 import { rodarAutomatico } from "@/features/revisar/automatico"
+import { sincronizarSalarioBase } from "@/lib/salario-base"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
 import { Loader2 } from "@/lib/icons"
@@ -59,6 +61,8 @@ function AppLogado({ nome, email }: { nome: string; email: string }) {
   useEffect(() => {
     if (loading || error || autoFeito.current || window.location.pathname.startsWith("/lancar")) return
     autoFeito.current = true
+    // salário fixo: completa os meses que entraram na janela de 12 meses
+    sincronizarSalarioBase().then((n) => { if (n) useFinData.getState().loadAll() }).catch(() => {})
     rodarAutomatico().then((r) => {
       if (r.feitos > 0) {
         toast.success(`${r.feitos} lançamento${r.feitos > 1 ? "s" : ""} feito${r.feitos > 1 ? "s" : ""} sozinho${r.feitos > 1 ? "s" : ""}`, {
@@ -134,6 +138,8 @@ function AppLogado({ nome, email }: { nome: string; email: string }) {
               <HistoricoPage mesRef={mesRef} />
             ) : tab === "revisar" ? (
               <RevisarPage />
+            ) : tab === "investimentos" ? (
+              <CarteiraPage />
             ) : tab === "relatorio" ? (
               <RelatorioPage mesRef={mesRef} />
             ) : null}

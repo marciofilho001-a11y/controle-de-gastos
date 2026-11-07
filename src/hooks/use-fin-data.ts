@@ -7,7 +7,7 @@ import {
   type CartaoCompra,
   type FaturaItem,
   type FaturaPagamento,
-  type Investimento,
+  type Investimento, type Ativo,
   type SaldoConta,
   type Teto,
   type Config,
@@ -28,6 +28,7 @@ type FinState = {
   faturaItens: FaturaItem[]
   faturaPagamentos: FaturaPagamento[]
   investimentos: Investimento[]
+  ativos: Ativo[]
   saldos: SaldoConta[]
   tetos: Teto[]
   config: Record<string, string>
@@ -47,7 +48,7 @@ let jaCarregou = false
 
 const VAZIO = {
   obrigacoes: [], transacoes: [], cartoes: [], compras: [], faturaItens: [], faturaPagamentos: [],
-  investimentos: [], saldos: [], tetos: [], config: {}, descricaoIcones: {}, categoriaIcones: {},
+  investimentos: [], ativos: [], saldos: [], tetos: [], config: {}, descricaoIcones: {}, categoriaIcones: {},
   extrato: [], extratoLigados: [], regras: [], contasBanco: [],
 }
 
@@ -66,6 +67,7 @@ export const useFinData = create<FinState>((set) => ({
   faturaItens: [],
   faturaPagamentos: [],
   investimentos: [],
+  ativos: [],
   saldos: [],
   tetos: [],
   config: {},
@@ -85,7 +87,7 @@ export const useFinData = create<FinState>((set) => ({
     set({ loading: !jaCarregou, error: null })
     try {
       const desde = new Date(Date.now() - 45 * 86400000).toISOString()
-      const [obr, tx, cart, comp, fat, fpg, inv, sal, tet, cfg, dic, cic, exNovos, exResolvidos, exLig, reg, cb] = await Promise.all([
+      const [obr, tx, cart, comp, fat, fpg, inv, sal, tet, cfg, dic, cic, exNovos, exResolvidos, exLig, reg, cb, atv] = await Promise.all([
         supabase.from("fin_obrigacoes").select("*").order("dia_vencimento"),
         supabase.from("fin_transacoes").select("*").order("data", { ascending: false }),
         supabase.from("fin_cartoes").select("*").order("nome"),
@@ -103,6 +105,7 @@ export const useFinData = create<FinState>((set) => ({
         supabase.from("fin_extrato").select("transacao_id").not("transacao_id", "is", null).limit(10000),
         supabase.from("fin_regras").select("*").order("atualizado_em", { ascending: false }),
         supabase.from("fin_bancos_contas").select("*").order("criado_em"),
+        supabase.from("fin_ativos").select("*").order("data_compra", { ascending: false }),
       ])
 
       const firstError =
@@ -143,6 +146,10 @@ export const useFinData = create<FinState>((set) => ({
         extratoLigados: ((exLig.data as { transacao_id: number }[]) || []).map((r) => r.transacao_id),
         regras: (reg.data as Regra[]) || [],
         contasBanco: (cb.data as ContaBanco[]) || [],
+        ativos: ((atv.data as Ativo[]) || []).map((a) => ({
+          ...a, valor_aplicado: Number(a.valor_aplicado), valor_venda: a.valor_venda == null ? null : Number(a.valor_venda),
+          quantidade: a.quantidade == null ? null : Number(a.quantidade),
+        })),
       })
     } catch (e) {
       set({ loading: false, error: e instanceof Error ? e.message : "Erro ao carregar dados" })
