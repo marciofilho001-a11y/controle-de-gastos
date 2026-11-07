@@ -474,7 +474,7 @@ export async function aplicar(item: ExtratoItem, s: Sugestao, opts: { aprender: 
       obrigacao_id: s.acao === "obrigacao" ? s.obrigacao_id : null, cartao_id: s.acao === "fatura" ? s.cartao_id : null,
       auto: opts.sempre, vezes: (s.regra?.vezes ?? 0) + 1, atualizado_em: new Date().toISOString(),
     }
-    const { data } = await supabase.from("fin_regras").upsert(linha, { onConflict: "chave,sentido" }).select("id")
+    const { data } = await supabase.from("fin_regras").upsert(linha, { onConflict: "user_id,chave,sentido" }).select("id")
     regraId = data?.[0]?.id ?? regraId
   }
 

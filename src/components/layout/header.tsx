@@ -1,15 +1,20 @@
 import { Wallet } from "@/lib/icons"
 import { MonthNav } from "@/components/layout/month-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { MenuUsuario } from "@/components/layout/menu-usuario"
 
 export function Header({
   mesRef,
   onMonthChange,
   titulo,
+  nome,
+  email,
 }: {
   mesRef: string
   onMonthChange: (delta: number) => void
   titulo?: string
+  nome: string
+  email: string
 }) {
   return (
     <header className="flex items-center justify-between gap-3">
@@ -23,6 +28,7 @@ export function Header({
       <div className="flex items-center gap-1.5">
         <MonthNav mesRef={mesRef} onChange={onMonthChange} />
         <ThemeToggle />
+        <MenuUsuario nome={nome} email={email} />
       </div>
     </header>
   )

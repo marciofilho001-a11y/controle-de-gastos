@@ -20,12 +20,30 @@ import { rodarAutomatico } from "@/features/revisar/automatico"
 import { useFinData } from "@/hooks/use-fin-data"
 import { addMonths, mesRefAtual } from "@/lib/format"
 import { Loader2 } from "@/lib/icons"
+import { LoginPage, NovaSenhaPage } from "@/features/auth/login-page"
+import { useSessao, nomeDoUsuario } from "@/lib/auth"
 
 function tituloDaAba(t: TabId): string {
   return t === "dashboard" ? "Início" : TABS.find((x) => x.id === t)?.label ?? ""
 }
 
+// Sem login, só a tela de entrar. Cada conta carrega só os próprios dados (RLS no banco);
+// trocar de conta remonta o app do zero, sem sobrar nada da anterior na tela.
 export default function App() {
+  const { sessao, recuperando, fimRecuperacao } = useSessao()
+  if (sessao === undefined) {
+    return (
+      <div className="grid min-h-[100dvh] place-items-center">
+        <Loader2 className="size-6 animate-spin text-primary" />
+      </div>
+    )
+  }
+  if (recuperando && sessao) return <><NovaSenhaPage onPronto={fimRecuperacao} /><Toaster position="top-center" richColors /></>
+  if (!sessao) return <><LoginPage /><Toaster position="top-center" richColors /></>
+  return <AppLogado key={sessao.user.id} nome={nomeDoUsuario(sessao)} email={sessao.user.email ?? ""} />
+}
+
+function AppLogado({ nome, email }: { nome: string; email: string }) {
   const [tab, setTab] = useState<TabId>("dashboard")
   const [mesRef, setMesRef] = useState(mesRefAtual())
   const { loading, error, loadAll } = useFinData()
@@ -83,7 +101,7 @@ export default function App() {
       <div className="md:pl-[232px]">
         <div className="app-bar sticky top-0 z-30" data-scrolled={rolou}>
           <div className="mx-auto w-full max-w-[1280px] px-4 py-2.5 sm:px-6 lg:px-8">
-            <Header mesRef={mesRef} onMonthChange={(d) => setMesRef((m) => addMonths(m, d))} titulo={tituloDaAba(tab)} />
+            <Header mesRef={mesRef} onMonthChange={(d) => setMesRef((m) => addMonths(m, d))} titulo={tituloDaAba(tab)} nome={nome} email={email} />
           </div>
         </div>
 

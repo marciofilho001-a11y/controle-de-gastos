@@ -69,7 +69,7 @@ export function InvestimentosPage({ mesRef }: { mesRef: string }) {
     try {
       const { error } = await supabase
         .from("fin_saldo_conta")
-        .upsert({ mes_ref: mesRef, saldo: v, atualizado_em: new Date().toISOString() }, { onConflict: "mes_ref" })
+        .upsert({ mes_ref: mesRef, saldo: v, atualizado_em: new Date().toISOString() }, { onConflict: "user_id,mes_ref" })
       if (error) throw error
       toast.success("Saldo salvo!")
       await loadAll()

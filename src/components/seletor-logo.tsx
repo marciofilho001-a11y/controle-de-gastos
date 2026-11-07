@@ -71,7 +71,7 @@ export function SeletorLogo({
     try {
       const { error } = imagem === null
         ? await supabase.from("fin_descricao_icones").delete().eq("descricao_norm", dn)
-        : await supabase.from("fin_descricao_icones").upsert({ descricao_norm: dn, imagem, atualizado_em: new Date().toISOString() })
+        : await supabase.from("fin_descricao_icones").upsert({ descricao_norm: dn, imagem, atualizado_em: new Date().toISOString() }, { onConflict: "user_id,descricao_norm" })
       if (error) throw error
       await loadAll()
       toast.success(msg)

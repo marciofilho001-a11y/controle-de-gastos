@@ -129,4 +129,6 @@ export {
   Question as HelpCircle,
   Bank,
   Tray,
+  SignOut as LogOut,
+  Key,
 } from "@phosphor-icons/react"

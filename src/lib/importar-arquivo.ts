@@ -151,7 +151,10 @@ export async function importarArquivo(arquivo: File, destino: Destino): Promise<
   const positivas = linhas.filter((l) => l.valor > 0).length
   const compraPositiva = ehCartao && positivas >= linhas.length / 2
 
-  const contaId = ehCartao ? `arquivo:cartao:${destino.cartao.id}` : "arquivo:conta"
+  // o id da conta leva o usuário: cada login tem as suas contas importadas
+  const { data: sessao } = await supabase.auth.getSession()
+  const uid = sessao.session?.user.id ?? "anon"
+  const contaId = ehCartao ? `arquivo:${uid}:cartao:${destino.cartao.id}` : `arquivo:${uid}:conta`
   const { error: e1 } = await supabase.from("fin_bancos_contas").upsert({
     id: contaId, origem: "arquivo", tipo: ehCartao ? "CREDIT" : "BANK",
     nome: ehCartao ? destino.cartao.nome : "Conta (Pix e débito)", banco: "Arquivo importado",

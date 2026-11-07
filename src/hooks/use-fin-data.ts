@@ -39,12 +39,24 @@ type FinState = {
   regras: Regra[]
   contasBanco: ContaBanco[]
   loadAll: () => Promise<void>
+  limpar: () => void
   saveConfig: (chave: string, valor: string) => Promise<void>
 }
 
 let jaCarregou = false
 
+const VAZIO = {
+  obrigacoes: [], transacoes: [], cartoes: [], compras: [], faturaItens: [], faturaPagamentos: [],
+  investimentos: [], saldos: [], tetos: [], config: {}, descricaoIcones: {}, categoriaIcones: {},
+  extrato: [], extratoLigados: [], regras: [], contasBanco: [],
+}
+
 export const useFinData = create<FinState>((set) => ({
+  // troca de usuário (sair/entrar): nada do anterior fica na tela
+  limpar: () => {
+    jaCarregou = false
+    set({ ...VAZIO, loading: true, error: null })
+  },
   loading: true,
   error: null,
   obrigacoes: [],
@@ -64,7 +76,7 @@ export const useFinData = create<FinState>((set) => ({
   regras: [],
   contasBanco: [],
   saveConfig: async (chave, valor) => {
-    await supabase.from("fin_config").upsert({ chave, valor: String(valor) }, { onConflict: "chave" })
+    await supabase.from("fin_config").upsert({ chave, valor: String(valor) }, { onConflict: "user_id,chave" })
     set((st) => ({ config: { ...st.config, [chave]: String(valor) } }))
   },
   loadAll: async () => {
