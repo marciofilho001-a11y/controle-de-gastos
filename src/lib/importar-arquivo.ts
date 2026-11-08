@@ -9,7 +9,7 @@ import { supabase, type Cartao, type ExtratoItem } from "@/lib/supabase"
 
 export type Destino = { tipo: "cartao"; cartao: Cartao } | { tipo: "conta" }
 
-type Linha = { data: string; descricao: string; valor: number; id?: string; parcela?: [number, number] | null }
+type Linha = { data: string; descricao: string; valor: number; id?: string; parcela?: [number, number] | null; contraparte?: string | null }
 
 export type ResultadoImportacao = { lidas: number; novas: number; repetidas: number; formato: string }
 
@@ -164,7 +164,7 @@ async function lerArquivo(arquivo: File, ehCartao: boolean, pedirSenha: () => st
       const entrada = b.sinal === "+" || (b.sinal == null && RE_ENTRADA_CONTA.test(b.descricao))
       if (!entrada) v = -v
     }
-    return { data: b.data, descricao: b.descricao, valor: v, parcela: parcelaDe(b.descricao) }
+    return { data: b.data, descricao: b.descricao, valor: v, parcela: parcelaDe(b.descricao), contraparte: b.contraparte ?? null }
   })
   return { linhas, formato: "PDF" }
 }
@@ -206,7 +206,7 @@ export async function importarArquivo(arquivo: File, destino: Destino, pedirSenh
       valor: Math.round(Math.abs(l.valor) * 100) / 100, sentido: saida ? "saida" : "entrada",
       tipo_conta: ehCartao ? "CREDIT" : "BANK",
       operacao: /pix/i.test(l.descricao) ? "PIX" : null,
-      contraparte: contraparteDe(l.descricao),
+      contraparte: l.contraparte ?? contraparteDe(l.descricao),
       parcela_atual: l.parcela?.[0] ?? null, parcela_total: l.parcela?.[1] ?? null,
       pendente: false,
     }

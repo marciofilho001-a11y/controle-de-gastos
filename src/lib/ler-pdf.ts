@@ -4,7 +4,7 @@
 // vira uma movimentação. PDF com senha (comum: começo do CPF) pede a senha uma vez.
 // ---------------------------------------------------------------------------
 
-export type LinhaPdf = { data: string; descricao: string; valor: number; sinal: "+" | "-" | null }
+export type LinhaPdf = { data: string; descricao: string; valor: number; sinal: "+" | "-" | null; contraparte?: string | null }
 
 async function textoEmLinhas(arquivo: File, pedirSenha: () => string | null): Promise<string[]> {
   const pdfjs = await import("pdfjs-dist")
@@ -59,7 +59,13 @@ function referencia(linhas: string[]): Date {
 }
 
 export async function lerPdf(arquivo: File, pedirSenha: () => string | null): Promise<LinhaPdf[]> {
-  const linhas = await textoEmLinhas(arquivo, pedirSenha)
+  return extrairMovimentos(await textoEmLinhas(arquivo, pedirSenha))
+}
+
+// texto do PDF (já em linhas) -> movimentações
+export function extrairMovimentos(linhas: string[]): LinhaPdf[] {
+  const agrupado = extrairAgrupado(linhas)
+  if (agrupado.length) return agrupado
   const ref = referencia(linhas)
   const out: LinhaPdf[] = []
   for (const bruta of linhas) {
@@ -90,4 +96,72 @@ export async function lerPdf(arquivo: File, pedirSenha: () => string | null): Pr
     })
   }
   return out
+}
+
+// ---------------------------------------------------------------------------
+// Extrato "agrupado por dia" (conta Nubank e parecidos): a data aparece uma vez,
+// depois "Total de entradas" / "Total de saídas" e as movimentações embaixo, sem data
+// e sem sinal; o nome de quem recebeu pode quebrar em várias linhas.
+// ---------------------------------------------------------------------------
+const RE_DIA = /^(\d{1,2})\s+(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*\.?\s+(\d{4})\b\s*(.*)$/i
+const RE_DIA_NUM = /^(\d{2})\/(\d{2})\/(\d{4})\b\s*(.*)$/
+const RE_SECAO = /^total de (entradas|sa[ií]das)\b/i
+const RE_RODAPE = /(tem alguma d[uú]vida|ouvidoria|extrato gerado|atendimento|metropolitanas|dispon[ií]veis em|valores em r\$|\bde \d{4}\s+a\s+\d{1,2} de|^cpf\b|ag[eê]ncia\s+\d+\s+conta$|saldo|rendimento l[ií]quido|n[aã]o nos responsabilizamos|asseguramos|nu financeira|nu pagamentos s\.a|^cnpj|^investimento$|^pagamento$)/i
+const RE_VALOR_FIM = /^(.*?)\s{2,}([-+]?\s*\d{1,3}(?:\.\d{3})*,\d{2})\s*$/
+const cpfDe = (s: string) => s.match(/•••\.(\d{3}\.\d{3})-••/)?.[1] ?? null
+
+function extrairAgrupado(linhas: string[]): LinhaPdf[] {
+  const temDia = linhas.some((l) => (RE_DIA.exec(l.trim()) ?? RE_DIA_NUM.exec(l.trim()))?.[4]?.match(RE_SECAO))
+  if (!temDia) return []
+  // dono do extrato (pra reconhecer Pix pra você mesmo em outro banco)
+  const cpfTitular = linhas.slice(0, 6).map(cpfDe).find(Boolean) ?? null
+
+  const out: (LinhaPdf & { _extra: number; _op: string; _resto: string })[] = []
+  let data: string | null = null
+  let sinal: "+" | "-" | null = null
+  let ultimo: (typeof out)[number] | null = null
+  for (const bruta of linhas) {
+    let l = bruta.trim()
+    const dia = RE_DIA.exec(l) ?? null
+    const num = dia ? null : RE_DIA_NUM.exec(l)
+    if (dia || num) {
+      const [d, m, a] = dia ? [Number(dia[1]), MESES[dia[2].slice(0, 3).toLowerCase()], Number(dia[3])] : [Number(num![1]), Number(num![2]), Number(num![3])]
+      data = `${a}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`
+      l = (dia ? dia[4] : num![4]).trim()
+      sinal = null
+      ultimo = null
+      if (!l) continue
+    }
+    const sec = RE_SECAO.exec(l)
+    if (sec) { sinal = /entrada/i.test(sec[1]) ? "+" : "-"; ultimo = null; continue }
+    if (!data || !sinal) continue
+    if (RE_RODAPE.test(l)) { ultimo = null; continue }
+    const mv = RE_VALOR_FIM.exec(l)
+    if (mv) {
+      const valor = Number(mv[2].replace(/[-+\s]/g, "").replace(/\./g, "").replace(",", "."))
+      if (!valor) continue
+      const colunas = mv[1].split(/\s{2,}/).map((c) => c.trim()).filter(Boolean)
+      ultimo = { data, descricao: "", valor, sinal, contraparte: null, _extra: 0, _op: colunas[0] ?? "", _resto: colunas.slice(1).join(" ") }
+      out.push(ultimo)
+      continue
+    }
+    // continuação do nome (no máximo duas linhas, pra não pegar rodapé)
+    if (ultimo && ultimo._extra < 2) { ultimo._resto += " " + l; ultimo._extra++ }
+  }
+
+  return out.map(({ _extra, _op, _resto, ...m }) => {
+    void _extra
+    const resto = _resto.replace(/\s+/g, " ").trim()
+    // "Fulano de Tal - •••.123.456-•• - BANCO..." / "EMPRESA LTDA - 12.345.678/0001-90 - BANCO..."
+    let nome = resto.split(/\s+-\s+/)[0].replace(/^[\d./-]{8,}\s+/, "").replace(/\s*-\s*$/, "").trim()
+    if (/^\d/.test(nome) || nome.length < 2) nome = ""
+    const proprio = !!cpfTitular && cpfDe(resto) === cpfTitular
+    const op = _op || "Movimentação"
+    let descricao: string
+    if (/valor adicionado/i.test(`${op} ${resto}`)) return { ...m, descricao: "Valor adicionado na conta por cartão de crédito (Pix no Crédito)", contraparte: null }
+    if (!nome) descricao = op
+    else if (proprio) descricao = `${op} - ${nome} (mesma titularidade)`
+    else descricao = `${op} - ${nome}`
+    return { ...m, descricao: descricao.slice(0, 200), contraparte: nome || null }
+  })
 }

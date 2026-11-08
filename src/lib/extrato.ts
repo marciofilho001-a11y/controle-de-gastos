@@ -289,7 +289,7 @@ export function sugerir(item: ExtratoItem, ctx: Contexto): Sugestao {
   const nome = limparDescricao(cp && ehPessoa(item) ? cp : item.descricao)
   const chave = chaveDe(item)
   const texto = `${item.descricao} ${item.descricao_raw ?? ""} ${cp ?? ""}`
-  const proprio = ehTitular(cp, conta, ctx) || ehTitular(item.descricao.replace(/^.*\*\s*/, ""), conta, ctx)
+  const proprio = /mesma titularidade/i.test(texto) || ehTitular(cp, conta, ctx) || ehTitular(item.descricao.replace(/^.*\*\s*/, ""), conta, ctx)
   const regra = ctx.regras.find((r) => r.chave === chave && r.sentido === item.sentido) ?? null
   const mesData = mesDe(item.data)
 
@@ -330,6 +330,9 @@ export function sugerir(item: ExtratoItem, ctx: Contexto): Sugestao {
     s = { ...base, acao: "ignorar", confianca: "alta", motivo: "Pix no crédito: o gasto já conta na fatura do cartão" }
   } else if (item.sentido === "saida" && pixPagoNoCartao(item, ctx)) {
     s = { ...base, acao: "ignorar", confianca: "alta", motivo: "Pix pago com o cartão: o gasto já conta na fatura" }
+  } else if (item.sentido === "saida" && faturaJaPaga(item, ctx)) {
+    const p = faturaJaPaga(item, ctx)!
+    s = { ...base, acao: "ignorar", confianca: "alta", motivo: `pagamento da fatura ${p.nome} (${p.mes_ref.slice(5)}/${p.mes_ref.slice(2, 4)}), que já estava marcada como paga` }
   } else if (item.sentido === "saida" && RE_PAGTO_FATURA.test(texto) && !obrigacaoPorNome(item, ctx)) {
     const mesmoBanco = ctx.contas.find((c) => c.tipo === "CREDIT" && !!c.cartao_id && !!conta?.item_id && c.item_id === conta.item_id)?.cartao_id ?? null
     const fat = faturaDoPagamento(item, ctx, mesmoBanco)
@@ -367,7 +370,20 @@ export function sugerir(item: ExtratoItem, ctx: Contexto): Sugestao {
     (s.acao === "ignorar" && s.confianca === "alta" && !regra) ||
     (!!regra && regra.auto && (s.acao !== "despesa" || !ehCartao || !!s.cartao_id)) ||
     (ehCartao && item.sentido === "entrada" && s.confianca === "alta"))   // pagamento de fatura dentro do cartão
-  return { ...s, conciliar, automatico, motivo: conciliar ? `já estava lançado: "${conciliar.descricao}"` : s.motivo }
+  return { ...s, conciliar, automatico, motivo: conciliar
+    ? `já estava lançado: "${conciliar.descricao}"${Math.abs(Number(conciliar.valor) - item.valor) > 0.05 ? ` (fica o valor do banco, ${item.valor.toFixed(2).replace(".", ",")} em vez de ${Number(conciliar.valor).toFixed(2).replace(".", ",")})` : ""}`
+    : s.motivo }
+}
+
+// saída com o valor exato de uma fatura que você já marcou como paga (mês da saída ou vizinhos)
+function faturaJaPaga(item: ExtratoItem, ctx: Contexto): { nome: string; mes_ref: string } | null {
+  const mes = mesDe(item.data)
+  const meses = [mes, addMonths(mes, 1), addMonths(mes, -1)]
+  const p = ctx.faturaPagamentos.find((f) => meses.includes(f.mes_ref) && pertoValor(Number(f.valor), item.valor) &&
+    (!f.pago_em || diasEntre(f.pago_em, item.data) <= 10))
+  if (!p) return null
+  const c = ctx.cartoes.find((x) => x.id === Number(p.cartao_id))
+  return { nome: c?.nome ?? "do cartão", mes_ref: p.mes_ref }
 }
 
 // pagamento de fatura saindo da conta: qual cartão e qual mês
@@ -387,7 +403,7 @@ function faturaDoPagamento(item: ExtratoItem, ctx: Contexto, cartaoFixo: number 
       if (!melhor || dif < melhor.dif) melhor = { c, m, dif }
     }
   }
-  const exato = melhor && melhor.dif <= Math.max(1, item.valor * 0.01)
+  const exato = melhor && melhor.dif <= Math.max(0.1, item.valor * 0.005)
   if (cartaoFixo && !exato) {
     // pagamento da fatura inteira perto do vencimento (fatura do app pode estar incompleta)
     const c = porNome
@@ -436,6 +452,10 @@ export async function aplicar(item: ExtratoItem, s: Sugestao, opts: { aprender: 
   if (s.conciliar) {
     transacaoId = s.conciliar.id
     status = "conciliado"
+    if (Math.abs(Number(s.conciliar.valor) - item.valor) > 0.05) {
+      const { error } = await supabase.from("fin_transacoes").update({ valor: item.valor }).eq("id", s.conciliar.id)
+      if (error) throw error
+    }
   } else if (s.acao === "despesa" || s.acao === "receita") {
     const parcelado = s.acao === "despesa" && s.cartao_id && s.parcela_total && s.parcela_total > 1
     const ini = s.parcela_atual ?? 1
